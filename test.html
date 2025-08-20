@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Debug Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        #log {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 15px;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 WebSocket Connection Debug Tool</h1>
+        
+        <div class="test-section">
+            <h3>1. Kiểm tra kết nối cơ bản</h3>
+            <button onclick="testBasicConnection()">Test localhost:8080</button>
+            <button onclick="testAlternativeConnection()">Test 127.0.0.1:8080</button>
+            <button onclick="testSecureConnection()">Test wss://localhost:8080</button>
+        </div>
+
+        <div class="test-section">
+            <h3>2. Kiểm tra với port khác</h3>
+            <input type="number" id="portInput" value="8080" placeholder="Port">
+            <button onclick="testCustomPort()">Test Custom Port</button>
+        </div>
+
+        <div class="test-section">
+            <h3>3. Kiểm tra với timeout</h3>
+            <button onclick="testWithTimeout()">Test với Timeout 5s</button>
+            <button onclick="testPing()">Test Ping Server</button>
+        </div>
+
+        <div class="test-section">
+            <h3>4. Log kết quả</h3>
+            <div id="log"></div>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${message}\n`;
+            log.textContent += logEntry;
+            log.scrollTop = log.scrollHeight;
+            
+            if (type === 'error') {
+                console.error(message);
+            } else {
+                console.log(message);
+            }
+        }
+
+        function clearLog() {
+            log.textContent = '';
+        }
+
+        function testBasicConnection() {
+            addLog('🔄 Testing basic connection to ws://localhost:8080...');
+            
+            try {
+                const ws = new WebSocket('ws://localhost:8080');
+                
+                const timeout = setTimeout(() => {
+                    ws.close();
+                    addLog('❌ Connection timeout after 5 seconds', 'error');
+                }, 5000);
+                
+                ws.onopen = () => {
+                    clearTimeout(timeout);
+                    addLog('✅ Successfully connected to ws://localhost:8080');
+                    
+                    // Test sending a message
+                    ws.send(JSON.stringify({
+                        type: 'test',
+                        message: 'Hello from debug tool'
+                    }));
+                    addLog('📤 Sent test message');
+                };
+                
+                ws.onmessage = (event) => {
+                    addLog(`📨 Received: ${event.data}`);
+                };
+                
+                ws.onerror = (error) => {
+                    clearTimeout(timeout);
+                    addLog(`❌ WebSocket error: ${error}`, 'error');
+                };
+                
+                ws.onclose = (event) => {
+                    clearTimeout(timeout);
+                    addLog(`🔴 Connection closed. Code: ${event.code}, Reason: ${event.reason}`);
+                };
+                
+            } catch (error) {
+                addLog(`❌ Failed to create WebSocket: ${error.message}`, 'error');
+            }
+        }
+
+        function testAlternativeConnection() {
+            addLog('🔄 Testing connection to ws://127.0.0.1:8080...');
+            
+            const ws = new WebSocket('ws://127.0.0.1:8080');
+            
+            const timeout = setTimeout(() => {
+                ws.close();
+                addLog('❌ Alternative connection timeout', 'error');
+            }, 5000);
+            
+            ws.onopen = () => {
+                clearTimeout(timeout);
+                addLog('✅ Successfully connected to ws://127.0.0.1:8080');
+                ws.close();
+            };
+            
+            ws.onerror = (error) => {
+                clearTimeout(timeout);
+                addLog(`❌ Alternative connection error: ${error}`, 'error');
+            };
+            
+            ws.onclose = () => {
+                clearTimeout(timeout);
+                addLog('🔴 Alternative connection closed');
+            };
+        }
+
+        function testSecureConnection() {
+            addLog('🔄 Testing secure connection to wss://localhost:8080...');
+            
+            const ws = new WebSocket('wss://localhost:8080');
+            
+            const timeout = setTimeout(() => {
+                ws.close();
+                addLog('❌ Secure connection timeout', 'error');
+            }, 5000);
+            
+            ws.onopen = () => {
+                clearTimeout(timeout);
+                addLog('✅ Successfully connected via WSS');
+                ws.close();
+            };
+            
+            ws.onerror = (error) => {
+                clearTimeout(timeout);
+                addLog(`❌ Secure connection error: ${error}`, 'error');
+            };
+        }
+
+        function testCustomPort() {
+            const port = document.getElementById('portInput').value;
+            addLog(`🔄 Testing connection to ws://localhost:${port}...`);
+            
+            const ws = new WebSocket(`ws://localhost:${port}`);
+            
+            const timeout = setTimeout(() => {
+                ws.close();
+                addLog(`❌ Custom port ${port} timeout`, 'error');
+            }, 5000);
+            
+            ws.onopen = () => {
+                clearTimeout(timeout);
+                addLog(`✅ Successfully connected to port ${port}`);
+                ws.close();
+            };
+            
+            ws.onerror = (error) => {
+                clearTimeout(timeout);
+                addLog(`❌ Custom port ${port} error: ${error}`, 'error');
+            };
+        }
+
+        function testWithTimeout() {
+            addLog('🔄 Testing connection with detailed timeout...');
+            
+            const startTime = Date.now();
+            const ws = new WebSocket('ws://localhost:8080');
+            
+            ws.onopen = () => {
+                const duration = Date.now() - startTime;
+                addLog(`✅ Connected in ${duration}ms`);
+                
+                // Test server response
+                ws.send(JSON.stringify({
+                    type: 'ping',
+                    timestamp: Date.now()
+                }));
+                
+                setTimeout(() => ws.close(), 2000);
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    addLog(`📨 Server response: ${JSON.stringify(data, null, 2)}`);
+                } catch (e) {
+                    addLog(`📨 Raw response: ${event.data}`);
+                }
+            };
+            
+            ws.onerror = (error) => {
+                const duration = Date.now() - startTime;
+                addLog(`❌ Error after ${duration}ms: ${error}`, 'error');
+            };
+            
+            ws.onclose = (event) => {
+                const duration = Date.now() - startTime;
+                addLog(`🔴 Closed after ${duration}ms. Code: ${event.code}`);
+            };
+        }
+
+        function testPing() {
+            addLog('🔄 Testing ping to server...');
+            
+            // Check if server is responding via fetch first
+            fetch('http://localhost:8080')
+                .then(response => {
+                    addLog('✅ HTTP server is responding');
+                    testBasicConnection();
+                })
+                .catch(error => {
+                    addLog('❌ HTTP server not responding - server may be down', 'error');
+                });
+        }
+
+        // Auto-start basic test
+        addLog('🚀 WebSocket Debug Tool ready');
+        addLog('💡 Click buttons above to test different connection methods');
+        addLog('⚠️ Make sure your game server is running on port 8080');
+    </script>
+</body>
+</html>

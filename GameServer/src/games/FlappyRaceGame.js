@@ -47,20 +47,22 @@ class FlappyRaceGame extends BaseGame {
         playerInfo.color = color;
         
         // Initialize player state
-        const playerState = {
-            playerId: playerInfo.playerId,
-            x: 50,
-            y: this.config.height / 2,
-            velocityY: 0,
-            color: color,
-            score: 0,
-            lives: 3,
-            phase: 'outbound', // outbound, return, finished
-            alive: true,
-            effects: {},
-            items: [],
-            rank: 0
-        };
+const playerState = {
+    playerId: playerInfo.playerId,
+    x: 50, // Start further from pipes
+    y: this.config.height / 2, // Middle of screen
+    velocityY: 0,
+    color: color,
+    score: 0,
+    lives: 3,
+    phase: 'outbound',
+    alive: true, // Make sure starts alive
+    effects: {},
+    items: [],
+    rank: 0,
+    invulnerable: true, // Add 3 second invulnerability at start
+    invulnerabilityTime: 3000
+};
         
         this.playerStates.push(playerState);
         

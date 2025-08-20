@@ -133,7 +133,7 @@ border-color: #007bff;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     margin-bottom: 8px;
-    color: white;
+    color: rgb(255, 5, 5);
 }
 
 .flappy-race-page .player-item .player-name {

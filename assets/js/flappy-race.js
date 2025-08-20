@@ -320,69 +320,110 @@ class FlappyRaceClient {
             this.showGameSetupSection();
             break;
 
-        case 'gameState':
-            this.gameState = data;
-            this.updateUI();
-            break;
+// THAY THẾ CASE 'gameState' TRONG handleMessage BẰNG:
+
+case 'gameState':
+    console.log('📊 Game state update:', data);
+    this.gameState = data;
+    
+    // Special handling for countdown phase
+    if (data.gamePhase === 'countdown') {
+        const seconds = Math.ceil(data.gameTimer);
+        console.log(`⏰ Countdown: ${seconds} seconds`);
+        
+        // Nếu đang trong fullscreen thì update countdown overlay
+        if (document.body.classList.contains('game-playing')) {
+            this.updateCountdownOverlay(seconds);
+        } else {
+            // Nếu chưa fullscreen thì hiện countdown
+            this.showCountdownOverlay(seconds);
+        }
+    } else if (data.gamePhase === 'playing') {
+        console.log('🚀 Game started - hiding countdown');
+        this.hideCountdownOverlay();
+    }
+    
+    this.updateUI();
+    break;
 
         default:
             console.log('🤔 Unknown message type:', data.type);
     }
 }
 
-    setupEventListeners() {
+    // THAY THẾ FUNCTION setupEventListeners CŨ BẰNG CÁI NÀY:
+
+setupEventListeners() {  // ← ĐỔI TÊN TỪ setupEventListenersFixed
+    // Remove old event listeners first
+    if (this.keyDownHandler) {
+        document.removeEventListener('keydown', this.keyDownHandler);
+    }
+    if (this.keyUpHandler) {
+        document.removeEventListener('keyup', this.keyUpHandler);
+    }
+    
+    // Create bound handlers
+    this.keyDownHandler = (e) => {
+        this.keys[e.code] = true;
+        
         // Flap controls
-        document.addEventListener('keydown', (e) => {
-            this.keys[e.code] = true;
-            
-            // Only allow flapping during playing phase
-            if (e.code === 'Space' || e.code === 'ArrowUp') {
-                e.preventDefault();
-                if (this.gameState?.gamePhase === 'playing') {
-                    this.flap();
-                }
-            }
-            
-            // Item usage - only during playing
+        if (e.code === 'Space' || e.code === 'ArrowUp') {
+            e.preventDefault();
             if (this.gameState?.gamePhase === 'playing') {
-                if (e.code === 'Digit1') this.useItem('speed');
-                if (e.code === 'Digit2') this.useItem('shield');
-                if (e.code === 'Digit3') this.useItem('bomb');
-                if (e.code === 'Digit4') this.useItem('trap');
+                this.flap();
             }
-            
-            // Exit fullscreen with ESC - always allow
-            if (e.code === 'Escape' && document.body.classList.contains('game-playing')) {
-                this.exitFullscreenMode();
-            }
-        });
-
-        document.addEventListener('keyup', (e) => {
-            this.keys[e.code] = false;
-        });
-
-        // Touch controls for mobile - only during playing
-        if (this.canvas) {
-            this.canvas.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                if (this.gameState?.gamePhase === 'playing') {
-                    this.flap();
-                }
-            });
-
-            this.canvas.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (this.gameState?.gamePhase === 'playing') {
-                    this.flap();
-                }
-            });
         }
         
-        // Handle window resize
-        window.addEventListener('resize', () => {
-            this.resizeCanvas();
+        // Item usage - only during playing
+        if (this.gameState?.gamePhase === 'playing') {
+            if (e.code === 'Digit1') this.useItem('speed');
+            if (e.code === 'Digit2') this.useItem('shield');
+            if (e.code === 'Digit3') this.useItem('bomb');
+            if (e.code === 'Digit4') this.useItem('trap');
+        }
+        
+        // EXIT FULLSCREEN - FIX THIS
+        if (e.code === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('ESC pressed - exiting fullscreen');
+            
+            if (document.body.classList.contains('game-playing')) {
+                this.exitFullscreenMode();
+            }
+        }
+    };
+    
+    this.keyUpHandler = (e) => {
+        this.keys[e.code] = false;
+    };
+    
+    // Add new event listeners
+    document.addEventListener('keydown', this.keyDownHandler);
+    document.addEventListener('keyup', this.keyUpHandler);
+    
+    // Touch controls for mobile
+    if (this.canvas) {
+        this.canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (this.gameState?.gamePhase === 'playing') {
+                this.flap();
+            }
+        }, { passive: false });
+
+        this.canvas.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (this.gameState?.gamePhase === 'playing') {
+                this.flap();
+            }
         });
     }
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        this.resizeCanvas();
+    });
+}
 
     startRenderLoop() {
         if (this.renderingStarted) return;
@@ -980,7 +1021,15 @@ class FlappyRaceClient {
             data: { itemType }
         }));
     }
-
+forceRespawnPlayer() {
+    if (!this.gameState || !this.gameId) return;
+    
+    this.ws.send(JSON.stringify({
+        type: 'gameAction',
+        gameId: this.gameId,
+        action: 'forceRespawn'
+    }));
+}
     // UI event handlers
     createGame() {
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -1175,29 +1224,30 @@ showMainMenu() {
         }
     }
 
-    showGamePlaying() {
-        console.log('Showing game playing mode');
+// THAY THẾ FUNCTION showGamePlaying BẰNG CÁI NÀY:
+
+showGamePlaying() {
+    console.log('🎮 Showing game playing mode');
+    
+    const gameSetup = document.getElementById('gameSetup');
+    const gameSection = document.getElementById('gameSection');
+    
+    if (gameSetup) gameSetup.classList.add('hidden');
+    if (gameSection) gameSection.classList.remove('hidden');
+    
+    // VÀO FULLSCREEN NGAY LẬP TỨC - không quan tâm game phase
+    console.log('🖥️ Entering fullscreen immediately...');
+    setTimeout(() => {
+        this.enterFullscreenMode();
+        this.resizeCanvas();
         
-        const gameSetup = document.getElementById('gameSetup');
-        const gameSection = document.getElementById('gameSection');
-        
-        if (gameSetup) gameSetup.classList.add('hidden');
-        if (gameSection) gameSection.classList.remove('hidden');
-        
-        // Only enter fullscreen if game is actually playing (not countdown)
-        if (this.gameState.gamePhase === 'playing') {
-            setTimeout(() => {
-                this.enterFullscreenMode();
-                this.resizeCanvas();
-            }, 500);
-        } else {
-            // For countdown phase, show in normal mode first
-            setTimeout(() => {
-                this.enterFullscreenMode();
-                this.resizeCanvas();
-            }, 1000);
+        // Hiển thị countdown nếu đang trong phase countdown
+        if (this.gameState?.gamePhase === 'countdown') {
+            console.log('⏰ Starting countdown display...');
+            this.showCountdownOverlay(Math.ceil(this.gameState.gameTimer));
         }
-    }
+    }, 200); // Vào fullscreen nhanh hơn
+}
 
     enterFullscreenMode() {
         console.log('Entering fullscreen mode');
@@ -1230,65 +1280,116 @@ showMainMenu() {
         }, 100);
     }
 
-    exitFullscreenMode() {
-        console.log('Exiting fullscreen mode');
-        
-        // Remove fullscreen class
-        document.body.classList.remove('game-playing');
-        
-        // Show navbar/header again
-        const navbar = document.querySelector('.navbar');
-        if (navbar) {
-            navbar.style.display = '';
-        }
-        
-        // Remove exit button
-        const exitBtn = document.querySelector('.exit-fullscreen-btn');
-        if (exitBtn) {
-            exitBtn.remove();
-        }
-        
-        // Restore scrolling
-        document.body.style.overflow = '';
-        document.documentElement.style.overflow = '';
-        
-        // Reset canvas styles
-        if (this.canvas) {
-            this.canvas.style.position = '';
-            this.canvas.style.top = '';
-            this.canvas.style.left = '';
-            this.canvas.style.zIndex = '';
-            this.canvas.style.width = '';
-            this.canvas.style.height = '';
-        }
-        
-        // If game round is finished, show respawn UI
-        if (this.gameState?.gamePhase === 'finished' && this.gameState?.status === 'playing') {
-            // Show respawn section instead of going back to game section
-            setTimeout(() => {
-                this.showRespawnSection();
-            }, 100);
-        } else {
-            // Resize canvas back to normal
-            this.resizeCanvas();
-        }
-    }
+    // CŨNG THAY THẾ FUNCTION exitFullscreenMode BẰNG CÁI NÀY:
 
-    addExitFullscreenButton() {
-        // Remove existing button if any
-        const existingBtn = document.querySelector('.exit-fullscreen-btn');
-        if (existingBtn) {
-            existingBtn.remove();
-        }
-        
-        // Create exit button
-        const exitBtn = document.createElement('button');
-        exitBtn.className = 'exit-fullscreen-btn';
-        exitBtn.innerHTML = '❌ Thoát fullscreen';
-        exitBtn.onclick = () => this.exitFullscreenMode();
-        
-        document.body.appendChild(exitBtn);
+exitFullscreenMode() {  // ← ĐỔI TÊN TỪ exitFullscreenModeFixed
+    console.log('🚪 Exiting fullscreen mode...');
+    
+    // Force remove fullscreen class
+    document.body.classList.remove('game-playing');
+    
+    // Show navbar/header again with force
+    const navbar = document.querySelector('.navbar, nav, header');
+    if (navbar) {
+        navbar.style.display = 'block';
+        navbar.style.visibility = 'visible';
     }
+    
+    // Remove exit button
+    const exitBtn = document.querySelector('.exit-fullscreen-btn');
+    if (exitBtn) {
+        exitBtn.remove();
+    }
+    
+    // Restore scrolling
+    document.body.style.overflow = 'auto';
+    document.documentElement.style.overflow = 'auto';
+    
+    // Reset canvas styles completely
+    if (this.canvas) {
+        this.canvas.style.position = 'relative';
+        this.canvas.style.top = 'auto';
+        this.canvas.style.left = 'auto';
+        this.canvas.style.zIndex = 'auto';
+        this.canvas.style.width = '100%';
+        this.canvas.style.height = '400px';
+        this.canvas.style.maxWidth = '800px';
+    }
+    
+    // Force show game section or setup
+    if (this.gameState?.gamePhase === 'finished' || this.gameState?.status === 'finished') {
+        this.showRespawnSection();
+    } else {
+        const gameSetup = document.getElementById('gameSetup');
+        const gameSection = document.getElementById('gameSection');
+        
+        if (gameSetup) gameSetup.classList.remove('hidden');
+        if (gameSection) gameSection.classList.add('hidden');
+    }
+    
+    // Resize canvas back to normal
+    setTimeout(() => {
+        this.resizeCanvas();
+    }, 100);
+    
+    console.log('✅ Fullscreen mode exited successfully');
+}
+
+    addExitFullscreenButton() {  // ← ĐỔI TÊN TỪ addExitFullscreenButtonFixed
+    // Remove existing button
+    const existingBtn = document.querySelector('.exit-fullscreen-btn');
+    if (existingBtn) {
+        existingBtn.remove();
+    }
+    
+    // Create better exit button
+    const exitBtn = document.createElement('button');
+    exitBtn.className = 'exit-fullscreen-btn';
+    exitBtn.innerHTML = '✖️ ESC - Thoát';
+    exitBtn.style.cssText = `
+        position: fixed !important;
+        top: 20px !important;
+        right: 20px !important;
+        z-index: 10001 !important;
+        background: rgba(220, 53, 69, 0.95) !important;
+        color: white !important;
+        border: 2px solid rgba(255, 255, 255, 0.3) !important;
+        padding: 12px 20px !important;
+        border-radius: 30px !important;
+        cursor: pointer !important;
+        font-weight: bold !important;
+        backdrop-filter: blur(10px) !important;
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4) !important;
+        transition: all 0.3s ease !important;
+        font-size: 14px !important;
+        user-select: none !important;
+    `;
+    
+    // Multiple ways to exit
+    exitBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.exitFullscreenMode();
+    };
+    
+    exitBtn.onmousedown = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+    
+    document.body.appendChild(exitBtn);
+    
+    // Hover effect
+    exitBtn.addEventListener('mouseenter', () => {
+        exitBtn.style.background = 'rgba(220, 53, 69, 1) !important';
+        exitBtn.style.transform = 'scale(1.05) !important';
+    });
+    
+    exitBtn.addEventListener('mouseleave', () => {
+        exitBtn.style.background = 'rgba(220, 53, 69, 0.95) !important';
+        exitBtn.style.transform = 'scale(1) !important';
+    });
+}
 
     showGameResult() {
         // Don't exit fullscreen immediately for round end
@@ -1725,3 +1826,394 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Initializing Flappy Race Game...');
     flappyGame = new FlappyRaceClient();
 });
+
+// ===== FIX FOR FLAPPY RACE CONNECTION ISSUES =====
+
+// 1. Fix global variable initialization - thêm vào cuối file flappy-race.js
+window.flappyGame = null;
+
+// 2. Fix the DOMContentLoaded event
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Initializing Flappy Race Game...');
+    window.flappyGame = new FlappyRaceClient();
+    
+    // Make it globally accessible
+    window.game = window.flappyGame;
+});
+
+// 3. Fix the joinGame function - thay thế function joinGame() cũ
+function joinGame() {
+    const gameIdInput = document.getElementById('gameIdInput');
+    if (!gameIdInput) {
+        console.error('Không tìm thấy input field');
+        return;
+    }
+    
+    // Trim và clean input
+    const gameId = gameIdInput.value.trim().toLowerCase();
+    console.log('🎮 Attempting to join game:', gameId);
+    
+    if (!gameId) {
+        alert('⚠️ Vui lòng nhập mã phòng!');
+        gameIdInput.focus();
+        return;
+    }
+    
+    // Validate format - BỎ VALIDATION NGHIÊM NGẶT
+    if (!gameId.includes('flappy-race') && !gameId.includes('6430')) {
+        if (!confirm('🤔 Mã phòng có vẻ không đúng định dạng. Bạn có chắc muốn tiếp tục?')) {
+            return;
+        }
+    }
+    
+    // Check WebSocket connection - FIX ĐÚNG BIẾN
+    if (!window.flappyGame || !window.flappyGame.ws || window.flappyGame.ws.readyState !== WebSocket.OPEN) {
+        alert('❌ Chưa kết nối được server. Đang thử kết nối lại...');
+        
+        // Try to reconnect
+        if (window.flappyGame && window.flappyGame.connectWebSocket) {
+            window.flappyGame.connectWebSocket();
+        }
+        return;
+    }
+    
+    // Send join request - ĐÚNG SYNTAX
+    try {
+        window.flappyGame.ws.send(JSON.stringify({
+            type: 'joinGame',
+            gameId: gameId,
+            gameType: 'flappy-race'
+        }));
+        
+        console.log('📤 Join request sent for game:', gameId);
+        
+        // Show loading state
+        const joinBtn = document.querySelector('button[onclick="joinGame()"]');
+        if (joinBtn) {
+            const originalText = joinBtn.innerHTML;
+            joinBtn.innerHTML = '⏳ Đang vào phòng...';
+            joinBtn.disabled = true;
+            
+            // Reset button after 5 seconds if no response
+            setTimeout(() => {
+                if (joinBtn.disabled) {
+                    joinBtn.innerHTML = originalText;
+                    joinBtn.disabled = false;
+                }
+            }, 5000);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error sending join request:', error);
+        alert('❌ Lỗi khi gửi yêu cầu vào phòng');
+    }
+}
+
+// 4. Fix other global functions
+function createGame() {
+    if (window.flappyGame) {
+        window.flappyGame.createGame();
+    } else {
+        alert('Game chưa được khởi tạo!');
+    }
+}
+
+function showQuickJoin() {
+    if (window.flappyGame) {
+        window.flappyGame.showQuickJoin();
+    }
+}
+
+function playerReady() {
+    if (window.flappyGame) {
+        window.flappyGame.playerReady();
+    }
+}
+
+function copyGameId() {
+    if (window.flappyGame) {
+        window.flappyGame.copyGameId();
+    }
+}
+
+function pauseGame() {
+    if (window.flappyGame) {
+        window.flappyGame.pauseGame();
+    }
+}
+
+function resetGame() {
+    if (window.flappyGame) {
+        window.flappyGame.resetGame();
+    }
+}
+
+function leaveGame() {
+    if (window.flappyGame) {
+        window.flappyGame.leaveGame();
+    }
+}
+
+// 5. Debug functions
+function debugConnection() {
+    console.log('=== FLAPPY RACE DEBUG ===');
+    console.log('flappyGame instance:', window.flappyGame);
+    console.log('WebSocket state:', window.flappyGame?.ws?.readyState);
+    console.log('Connected:', window.flappyGame?.ws?.readyState === WebSocket.OPEN);
+    console.log('Game ID:', window.flappyGame?.gameId);
+    console.log('Player ID:', window.flappyGame?.playerId);
+}
+
+function listAvailableGames() {
+    if (!window.flappyGame || !window.flappyGame.ws) {
+        console.log('❌ No connection');
+        return;
+    }
+    
+    window.flappyGame.ws.send(JSON.stringify({
+        type: 'listGames',
+        gameType: 'flappy-race'
+    }));
+    
+    console.log('📤 Requested list of available games');
+}
+
+// 6. Test connection with better error handling
+function testGameConnection() {
+    console.log('🔧 Testing game connection...');
+    
+    // Check if instance exists
+    if (!window.flappyGame) {
+        console.error('❌ flappyGame instance not found');
+        return false;
+    }
+    
+    // Check WebSocket
+    const ws = window.flappyGame.ws;
+    if (!ws) {
+        console.error('❌ WebSocket not initialized');
+        return false;
+    }
+    
+    // Check connection state
+    const states = {
+        0: 'CONNECTING',
+        1: 'OPEN',
+        2: 'CLOSING', 
+        3: 'CLOSED'
+    };
+    
+    console.log(`📡 WebSocket state: ${states[ws.readyState]} (${ws.readyState})`);
+    
+    if (ws.readyState === WebSocket.OPEN) {
+        console.log('✅ Connection is ready!');
+        return true;
+    } else {
+        console.log('❌ Connection not ready');
+        return false;
+    }
+}
+
+// 7. Auto-reconnect function  
+function forceReconnect() {
+    console.log('🔄 Force reconnecting...');
+    
+    if (window.flappyGame) {
+        if (window.flappyGame.ws) {
+            window.flappyGame.ws.close();
+        }
+        window.flappyGame.connectWebSocket();
+    }
+}
+
+console.log('🔧 Flappy Race fixes loaded! Use debugConnection() to check status.');
+
+
+
+// THAY THẾ showCountdownOverlay BẰNG PHIÊN BẢN CẢI THIỆN:
+
+showCountdownOverlay(seconds) {
+    console.log(`🎯 Showing countdown overlay: ${seconds}s`);
+    
+    // Remove existing overlay
+    const existingOverlay = document.querySelector('.countdown-overlay');
+    if (existingOverlay) {
+        existingOverlay.remove();
+    }
+    
+    // Create countdown overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'countdown-overlay';
+    overlay.innerHTML = `
+        <div class="countdown-content">
+            <h1 class="countdown-number">${seconds}</h1>
+            <p class="countdown-text">🚀 Game bắt đầu sau...</p>
+            <p class="countdown-instruction">Nhấn SPACE hoặc click để bay lên</p>
+            <div class="countdown-progress">
+                <div class="countdown-bar" style="animation: countdown ${seconds}s linear forwards;"></div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Add countdown styles if not exists
+    if (!document.querySelector('#countdown-styles')) {
+        const styles = document.createElement('style');
+        styles.id = 'countdown-styles';
+        styles.textContent = `
+            .countdown-overlay {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                background: rgba(0, 0, 0, 0.85) !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                z-index: 10002 !important;
+                backdrop-filter: blur(15px) !important;
+            }
+            
+            .countdown-content {
+                text-align: center;
+                color: white;
+                animation: pulse 0.8s ease-in-out infinite alternate;
+            }
+            
+            .countdown-number {
+                font-size: 150px !important;
+                font-weight: bold !important;
+                margin: 0 !important;
+                text-shadow: 0 0 50px #FFD700, 0 0 100px #FFD700 !important;
+                color: #FFD700 !important;
+                line-height: 1 !important;
+                font-family: 'Arial Black', Arial, sans-serif !important;
+            }
+            
+            .countdown-text {
+                font-size: 28px !important;
+                margin: 30px 0 10px 0 !important;
+                color: #FFFFFF !important;
+                font-weight: bold !important;
+            }
+            
+            .countdown-instruction {
+                font-size: 18px !important;
+                margin: 10px 0 30px 0 !important;
+                color: #CCCCCC !important;
+                opacity: 0.8;
+            }
+            
+            .countdown-progress {
+                width: 400px !important;
+                height: 10px !important;
+                background: rgba(255, 255, 255, 0.2) !important;
+                border-radius: 5px !important;
+                overflow: hidden !important;
+                margin: 0 auto !important;
+                border: 2px solid rgba(255, 215, 0, 0.3) !important;
+            }
+            
+            .countdown-bar {
+                height: 100% !important;
+                background: linear-gradient(90deg, #FFD700, #FF6B6B, #4ECDC4) !important;
+                width: 100% !important;
+                border-radius: 3px !important;
+                transition: width 1s linear !important;
+            }
+            
+            @keyframes countdown {
+                from { width: 100%; }
+                to { width: 0%; }
+            }
+            
+            @keyframes pulse {
+                from { transform: scale(1); }
+                to { transform: scale(1.02); }
+            }
+            
+            @keyframes fadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
+            }
+        `;
+        document.head.appendChild(styles);
+    }
+}
+
+// THÊM FUNCTION MỚI VÀO CLASS FlappyRaceClient:
+
+updateCountdownOverlay(seconds) {
+    const existingOverlay = document.querySelector('.countdown-overlay');
+    if (existingOverlay) {
+        // Chỉ update số, không tạo lại overlay
+        const numberElement = existingOverlay.querySelector('.countdown-number');
+        const progressBar = existingOverlay.querySelector('.countdown-bar');
+        
+        if (numberElement) {
+            numberElement.textContent = seconds;
+            numberElement.style.animation = 'none';
+            // Trigger reflow để restart animation
+            numberElement.offsetHeight;
+            numberElement.style.animation = 'pulse 0.8s ease-in-out infinite alternate';
+        }
+        
+        if (progressBar) {
+            progressBar.style.animation = `countdown ${seconds}s linear forwards`;
+        }
+    } else {
+        // Nếu chưa có overlay thì tạo mới
+        this.showCountdownOverlay(seconds);
+    }
+}
+
+
+
+function hideCountdownOverlay() {
+    const overlay = document.querySelector('.countdown-overlay');
+    if (overlay) {
+        overlay.style.animation = 'fadeOut 0.5s ease-out forwards';
+        setTimeout(() => overlay.remove(), 500);
+    }
+}
+
+// DEBUG FUNCTIONS - for troubleshooting
+function debugGameState() {
+    console.log('=== GAME STATE DEBUG ===');
+    console.log('Game Phase:', window.flappyGame?.gameState?.gamePhase);
+    console.log('Game Status:', window.flappyGame?.gameState?.status);
+    console.log('Game Timer:', window.flappyGame?.gameState?.gameTimer);
+    console.log('My Player:', window.flappyGame?.getMyPlayer?.());
+    console.log('All Players:', window.flappyGame?.gameState?.players);
+}
+
+function forceExitFullscreen() {
+    console.log('🔧 Force exiting fullscreen...');
+    document.body.classList.remove('game-playing');
+    document.body.style.overflow = 'auto';
+    document.documentElement.style.overflow = 'auto';
+    
+    const exitBtn = document.querySelector('.exit-fullscreen-btn');
+    if (exitBtn) exitBtn.remove();
+    
+    const navbar = document.querySelector('.navbar, nav');
+    if (navbar) navbar.style.display = 'block';
+    
+    console.log('✅ Force exit completed');
+}
+
+console.log('🔧 Debug functions loaded! Use debugGameState() and forceExitFullscreen() in console.');
+// 10. APPLY FIXES
+console.log('🔧 Flappy Race Gameplay Fixes loaded!');
+console.log('📝 To apply fixes:');
+console.log('1. Replace handleMessage case "gameState" with fixed version');
+console.log('2. Replace setupEventListeners with setupEventListenersFixed');
+console.log('3. Replace exitFullscreenMode with exitFullscreenModeFixed');
+console.log('4. Replace addExitFullscreenButton with addExitFullscreenButtonFixed');
+console.log('');
+console.log('🎮 Debug commands:');
+console.log('- debugGameState() - Check current game state');
+console.log('- forceExitFullscreen() - Force exit if stuck');
+console.log('- forceRespawnPlayer() - Force respawn if stuck');
