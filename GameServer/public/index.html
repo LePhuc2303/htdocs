@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cờ Caro Online - WebSocket</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            text-align: center;
+            max-width: 700px;
+            width: 100%;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .status {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .connection-status {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        .connected { background: rgba(46, 204, 113, 0.3); color: #2ecc71; }
+        .disconnected { background: rgba(231, 76, 60, 0.3); color: #e74c3c; }
+        .waiting { background: rgba(241, 196, 15, 0.3); color: #f1c40f; }
+
+        .game-controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .game-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .game-id-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .game-id-section input {
+            padding: 10px;
+            margin: 5px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            width: 200px;
+        }
+
+        .player {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            border: 2px solid transparent;
+        }
+
+        .player.active {
+            border-color: #f39c12;
+            background: rgba(243, 156, 18, 0.2);
+        }
+
+        .player.you {
+            border-color: #3498db;
+            background: rgba(52, 152, 219, 0.2);
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(15, 1fr);
+            gap: 2px;
+            background: #333;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 20px auto;
+            max-width: 450px;
+        }
+
+        .cell {
+            width: 25px;
+            height: 25px;
+            background: #fff;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 3px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cell:hover:not(:disabled) {
+            background: #f0f0f0;
+            transform: scale(1.1);
+        }
+
+        .cell:disabled {
+            cursor: not-allowed;
+        }
+
+        .cell.x {
+            color: #e74c3c;
+            background: #ffeaea;
+        }
+
+        .cell.o {
+            color: #3498db;
+            background: #eaf4ff;
+        }
+
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 5px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px 0 rgba(255, 107, 107, 0.3);
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px 0 rgba(255, 107, 107, 0.4);
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .winner {
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🎮 Cờ Caro Online</h1>
+        
+        <div id="connectionStatus" class="connection-status disconnected">
+            🔌 Đang kết nối...
+        </div>
+
+        <!-- Menu chính -->
+        <div id="mainMenu" class="game-controls">
+            <button onclick="createGame()">🆕 Tạo phòng mới</button>
+            <div class="game-id-section">
+                <input type="text" id="gameIdInput" placeholder="Nhập mã phòng" maxlength="20">
+                <button onclick="joinGame()">🚪 Vào phòng</button>
+            </div>
+        </div>
+
+        <!-- Thông tin game -->
+        <div id="gameSection" class="hidden">
+            <div class="game-info">
+                <div id="player1" class="player">
+                    <div>👤 <span id="player1Name">Người chơi 1</span></div>
+                    <div style="font-size: 24px; margin-top: 5px;">❌</div>
+                </div>
+                <div id="player2" class="player">
+                    <div>👤 <span id="player2Name">Người chơi 2</span></div>
+                    <div style="font-size: 24px; margin-top: 5px;">⭕</div>
+                </div>
+            </div>
+
+            <div class="game-id-section">
+                <strong>Mã phòng: <span id="currentGameId">-</span></strong>
+                <button onclick="copyGameId()">📋 Copy</button>
+            </div>
+
+            <div id="gameStatus" class="status">
+                Đang chờ người chơi khác...
+            </div>
+
+            <div id="gameBoard" class="board"></div>
+
+            <div class="game-controls">
+                <button id="newGameBtn" onclick="resetGame()">🔄 Ván mới</button>
+                <button onclick="leaveGame()">🚪 Rời phòng</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Biến global
+        let ws = null;
+        let gameState = {
+            playerId: null,
+            gameId: null,
+            playerSymbol: null,
+            board: Array(15).fill().map(() => Array(15).fill('')),
+            currentPlayer: 'X',
+            status: 'waiting',
+            players: []
+        };
+
+        // Kết nối WebSocket
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}`;
+            
+            ws = new WebSocket(wsUrl);
+            
+            ws.onopen = () => {
+                console.log('✅ Kết nối WebSocket thành công');
+                updateConnectionStatus('connected');
+            };
+            
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleServerMessage(data);
+                } catch (error) {
+                    console.error('❌ Lỗi parse message:', error);
+                }
+            };
+            
+            ws.onclose = () => {
+                console.log('🔴 WebSocket đã đóng');
+                updateConnectionStatus('disconnected');
+                setTimeout(connectWebSocket, 3000); // Thử kết nối lại sau 3s
+            };
+            
+            ws.onerror = (error) => {
+                console.error('❌ Lỗi WebSocket:', error);
+                updateConnectionStatus('disconnected');
+            };
+        }
+
+        // Xử lý tin nhắn từ server
+        function handleServerMessage(data) {
+            console.log('📨 Nhận tin nhắn:', data);
+            
+            switch (data.type) {
+                case 'playerInfo':
+                    gameState.playerId = data.playerId;
+                    break;
+                    
+                case 'gameCreated':
+                    gameState.gameId = data.gameId;
+                    gameState.playerSymbol = data.playerInfo.symbol;
+                    showGameSection();
+                    updateGameDisplay();
+                    break;
+                    
+                case 'gameJoined':
+                    gameState.gameId = data.gameId;
+                    gameState.playerSymbol = data.playerInfo.symbol;
+                    showGameSection();
+                    updateGameDisplay();
+                    break;
+                    
+                case 'gameState':
+                    gameState.board = data.board;
+                    gameState.currentPlayer = data.currentPlayer;
+                    gameState.status = data.status;
+                    gameState.players = data.players;
+                    updateGameDisplay();
+                    break;
+                    
+                case 'error':
+                    alert('❌ Lỗi: ' + data.message);
+                    break;
+            }
+        }
+
+        // Gửi tin nhắn tới server
+        function sendMessage(message) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify(message));
+            } else {
+                alert('❌ Chưa kết nối tới server!');
+            }
+        }
+
+        // Tạo game mới
+        function createGame() {
+            sendMessage({ type: 'createGame' });
+        }
+
+        // Tham gia game
+        function joinGame() {
+            const gameId = document.getElementById('gameIdInput').value.trim();
+            if (!gameId) {
+                alert('⚠️ Vui lòng nhập mã phòng!');
+                return;
+            }
+            
+            sendMessage({ 
+                type: 'joinGame',
+                gameId: gameId
+            });
+        }
+
+        // Thực hiện nước đi
+        function makeMove(row, col) {
+            if (gameState.status !== 'playing') {
+                alert('⚠️ Game chưa bắt đầu!');
+                return;
+            }
+            
+            if (gameState.currentPlayer !== gameState.playerSymbol) {
+                alert('⚠️ Chưa đến lượt của bạn!');
+                return;
+            }
+            
+            sendMessage({
+                type: 'makeMove',
+                gameId: gameState.gameId,
+                row: row,
+                col: col
+            });
+        }
+
+        // Reset game
+        function resetGame() {
+            if (confirm('🔄 Bạn có muốn bắt đầu ván mới?')) {
+                sendMessage({
+                    type: 'resetGame',
+                    gameId: gameState.gameId
+                });
+            }
+        }
+
+        // Rời phòng
+        function leaveGame() {
+            if (confirm('🚪 Bạn có muốn rời phòng?')) {
+                hideGameSection();
+                // WebSocket sẽ tự động xử lý khi connection đóng
+            }
+        }
+
+        // Copy mã phòng
+        function copyGameId() {
+            navigator.clipboard.writeText(gameState.gameId).then(() => {
+                alert('📋 Đã copy mã phòng: ' + gameState.gameId);
+            });
+        }
+
+        // Hiển thị section game
+        function showGameSection() {
+            document.getElementById('mainMenu').classList.add('hidden');
+            document.getElementById('gameSection').classList.remove('hidden');
+            document.getElementById('currentGameId').textContent = gameState.gameId;
+            createBoard();
+        }
+
+        // Ẩn section game
+        function hideGameSection() {
+            document.getElementById('mainMenu').classList.remove('hidden');
+            document.getElementById('gameSection').classList.add('hidden');
+            document.getElementById('gameIdInput').value = '';
+        }
+
+        // Tạo bàn cờ
+        function createBoard() {
+            const board = document.getElementById('gameBoard');
+            board.innerHTML = '';
+            
+            for (let row = 0; row < 15; row++) {
+                for (let col = 0; col < 15; col++) {
+                    const cell = document.createElement('button');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.onclick = () => makeMove(row, col);
+                    board.appendChild(cell);
+                }
+            }
+        }
+
+        // Cập nhật hiển thị game
+        function updateGameDisplay() {
+            // Cập nhật board
+            for (let row = 0; row < 15; row++) {
+                for (let col = 0; col < 15; col++) {
+                    const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                    const value = gameState.board[row][col];
+                    
+                    if (value) {
+                        cell.textContent = value === 'X' ? '❌' : '⭕';
+                        cell.className = `cell ${value.toLowerCase()}`;
+                        cell.disabled = true;
+                    } else {
+                        cell.textContent = '';
+                        cell.className = 'cell';
+                        cell.disabled = gameState.status !== 'playing' || 
+                                       gameState.currentPlayer !== gameState.playerSymbol;
+                    }
+                }
+            }
+            
+            // Cập nhật trạng thái
+            updateGameStatus();
+            updatePlayerDisplay();
+        }
+
+        // Cập nhật trạng thái game
+        function updateGameStatus() {
+            const statusEl = document.getElementById('gameStatus');
+            
+            if (gameState.status === 'waiting') {
+                if (gameState.players.length === 1) {
+                    statusEl.textContent = '⏳ Đang chờ người chơi khác tham gia...';
+                } else {
+                    statusEl.textContent = '⏳ Đang chờ...';
+                }
+            } else if (gameState.status === 'playing') {
+                if (gameState.currentPlayer === gameState.playerSymbol) {
+                    statusEl.textContent = '🎯 Đến lượt của bạn!';
+                } else {
+                    statusEl.textContent = '⏳ Đang chờ đối thủ...';
+                }
+            } else if (gameState.status === 'finished') {
+                if (gameState.winner === 'draw') {
+                    statusEl.textContent = '🤝 Hòa!';
+                } else if (gameState.winner === gameState.playerSymbol) {
+                    statusEl.textContent = '🎉 Bạn thắng!';
+                } else {
+                    statusEl.textContent = '😢 Bạn thua!';
+                }
+            }
+        }
+
+        // Cập nhật hiển thị người chơi
+        function updatePlayerDisplay() {
+            const player1El = document.getElementById('player1');
+            const player2El = document.getElementById('player2');
+            
+            // Reset classes
+            player1El.className = 'player';
+            player2El.className = 'player';
+            
+            // Hiển thị tên
+            if (gameState.players.length >= 1) {
+                const player1 = gameState.players.find(p => p.symbol === 'X');
+                if (player1) {
+                    document.getElementById('player1Name').textContent = 
+                        player1.playerId === gameState.playerId ? 'Bạn' : 'Đối thủ';
+                    if (player1.playerId === gameState.playerId) {
+                        player1El.classList.add('you');
+                    }
+                }
+            }
+            
+            if (gameState.players.length >= 2) {
+                const player2 = gameState.players.find(p => p.symbol === 'O');
+                if (player2) {
+                    document.getElementById('player2Name').textContent = 
+                        player2.playerId === gameState.playerId ? 'Bạn' : 'Đối thủ';
+                    if (player2.playerId === gameState.playerId) {
+                        player2El.classList.add('you');
+                    }
+                }
+            }
+            
+            // Hiển thị lượt chơi
+            if (gameState.status === 'playing') {
+                if (gameState.currentPlayer === 'X') {
+                    player1El.classList.add('active');
+                } else {
+                    player2El.classList.add('active');
+                }
+            }
+            
+            // Hiển thị người thắng
+            if (gameState.status === 'finished' && gameState.winner && gameState.winner !== 'draw') {
+                if (gameState.winner === 'X') {
+                    player1El.classList.add('winner');
+                } else {
+                    player2El.classList.add('winner');
+                }
+            }
+        }
+
+        // Cập nhật trạng thái kết nối
+        function updateConnectionStatus(status) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.className = `connection-status ${status}`;
+            
+            const messages = {
+                connected: '🟢 Đã kết nối',
+                disconnected: '🔴 Mất kết nối',
+                waiting: '🟡 Đang chờ...'
+            };
+            
+            statusEl.textContent = messages[status] || '🔌 Đang kết nối...';
+        }
+
+        // Khởi tạo khi trang load
+        window.onload = () => {
+            connectWebSocket();
+        };
+
+        // Xử lý khi đóng trang
+        window.onbeforeunload = () => {
+            if (ws) {
+                ws.close();
+            }
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,566 @@
+/* flappy-race.css - FIXED STYLES FOR FLAPPY RACE */
+
+/* Base page styles */
+.flappy-race-page {
+    position: relative;
+}
+
+/* Game Mode Selection Cards */
+.flappy-race-page .game-mode-card {
+    background: linear-gradient(135deg, rgb(27 57 226 / 88%), rgba(255, 255, 255, 0.05));
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+    height: 100%;
+    margin-bottom: 15px;
+}
+
+.flappy-race-page .game-mode-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(255, 255, 255, 0.4);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.flappy-race-page .game-mode-card.selected {
+border-color: #007bff;
+    background: linear-gradient(135deg, rgb(230 0 54), rgba(0, 123, 255, 0.1));
+    box-shadow: 0 0 20px rgba(0, 123, 255, 0.3);
+}
+
+.flappy-race-page .mode-icon {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.flappy-race-page .game-mode-card h5 {
+    color: #fff;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.flappy-race-page .game-mode-card p {
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 15px;
+    font-size: 14px;
+}
+
+.flappy-race-page .mode-stats {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.flappy-race-page .mode-stats .badge {
+    font-size: 11px;
+    padding: 4px 8px;
+}
+
+.bg-purple {
+    background-color: #6f42c1 !important;
+}
+
+/* Room Settings */
+.flappy-race-page .room-settings {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.flappy-race-page .room-settings .form-label {
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.flappy-race-page .room-settings .form-select {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #333;
+}
+
+/* Game Info Cards */
+.flappy-race-page .game-info-card {
+    background: rgb(185 21 21 / 55%);
+    border: 1px solid rgba(0, 123, 255, 0.3);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.flappy-race-page .game-info-card h6 {
+    color: #007bff;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.flappy-race-page .game-info-card p {
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: white;
+}
+
+/* Players List */
+.flappy-race-page .players-waiting {
+    background: rgba(40, 167, 69, 0.1);
+    border: 1px solid rgba(40, 167, 69, 0.3);
+    border-radius: 10px;
+    padding: 15px;
+}
+
+.flappy-race-page .players-waiting h6 {
+    color: #28a745;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.flappy-race-page .players-list {
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+.flappy-race-page .player-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    color: white;
+}
+
+.flappy-race-page .player-item .player-name {
+    font-weight: 500;
+}
+
+.flappy-race-page .player-item .player-status {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* Canvas Container - Normal Mode */
+.flappy-race-page .flappy-canvas-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 20px auto;
+    background: linear-gradient(135deg, #87CEEB 0%, #98D8E8 50%, #B6E5F0 100%);
+    padding: 20px;
+    border-radius: 15px;
+    border: 3px solid #4A90E2;
+    box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.3),
+        inset 0 5px 15px rgba(255, 255, 255, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.flappy-race-page .flappy-canvas {
+    display: block;
+    width: 100%;
+    height: 400px;
+    border: 2px solid #2C5282;
+    border-radius: 10px;
+    cursor: pointer;
+    background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
+    box-shadow: 
+        0 5px 15px rgba(0, 0, 0, 0.3), 
+        inset 0 2px 10px rgba(255, 255, 255, 0.2);
+    transition: transform 0.2s ease;
+}
+
+.flappy-race-page .flappy-canvas:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+        0 8px 25px rgba(0, 0, 0, 0.4), 
+        inset 0 2px 10px rgba(255, 255, 255, 0.2);
+}
+
+/* Fullscreen styles */
+.flappy-race-page.game-playing {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999 !important;
+    background: #000 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.flappy-race-page.game-playing .game-container {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    backdrop-filter: none !important;
+}
+
+.flappy-race-page.game-playing #gameSection {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+}
+
+/* Hide everything except canvas when playing */
+.flappy-race-page.game-playing #mainMenu,
+.flappy-race-page.game-playing #gameSetup,
+.flappy-race-page.game-playing .game-header,
+.flappy-race-page.game-playing .game-hud,
+.flappy-race-page.game-playing .game-controls-bottom,
+.flappy-race-page.game-playing nav,
+.flappy-race-page.game-playing .navbar {
+    display: none !important;
+    visibility: hidden !important;
+}
+
+/* Fullscreen Canvas Container */
+.flappy-race-page.game-playing .flappy-canvas-container {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    z-index: 9998 !important;
+    max-width: none !important;
+}
+
+.flappy-race-page.game-playing .flappy-canvas {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    cursor: crosshair !important;
+    background: #87CEEB !important;
+    box-shadow: none !important;
+    transition: none !important;
+    z-index: 9998 !important;
+    display: block !important;
+    visibility: visible !important;
+}
+
+/* Exit Fullscreen Button */
+.exit-fullscreen-btn {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    z-index: 10001 !important;
+    background: rgba(220, 53, 69, 0.9) !important;
+    color: white !important;
+    border: none !important;
+    padding: 10px 15px !important;
+    border-radius: 25px !important;
+    cursor: pointer !important;
+    font-weight: bold !important;
+    backdrop-filter: blur(10px) !important;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3) !important;
+    transition: all 0.3s ease !important;
+    font-size: 14px !important;
+}
+
+.exit-fullscreen-btn:hover {
+    background: rgba(220, 53, 69, 1) !important;
+    transform: scale(1.05) !important;
+}
+
+/* Ready status styles */
+.ready-status {
+    background: rgba(0, 128, 0, 0.3);
+    color: #90EE90;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    display: inline-block;
+}
+
+.not-ready-status {
+    background: rgba(255, 0, 0, 0.3);
+    color: #FFB6C1;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    display: inline-block;
+}
+
+/* Leaderboard styles */
+.leaderboard-mini {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.leaderboard-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.leaderboard-item.me {
+    background: rgba(255, 215, 0, 0.2);
+    color: #FFD700;
+    font-weight: bold;
+    padding: 8px 10px;
+    border-radius: 5px;
+    margin: 2px 0;
+}
+
+/* Inventory styles */
+.inventory-display {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.inventory-item {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.inventory-item .hotkey {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #FFD700;
+    color: #000;
+    font-size: 10px;
+    font-weight: bold;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Player status styles */
+.player-status {
+    text-align: center;
+}
+
+.player-status > div {
+    margin: 5px 0;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* Controls display */
+.controls-display > div {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+/* Game timer */
+.game-timer {
+    font-size: 18px;
+    font-weight: bold;
+    color: #FFD700;
+}
+
+/* Error and success messages */
+.error-message {
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 10px 0;
+    font-weight: bold;
+    animation: shake 0.5s ease-in-out;
+}
+
+.success-message {
+    background: rgba(40, 167, 69, 0.9);
+    color: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 10px 0;
+    font-weight: bold;
+    animation: fadeInUp 0.5s ease-out;
+}
+
+/* Animations */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .flappy-race-page .flappy-canvas-container {
+        margin: 15px auto;
+        padding: 15px;
+    }
+    
+    .flappy-race-page .flappy-canvas {
+        height: 300px;
+        border-radius: 8px;
+    }
+    
+    .flappy-race-page .game-mode-card {
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .flappy-race-page .mode-icon {
+        font-size: 2rem;
+        margin-bottom: 10px;
+    }
+    
+    .flappy-race-page .room-settings .row {
+        margin: 0;
+    }
+    
+    .flappy-race-page .room-settings .col-6 {
+        padding: 0 5px;
+    }
+    
+    /* Fullscreen mobile adjustments */
+    .flappy-race-page.game-playing .exit-fullscreen-btn {
+        top: 10px;
+        right: 10px;
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .flappy-race-page .flappy-canvas-container {
+        padding: 10px;
+        margin: 10px auto;
+    }
+    
+    .flappy-race-page .flappy-canvas {
+        height: 250px;
+        border-radius: 5px;
+    }
+    
+    .flappy-race-page .game-mode-card {
+        padding: 10px;
+    }
+    
+    .flappy-race-page .mode-icon {
+        font-size: 1.5rem;
+    }
+    
+    .flappy-race-page .game-info-card,
+    .flappy-race-page .players-waiting {
+        padding: 10px;
+    }
+    
+    .inventory-item {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+    }
+    
+    .inventory-item .hotkey {
+        width: 14px;
+        height: 14px;
+        font-size: 8px;
+    }
+}
+
+/* Additional connection status styles */
+.connection-status.connected {
+    border-color: #28a745;
+    background-color: rgba(40, 167, 69, 0.1);
+    color: #155724;
+}
+
+.connection-status.disconnected {
+    border-color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.1);
+    color: #721c24;
+}
+
+.connection-status.error {
+    border-color: #ffc107;
+    background-color: rgba(255, 193, 7, 0.1);
+    color: #856404;
+}
+
+/* Game ID display improvements */
+.game-id-display {
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+}
+
+.game-status-center {
+    font-size: 16px;
+    font-weight: bold;
+    padding: 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Ensure proper z-index for modals and dropdowns */
+.flappy-race-page .dropdown-menu {
+    z-index: 1050;
+}
+
+.flappy-race-page .modal {
+    z-index: 1055;
+}
+
+/* Fix for Bootstrap collapse */
+.flappy-race-page .collapse {
+    transition: height 0.35s ease;
+}
+
+.flappy-race-page .collapse.show {
+    height: auto;
+}

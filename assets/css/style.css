@@ -1,0 +1,1376 @@
+/* ===== BASE STYLES ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: white;
+}
+
+/* ===== STYLES CHUNG VÀ CỜ TƯỚNG (GIỮ NGUYÊN) ===== */
+
+/* Game container cho Cờ Tướng */
+.game-container {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    text-align: center;
+    max-width: 100%;
+    width: 100%;
+    color: white;
+    margin: 20px auto;
+}
+
+h1 {
+    margin-bottom: 20px;
+    font-size: 2.5em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Connection status cho Cờ Tướng */
+.connection-status {
+    padding: 5px;
+    border-radius: 8px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    max-width: 50%;
+    bottom: 10px;
+    margin: 0 auto;
+}
+
+/* Game controls cho Cờ Tướng */
+.game-controls {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    max-width: 50%;
+    margin: 0 auto;
+}
+
+.game-id-section {
+    margin-bottom: 10px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.game-id-section input {
+    padding: 10px;
+    margin: 5px;
+    border: 1px so;
+    border-radius: 5px;
+    font-size: 16px;
+    width: 200px;
+}
+
+/* Button styles cho Cờ Tướng */
+button {
+    background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    margin: 5px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px 0 rgba(255, 107, 107, 0.3);
+}
+
+button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px 0 rgba(255, 107, 107, 0.4);
+}
+
+button:disabled {
+    background: #666;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Surrender button specific style */
+#surrenderBtn {
+    background: linear-gradient(45deg, #6c757d, #495057);
+    box-shadow: 0 4px 15px 0 rgba(108, 117, 125, 0.3);
+}
+
+#surrenderBtn:hover:not(:disabled) {
+    box-shadow: 0 6px 20px 0 rgba(108, 117, 125, 0.4);
+}
+
+.hidden {
+    display: none;
+}
+
+/* Xiangqi specific styles - elegant and traditional */
+.xiangqi-board-container {
+    display: flex;
+    justify-content: center;
+    margin: 20px auto;
+    background: linear-gradient(145deg, #4a3728, #6d4c35);
+    border-radius: 25px;
+    padding: 25px;
+    box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.5),
+        inset 0 4px 10px rgba(255, 255, 255, 0.1),
+        inset 0 -4px 10px rgba(0, 0, 0, 0.2);
+    border: 4px solid #2d1b13;
+}
+
+#xiangqiCanvas {
+    border: 2px solid #2d1b13;
+    border-radius: 15px;
+    cursor: pointer;
+    background: #f4e8d0;
+    box-shadow: 
+        inset 0 5px 15px rgba(0, 0, 0, 0.1),
+        0 10px 25px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+#xiangqiCanvas:hover {
+    transform: scale(1.01);
+    box-shadow: 
+        inset 0 5px 15px rgba(0, 0, 0, 0.1),
+        0 15px 35px rgba(0, 0, 0, 0.4);
+}
+
+/* Game setup styles */
+.game-setup-container {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.setup-section {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.setup-section label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: white;
+    font-size: 16px;
+}
+
+.btn-group .btn {
+    margin: 0 2px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+}
+
+.btn-group .btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.btn-group .btn.active {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: white;
+    color: white;
+    transform: scale(1.05);
+}
+
+.ready-section {
+    text-align: center;
+    margin-top: 30px;
+}
+
+/* Player information */
+.players-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.player-card {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.player-card.active-turn {
+    border-color: #f39c12;
+    background: rgba(243, 156, 18, 0.2);
+    transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(243, 156, 18, 0.3);
+}
+
+.player-card.you {
+    border-color: #3498db;
+    background: rgba(52, 152, 219, 0.2);
+}
+
+.player-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 5px;
+}
+
+.player-color {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-bottom: 10px;
+}
+
+/* Timer styles */
+.timer-display {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.timer-move {
+    font-size: 18px;
+    color: #4CAF50;
+    margin-bottom: 5px;
+}
+
+.timer-move.warning {
+    color: #FF9800;
+    animation: pulse 1s infinite;
+}
+
+.timer-move.danger {
+    color: #f44336;
+    animation: pulse 0.5s infinite;
+}
+
+.timer-total {
+    font-size: 14px;
+    color: #e0e0e0;
+}
+
+@keyframes pulse {
+    0% { 
+        transform: scale(1); 
+        opacity: 1;
+    }
+    50% { 
+        transform: scale(1.05); 
+        opacity: 0.8;
+    }
+    100% { 
+        transform: scale(1); 
+        opacity: 1;
+    }
+}
+
+/* Game status */
+.game-status {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 15px;
+    margin: 10px 0;
+    font-size: 1.2em;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+/* Ready status indicators */
+.ready-status {
+    background: rgba(0, 128, 0, 0.3);
+    color: #90EE90;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    display: inline-block;
+}
+
+.not-ready-status {
+    background: rgba(255, 0, 0, 0.3);
+    color: #FFB6C1;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    display: inline-block;
+}
+
+/* Game result animations */
+.winner {
+    animation: celebrate 2s infinite;
+}
+
+@keyframes celebrate {
+    0%, 100% { 
+        transform: scale(1) rotate(0deg); 
+    }
+    25% { 
+        transform: scale(1.1) rotate(-2deg); 
+    }
+    75% { 
+        transform: scale(1.1) rotate(2deg); 
+    }
+}
+
+/* Board highlight effects */
+.piece-highlight {
+    animation: glow 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+    from {
+        box-shadow: 0 0 10px #FFD700;
+    }
+    to {
+        box-shadow: 0 0 20px #FFD700, 0 0 30px #FFD700;
+    }
+}
+
+/* Responsive design cho Cờ Tướng */
+@media (max-width: 768px) {
+    .game-container {
+        padding: 15px;
+        margin: 10px;
+    }
+
+    h1 {
+        font-size: 2em;
+    }
+
+    .xiangqi-board-container {
+        padding: 10px;
+    }
+
+    #xiangqiCanvas {
+        width: 350px;
+        height: 400px;
+    }
+
+    .players-info {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .timer-display {
+        font-size: 18px;
+        padding: 8px;
+    }
+
+    .timer-move {
+        font-size: 16px;
+    }
+
+    .timer-total {
+        font-size: 12px;
+    }
+
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .btn-group .btn {
+        margin: 2px 0;
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-container {
+        padding: 10px;
+        margin: 5px;
+    }
+
+    #xiangqiCanvas {
+        width: 300px;
+        height: 340px;
+    }
+
+    .game-id-section input {
+        width: 150px;
+        font-size: 14px;
+    }
+
+    button {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+}
+
+/* Loading and error states */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.error-message {
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 10px 0;
+    font-weight: bold;
+    animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+}
+
+/* Success message */
+.success-message {
+    background: rgba(40, 167, 69, 0.9);
+    color: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin: 10px 0;
+    font-weight: bold;
+    animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Board piece animations */
+.piece-move {
+    animation: pieceMove 0.3s ease-out;
+}
+
+@keyframes pieceMove {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Check warning animation */
+.check-warning {
+    animation: checkBlink 1s infinite;
+}
+
+@keyframes checkBlink {
+    0%, 50% { 
+        background-color: rgba(255, 0, 0, 0.3); 
+    }
+    51%, 100% { 
+        background-color: transparent; 
+    }
+}
+
+/* Desktop styles - Layout 3 cột nhưu yêu cầu cho Cờ Tướng */
+@media (min-width: 1024px) {
+    /* Game section layout cho desktop */
+    #gameSection {
+        display: grid !important;
+        grid-template-areas: 
+            "status status status"
+            "player1 board player2"
+            ". controls ." !important;
+        grid-template-columns: 280px 1fr 280px !important;
+        gap: 20px !important;
+        align-items: center !important;
+        max-width: 1200px !important;
+        margin: 0 auto !important;
+    }
+
+    /* Game status ở trên */
+    #gameStatus, .game-status {
+        grid-area: status !important;
+        font-size: 18px !important;
+        padding: 15px !important;
+        margin-bottom: 0 !important;
+        max-width: 50%;
+        margin: 0 auto;
+    }
+
+    /* Board ở giữa */
+    .xiangqi-board-container {
+        grid-area: board !important;
+        padding: 20px !important;
+        margin: 0 !important;
+    }
+
+    #xiangqiCanvas {
+        width: 480px !important;
+        height: 530px !important;
+    }
+
+    /* Players info - không cần container */
+    .players-info {
+        display: contents !important; /* Phá vỡ container */
+    }
+
+    /* Player 1 bên trái */
+    #player1Card {
+        grid-area: player1 !important;
+        margin: 0 !important;
+    }
+
+    /* Player 2 bên phải */
+    #player2Card {
+        grid-area: player2 !important;
+        margin: 0 !important;
+    }
+
+    .player-card {
+        padding: 20px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 10px !important;
+        height: fit-content !important;
+    }
+
+    .player-name {
+        font-size: 18px !important;
+        margin-bottom: 5px !important;
+    }
+
+    .player-color {
+        font-size: 14px !important;
+        margin-bottom: 10px !important;
+    }
+
+    /* Timer dọc cho desktop */
+    .timer-display {
+        flex-direction: column !important;
+        align-items: center !important;
+        padding: 15px !important;
+        gap: 10px !important;
+    }
+
+    .timer-move {
+        font-size: 28px !important;
+        font-weight: bold !important;
+    }
+
+    .timer-total {
+        font-size: 16px !important;
+    }
+
+    /* Controls ở dưới */
+    .game-controls:last-child {
+        grid-area: controls !important;
+        display: flex !important;
+        justify-content: center !important;
+        gap: 10px !important;
+        margin-top: 0 !important;
+    }
+
+    .game-controls:last-child .btn {
+        font-size: 16px !important;
+        padding: 12px 24px !important;
+    }
+
+    /* Game ID section */
+    .game-id-section:first-child {
+        position: absolute !important;
+        top: 20px !important;
+        right: 20px !important;
+        background: rgba(0, 0, 0, 0.5) !important;
+        padding: 10px 15px !important;
+        border-radius: 10px !important;
+    }
+}
+
+/* Extra large screens */
+@media (min-width: 1440px) {
+    #gameSection {
+        /* grid-template-columns: 320px 1fr 320px !important; */
+        gap: 30px !important;
+    }
+
+    #xiangqiCanvas {
+        width: 520px !important;
+        height: 570px !important;
+    }
+
+    .player-card {
+        padding: 25px !important;
+    }
+
+    .timer-move {
+        font-size: 32px !important;
+    }
+}
+
+/* ===== CSS RIÊNG CHO CỜ CARO - PREFIX: caro- ===== */
+
+/* Caro Container */
+.caro-container {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: white;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Caro Title */
+.caro-title {
+    margin-bottom: 25px;
+    font-size: 2.5em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    color: white;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* Caro Connection Status */
+.caro-connection-status {
+    padding: 12px 24px;
+    border-radius: 25px;
+    font-weight: 600;
+    margin-bottom: 25px;
+    max-width: 300px;
+    margin-left: auto;
+    margin-right: auto;
+    font-size: 16px;
+}
+
+.caro-connection-status.connected {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+}
+
+.caro-connection-status.disconnected {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+}
+
+/* Caro Main Menu */
+.caro-main-menu {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.caro-menu-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 30px;
+    border-radius: 20px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.caro-join-section {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Caro Buttons */
+.caro-btn {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    text-decoration: none;
+    display: inline-block;
+}
+
+.caro-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.caro-btn:disabled {
+    background: #6b7280;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.caro-btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.caro-btn-success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.caro-btn-warning {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+}
+
+.caro-btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+}
+
+.caro-btn-copy {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+/* Caro Input */
+.caro-input {
+    padding: 14px 20px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 25px;
+    font-size: 16px;
+    background: rgba(255, 255, 255, 0.9);
+    color: #333;
+    min-width: 200px;
+    transition: all 0.3s ease;
+}
+
+.caro-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+}
+
+/* Caro Game Section */
+.caro-game-section {
+    width: 100%;
+}
+
+.caro-game-section.hidden {
+    display: none;
+}
+
+/* Caro Game Header */
+.caro-game-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.caro-room-info {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px 25px;
+    border-radius: 20px;
+    margin-bottom: 15px;
+    display: inline-flex;
+    align-items: center;
+    gap: 15px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.caro-game-status {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    padding: 15px 25px;
+    border-radius: 20px;
+    font-size: 18px;
+    font-weight: 600;
+    display: inline-block;
+    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+}
+
+/* Caro Game Layout */
+.caro-game-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 25px;
+    align-items: center;
+}
+
+/* Caro Players Section */
+.caro-players-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.caro-player {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+    border: 3px solid transparent;
+    transition: all 0.3s ease;
+    min-width: 150px;
+}
+
+.caro-player.active {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.2);
+    transform: scale(1.05);
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.4);
+}
+
+.caro-player.you {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.2);
+}
+
+.caro-avatar-circle {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+}
+
+.player1-color {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.player2-color {
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+.caro-player.active .caro-avatar-circle {
+    transform: scale(1.1);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
+.caro-player-info {
+    text-align: center;
+}
+
+.caro-player-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 8px;
+}
+
+.caro-player-symbol {
+    font-size: 28px;
+}
+
+.caro-vs-divider {
+    font-size: 24px;
+    font-weight: bold;
+    color: white;
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Caro Board Container */
+.caro-board-container {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.caro-board {
+    display: grid;
+    grid-template-columns: repeat(20, 1fr);
+    gap: 1px;
+    background: #1f2937;
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    max-width: 100%;
+    overflow: auto;
+}
+
+.caro-board .cell {
+    width: 25px;
+    height: 25px;
+    background: #ffffff;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.caro-board .cell:hover:not(:disabled) {
+    background: #f3f4f6;
+    transform: scale(1.1);
+    z-index: 10;
+    position: relative;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.caro-board .cell:disabled {
+    cursor: not-allowed;
+}
+
+.caro-board .cell.x {
+    color: #ef4444;
+    background: #fef2f2;
+    font-weight: 900;
+}
+
+.caro-board .cell.o {
+    color: #3b82f6;
+    background: #eff6ff;
+    font-weight: 900;
+}
+
+/* Caro Controls Section */
+.caro-controls-section {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+/* Caro Animations */
+.caro-player.winner {
+    animation: caro-celebrate 2s infinite;
+}
+
+@keyframes caro-celebrate {
+    0%, 100% { transform: scale(1.05) rotate(0deg); }
+    25% { transform: scale(1.1) rotate(-1deg); }
+    75% { transform: scale(1.1) rotate(1deg); }
+}
+
+/* ===== RESPONSIVE DESIGN CHO CARO ===== */
+
+/* Mobile Responsive cho Caro */
+@media (max-width: 768px) {
+    .caro-container {
+        padding: 20px;
+        margin: 10px;
+    }
+
+    .caro-title {
+        font-size: 2em;
+    }
+
+    .caro-menu-content {
+        padding: 20px;
+    }
+
+    .caro-join-section {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .caro-input {
+        width: 100%;
+        min-width: unset;
+    }
+
+    .caro-players-section {
+        gap: 15px;
+    }
+
+    .caro-player {
+        min-width: 120px;
+        padding: 15px;
+    }
+
+    .caro-avatar-circle {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+    }
+
+    .caro-vs-divider {
+        width: 40px;
+        height: 40px;
+        font-size: 18px;
+    }
+
+    .caro-board {
+        padding: 10px;
+        max-width: 90vw;
+    }
+
+    .caro-board .cell {
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+    }
+
+    .caro-btn {
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+
+    .caro-controls-section {
+        gap: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .caro-container {
+        padding: 15px;
+        margin: 5px;
+    }
+
+    .caro-title {
+        font-size: 1.8em;
+    }
+
+    .caro-board .cell {
+        width: 18px;
+        height: 18px;
+        font-size: 11px;
+    }
+
+    .caro-player {
+        min-width: 100px;
+        padding: 12px;
+    }
+
+    .caro-avatar-circle {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+    }
+
+    .caro-player-symbol {
+        font-size: 24px;
+    }
+
+    .caro-btn {
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+}
+
+/* Desktop Layout cho Caro - 3 cột khi màn hình lớn */
+@media (min-width: 1024px) {
+    .caro-game-layout {
+        grid-template-columns: 1fr auto 1fr;
+        grid-template-areas: 
+            "players board controls";
+        gap: 40px;
+        align-items: start;
+    }
+
+    .caro-players-section {
+        grid-area: players;
+        flex-direction: column;
+        gap: 40px;
+    }
+
+    .caro-board-container {
+        grid-area: board;
+        margin: 0;
+    }
+
+    .caro-controls-section {
+        grid-area: controls;
+        flex-direction: column;
+        align-self: center;
+    }
+
+    .caro-vs-divider {
+        display: none;
+    }
+}
+
+/* ===== STYLES CHUNG CHO HEADER (index.php) ===== */
+.container {
+ 
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+/* Header styles (giữ nguyên cho menu) */
+ul.dropdown-submenu li a {
+    color: #ababab !important;
+}
+
+@media (min-width: 992px) {
+    .dropdown-menu {
+        display: block;
+        background: rgb(32 36 40);
+        margin-top: 8px;
+        border-radius: 0 !important;
+    }
+
+    ul.dropdown-menu li a {
+        color: #fff;
+    }
+
+    .dropdown-item:focus,
+    .dropdown-item:hover {
+        color: #fcfeff;
+        background-color: #424242;
+    }
+}
+
+/* ===== UTILITY CLASSES ===== */
+.text-center {
+    text-align: center;
+}
+
+.mb-4 {
+    margin-bottom: 1.5rem;
+}
+
+.my-4 {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.d-flex {
+    display: flex;
+}
+
+.justify-content-center {
+    justify-content: center;
+}
+
+.gap-2 {
+    gap: 0.5rem;
+}
+
+.flex-wrap {
+    flex-wrap: wrap;
+}
+
+.col-md-6 {
+    flex: 0 0 50%;
+    max-width: 50%;
+}
+
+.flex-column {
+    flex-direction: column;
+}
+
+.input-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    width: 100%;
+}
+
+.mt-2 {
+    margin-top: 0.5rem;
+}
+
+.ms-2 {
+    margin-left: 0.5rem;
+}
+
+.btn-lg {
+    padding: 12px 24px;
+    font-size: 18px;
+}
+
+.alert {
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.alert-info {
+    background-color: rgba(13, 202, 240, 0.1);
+    border: 1px solid rgba(13, 202, 240, 0.2);
+    color: #0dcaf0;
+}
+
+.alert-secondary {
+    background-color: rgba(108, 117, 125, 0.1);
+    border: 1px solid rgba(108, 117, 125, 0.2);
+    color: #6c757d;
+}
+
+.form-control {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #212529;
+    background-color: #fff;
+    background-image: none;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    word-wrap: break-word;
+    background-color: #fff;
+    background-clip: border-box;
+    border: 1px solid rgba(0, 0, 0, 0.125);
+    border-radius: 0.375rem;
+}
+
+.p-3 {
+    padding: 1rem;
+}
+
+.border {
+    border: 1px solid #dee2e6;
+}
+
+.rounded {
+    border-radius: 0.375rem;
+}
+
+.p-2 {
+    padding: 0.5rem;
+}
+
+.mb-3 {
+    margin-bottom: 1rem;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    margin-left: -0.75rem;
+    margin-right: -0.75rem;
+}
+
+.mb-2 {
+    margin-bottom: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .col-md-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+    
+    .row {
+        margin-left: 0;
+        margin-right: 0;
+    }
+    
+    .col-md-6 {
+        padding-left: 0;
+        padding-right: 0;
+    }
+}
+
+/* ===== SỬA PHẦN CONTROLS CỜ TƯỚNG - THÊM VÀO CUỐI FILE STYLE.CSS ===== */
+
+/* Controls section - dàn ngang */
+.game-controls {
+    margin-bottom: 20px;
+    display: flex !important;
+    gap: 15px !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    max-width: 100% !important;
+    margin: 20px auto !important;
+}
+
+/* Đảm bảo buttons trong controls dàn ngang */
+.game-controls button {
+    margin: 5px !important;
+    flex-shrink: 0 !important;
+}
+
+/* Responsive cho controls */
+@media (max-width: 768px) {
+    .game-controls {
+        gap: 10px !important;
+        margin: 15px auto !important;
+    }
+    
+    .game-controls button {
+        margin: 3px !important;
+        padding: 10px 18px !important;
+        font-size: 14px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-controls {
+        gap: 8px !important;
+        margin: 10px auto !important;
+    }
+    
+    .game-controls button {
+        margin: 2px !important;
+        padding: 8px 15px !important;
+        font-size: 13px !important;
+    }
+}
+
+/* Desktop layout - controls ở dưới */
+@media (min-width: 1024px) {
+    /* Controls ở dưới trong layout 3 cột */
+    .game-controls:last-child {
+        grid-area: controls !important;
+        display: flex !important;
+        justify-content: center !important;
+        gap: 15px !important;
+        margin-top: 20px !important;
+        flex-wrap: wrap !important;
+    }
+
+    .game-controls:last-child button {
+        font-size: 16px !important;
+        padding: 12px 24px !important;
+        margin: 5px !important;
+    }
+}
+
