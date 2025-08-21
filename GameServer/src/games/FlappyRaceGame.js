@@ -240,39 +240,45 @@ const playerState = {
     }
 
     updateGame() {
-        const now = Date.now();
-        const deltaTime = (now - this.lastUpdate) / 1000;
-        this.lastUpdate = now;
+    const now = Date.now();
+    const deltaTime = (now - this.lastUpdate) / 1000;
+    this.lastUpdate = now;
+    
+    // Update countdown
+    if (this.gamePhase === 'countdown') {
+        this.gameTimer -= deltaTime;
         
-        // Update countdown
-        if (this.gamePhase === 'countdown') {
-            this.gameTimer -= deltaTime;
+        // Broadcast countdown updates
+        const seconds = Math.ceil(this.gameTimer);
+        if (seconds !== this.lastCountdown && seconds > 0) {
+            this.lastCountdown = seconds;
             
-            // Broadcast countdown updates
-            const seconds = Math.ceil(this.gameTimer);
-            if (seconds !== this.lastCountdown && seconds > 0) {
-                this.lastCountdown = seconds;
-                this.broadcast({
-                    type: 'gameMessage',
-                    message: `Bắt đầu sau ${seconds}...`
-                });
-            }
+            // GỬI CẢ MESSAGE VÀ GAME STATE
+            this.broadcast({
+                type: 'gameMessage',
+                message: `Bắt đầu sau ${seconds}...`
+            });
             
-            if (this.gameTimer <= 0) {
-                this.gamePhase = 'playing';
-                this.gameTimer = 0;
-                this.broadcast({
-                    type: 'gameMessage',
-                    message: '🚀 Game bắt đầu! Good luck!'
-                });
-            }
+            // QUAN TRỌNG: Broadcast gameState để client update countdown
+            this.broadcastGameState();
         }
         
-        // Update game timer
-        if (this.gamePhase === 'playing') {
-            this.gameTimer += deltaTime;
+        if (this.gameTimer <= 0) {
+            this.gamePhase = 'playing';
+            this.gameTimer = 0;
+            this.broadcast({
+                type: 'gameMessage',
+                message: '🚀 Game bắt đầu! Good luck!'
+            });
+            // Broadcast game state khi chuyển sang playing
+            this.broadcastGameState();
         }
-        
+    }
+    
+    // Rest of function...
+    
+    // CHỈ BROADCAST GAME STATE KHI CẦN THIẾT
+    if (this.gamePhase === 'playing') {
         // Update players
         this.updatePlayers(deltaTime);
         
@@ -285,20 +291,23 @@ const playerState = {
         // Check game end conditions
         this.checkGameEnd();
         
-        // Check for respawn (if all players are dead, allow restart)
+        // Check for respawn
         this.checkRespawnCondition();
         
         // Update leaderboard
         this.updateLeaderboard();
         
-        // Broadcast state
+        // Broadcast state (mỗi frame khi playing)
         this.broadcastGameState();
     }
+}
 
     updatePlayers(deltaTime) {
-        this.playerStates.forEach(player => {
-            if (!player.alive) return;
-            
+    this.playerStates.forEach(player => {
+        if (!player.alive) return;
+        
+        // CHỈ APPLY PHYSICS KHI GAME ĐANG PLAYING
+        if (this.gamePhase === 'playing') {
             // Apply gravity
             player.velocityY += this.config.gravity;
             
@@ -320,17 +329,10 @@ const playerState = {
             
             // Collision detection
             this.checkCollisions(player);
-            
-            // Bounds checking
-            if (player.y < 0) {
-                player.y = 0;
-                player.velocityY = 0;
-            }
-            if (player.y > this.config.height) {
-                this.killPlayer(player);
-            }
-        });
-    }
+        }
+        // TRONG COUNTDOWN THÌ KHÔNG LÀM GÌ CẢ
+    });
+}
 
     updatePlayerEffects(player, deltaTime) {
         Object.keys(player.effects).forEach(effectType => {

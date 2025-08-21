@@ -341,6 +341,9 @@ case 'gameState':
     } else if (data.gamePhase === 'playing') {
         console.log('🚀 Game started - hiding countdown');
         this.hideCountdownOverlay();
+    } else if (data.gamePhase === 'finished') {
+        console.log('🏁 Game finished - hiding countdown');
+        this.hideCountdownOverlay();
     }
     
     this.updateUI();
@@ -363,36 +366,39 @@ setupEventListeners() {  // ← ĐỔI TÊN TỪ setupEventListenersFixed
     }
     
     // Create bound handlers
-    this.keyDownHandler = (e) => {
-        this.keys[e.code] = true;
-        
-        // Flap controls
-        if (e.code === 'Space' || e.code === 'ArrowUp') {
-            e.preventDefault();
-            if (this.gameState?.gamePhase === 'playing') {
-                this.flap();
-            }
+this.keyDownHandler = (e) => {
+    this.keys[e.code] = true;
+    
+    // Flap controls - CHỈ KHI GAME PLAYING
+    if (e.code === 'Space' || e.code === 'ArrowUp') {
+        e.preventDefault();
+        // CHỈ CHO PHÉP KHI GAME PHASE = 'playing'
+        if (this.gameState?.gamePhase === 'playing' && this.gameState?.status === 'playing') {
+            this.flap();
+        } else {
+            console.log('Input blocked - game not in playing phase:', this.gameState?.gamePhase);
         }
+    }
+    
+    // Item usage - chỉ khi playing
+    if (this.gameState?.gamePhase === 'playing' && this.gameState?.status === 'playing') {
+        if (e.code === 'Digit1') this.useItem('speed');
+        if (e.code === 'Digit2') this.useItem('shield');
+        if (e.code === 'Digit3') this.useItem('bomb');
+        if (e.code === 'Digit4') this.useItem('trap');
+    }
+    
+    // EXIT FULLSCREEN
+    if (e.code === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('ESC pressed - exiting fullscreen');
         
-        // Item usage - only during playing
-        if (this.gameState?.gamePhase === 'playing') {
-            if (e.code === 'Digit1') this.useItem('speed');
-            if (e.code === 'Digit2') this.useItem('shield');
-            if (e.code === 'Digit3') this.useItem('bomb');
-            if (e.code === 'Digit4') this.useItem('trap');
+        if (document.body.classList.contains('game-playing')) {
+            this.exitFullscreenMode();
         }
-        
-        // EXIT FULLSCREEN - FIX THIS
-        if (e.code === 'Escape') {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('ESC pressed - exiting fullscreen');
-            
-            if (document.body.classList.contains('game-playing')) {
-                this.exitFullscreenMode();
-            }
-        }
-    };
+    }
+};
     
     this.keyUpHandler = (e) => {
         this.keys[e.code] = false;
@@ -404,19 +410,21 @@ setupEventListeners() {  // ← ĐỔI TÊN TỪ setupEventListenersFixed
     
     // Touch controls for mobile
     if (this.canvas) {
-        this.canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if (this.gameState?.gamePhase === 'playing') {
-                this.flap();
-            }
-        }, { passive: false });
+this.canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    // CHỈ KHI GAME PLAYING
+    if (this.gameState?.gamePhase === 'playing' && this.gameState?.status === 'playing') {
+        this.flap();
+    }
+}, { passive: false });
 
-        this.canvas.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (this.gameState?.gamePhase === 'playing') {
-                this.flap();
-            }
-        });
+this.canvas.addEventListener('click', (e) => {
+    e.preventDefault();
+    // CHỈ KHI GAME PLAYING  
+    if (this.gameState?.gamePhase === 'playing' && this.gameState?.status === 'playing') {
+        this.flap();
+    }
+});
     }
     
     // Handle window resize
@@ -985,31 +993,41 @@ setupEventListeners() {  // ← ĐỔI TÊN TỪ setupEventListenersFixed
     }
 
     // Game actions
-    flap() {
-        // Only allow flapping when game is actually playing
-        if (!this.gameId || this.gameState?.status !== 'playing' || this.gameState?.gamePhase !== 'playing') {
-            console.log('Flapping disabled - not in playing phase');
-            return;
-        }
-        
-        // Check if player is alive
-        const myPlayer = this.getMyPlayer();
-        if (!myPlayer || !myPlayer.alive) {
-            console.log('Flapping disabled - player is dead');
-            return;
-        }
-        
-        this.ws.send(JSON.stringify({
-            type: 'gameAction',
-            gameId: this.gameId,
-            action: 'flap'
-        }));
-        
-        // Add flap particles for immediate feedback
-        if (myPlayer) {
-            this.addParticle(myPlayer.x || 0, myPlayer.y || 0, myPlayer.color || '#FFD700', 3);
-        }
+flap() {
+    // KHÔNG CHO PHÉP FLAP TRONG COUNTDOWN
+    if (!this.gameId || this.gameState?.status !== 'playing') {
+        console.log('Flapping disabled - game not playing. Status:', this.gameState?.status);
+        return;
     }
+    
+    if (this.gameState?.gamePhase === 'countdown') {
+        console.log('Flapping disabled - countdown phase');
+        return;
+    }
+    
+    if (this.gameState?.gamePhase !== 'playing') {
+        console.log('Flapping disabled - not in playing phase. Current phase:', this.gameState?.gamePhase);
+        return;
+    }
+    
+    // Check if player is alive
+    const myPlayer = this.getMyPlayer();
+    if (!myPlayer || !myPlayer.alive) {
+        console.log('Flapping disabled - player is dead');
+        return;
+    }
+    
+    this.ws.send(JSON.stringify({
+        type: 'gameAction',
+        gameId: this.gameId,
+        action: 'flap'
+    }));
+    
+    // Add flap particles for immediate feedback
+    if (myPlayer) {
+        this.addParticle(myPlayer.x || 0, myPlayer.y || 0, myPlayer.color || '#FFD700', 3);
+    }
+}
 
     useItem(itemType) {
         if (!this.gameId || this.gameState?.status !== 'playing') return;
@@ -1021,6 +1039,137 @@ setupEventListeners() {  // ← ĐỔI TÊN TỪ setupEventListenersFixed
             data: { itemType }
         }));
     }
+
+
+
+showCountdownOverlay(seconds) {
+    console.log('Showing countdown:', seconds);
+    
+    // Remove existing overlay
+    const existingOverlay = document.getElementById('countdown-overlay');
+    if (existingOverlay) {
+        existingOverlay.remove();
+    }
+    
+    // Create countdown overlay - KHÔNG ĐEN NỀN
+    const overlay = document.createElement('div');
+    overlay.id = 'countdown-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        pointer-events: none;
+    `;
+    
+    // Create countdown content with semi-transparent background
+    const content = document.createElement('div');
+    content.style.cssText = `
+        text-align: center;
+        color: #FFD700;
+        font-size: 120px;
+        font-weight: bold;
+        text-shadow: 0 0 20px #FFD700, 0 0 40px #FFD700, 0 0 60px #FFD700;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 40px 60px;
+        border-radius: 20px;
+        border: 3px solid rgba(255, 215, 0, 0.5);
+        backdrop-filter: blur(5px);
+        animation: pulse 0.8s ease-in-out infinite alternate;
+    `;
+    
+    content.innerHTML = `
+        <div style="font-size: 150px; margin-bottom: 10px;">${seconds}</div>
+        <div style="font-size: 24px; color: white; margin-bottom: 10px;">🚀 Game bắt đầu sau...</div>
+        <div style="font-size: 16px; color: #CCCCCC;">Nhấn SPACE hoặc click để bay lên</div>
+    `;
+    
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+        setTimeout(() => {
+        const stillExists = document.getElementById('countdown-overlay');
+        if (stillExists) {
+            console.log('🔧 Fallback: Force hiding countdown after 12s');
+            this.hideCountdownOverlay();
+        }
+    }, 12000);
+    // Add CSS animation if not exists
+    if (!document.querySelector('#countdown-pulse-style')) {
+        const style = document.createElement('style');
+        style.id = 'countdown-pulse-style';
+        style.textContent = `
+            @keyframes pulse {
+                from { transform: scale(1); }
+                to { transform: scale(1.05); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+updateCountdownOverlay(seconds) {
+    console.log('🔄 Updating countdown to:', seconds);
+    
+    const overlay = document.getElementById('countdown-overlay');
+    if (overlay) {
+        const content = overlay.querySelector('div');
+        if (content) {
+            content.innerHTML = `
+                <div style="font-size: 150px; margin-bottom: 10px;">${seconds}</div>
+                <div style="font-size: 24px; color: white; margin-bottom: 10px;">🚀 Game bắt đầu sau...</div>
+                <div style="font-size: 16px; color: #CCCCCC;">Nhấn SPACE hoặc click để bay lên</div>
+            `;
+            
+            // Nếu countdown = 0 thì ẩn luôn
+            if (seconds <= 0) {
+                console.log('⏰ Countdown reached 0, hiding overlay');
+                this.hideCountdownOverlay();
+            }
+        }
+    } else {
+        console.log('⚠️ No overlay found to update, creating new one');
+        this.showCountdownOverlay(seconds);
+    }
+}
+
+
+hideCountdownOverlay() {
+    console.log('🎯 Hiding countdown overlay');
+    
+    const overlay = document.getElementById('countdown-overlay');
+    if (overlay) {
+        console.log('✅ Found countdown overlay, removing...');
+        
+        // Add fade out animation
+        overlay.style.transition = 'opacity 0.5s ease-out';
+        overlay.style.opacity = '0';
+        
+        // Remove after animation
+        setTimeout(() => {
+            if (overlay && overlay.parentNode) {
+                overlay.remove();
+                console.log('✅ Countdown overlay removed');
+            }
+        }, 500);
+    } else {
+        console.log('⚠️ No countdown overlay found to hide');
+    }
+}
+
+
+
+
+
+
+
+
+
+
 forceRespawnPlayer() {
     if (!this.gameState || !this.gameId) return;
     
@@ -1686,6 +1835,9 @@ function createGame() {
     }
 }
 
+
+
+
 function joinGame() {
     if (flappyGame) {
         flappyGame.joinGame();
@@ -2030,144 +2182,8 @@ console.log('🔧 Flappy Race fixes loaded! Use debugConnection() to check statu
 
 
 
-// THAY THẾ showCountdownOverlay BẰNG PHIÊN BẢN CẢI THIỆN:
 
-showCountdownOverlay(seconds) {
-    console.log(`🎯 Showing countdown overlay: ${seconds}s`);
-    
-    // Remove existing overlay
-    const existingOverlay = document.querySelector('.countdown-overlay');
-    if (existingOverlay) {
-        existingOverlay.remove();
-    }
-    
-    // Create countdown overlay
-    const overlay = document.createElement('div');
-    overlay.className = 'countdown-overlay';
-    overlay.innerHTML = `
-        <div class="countdown-content">
-            <h1 class="countdown-number">${seconds}</h1>
-            <p class="countdown-text">🚀 Game bắt đầu sau...</p>
-            <p class="countdown-instruction">Nhấn SPACE hoặc click để bay lên</p>
-            <div class="countdown-progress">
-                <div class="countdown-bar" style="animation: countdown ${seconds}s linear forwards;"></div>
-            </div>
-        </div>
-    `;
-    
-    document.body.appendChild(overlay);
-    
-    // Add countdown styles if not exists
-    if (!document.querySelector('#countdown-styles')) {
-        const styles = document.createElement('style');
-        styles.id = 'countdown-styles';
-        styles.textContent = `
-            .countdown-overlay {
-                position: fixed !important;
-                top: 0 !important;
-                left: 0 !important;
-                width: 100vw !important;
-                height: 100vh !important;
-                background: rgba(0, 0, 0, 0.85) !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                z-index: 10002 !important;
-                backdrop-filter: blur(15px) !important;
-            }
-            
-            .countdown-content {
-                text-align: center;
-                color: white;
-                animation: pulse 0.8s ease-in-out infinite alternate;
-            }
-            
-            .countdown-number {
-                font-size: 150px !important;
-                font-weight: bold !important;
-                margin: 0 !important;
-                text-shadow: 0 0 50px #FFD700, 0 0 100px #FFD700 !important;
-                color: #FFD700 !important;
-                line-height: 1 !important;
-                font-family: 'Arial Black', Arial, sans-serif !important;
-            }
-            
-            .countdown-text {
-                font-size: 28px !important;
-                margin: 30px 0 10px 0 !important;
-                color: #FFFFFF !important;
-                font-weight: bold !important;
-            }
-            
-            .countdown-instruction {
-                font-size: 18px !important;
-                margin: 10px 0 30px 0 !important;
-                color: #CCCCCC !important;
-                opacity: 0.8;
-            }
-            
-            .countdown-progress {
-                width: 400px !important;
-                height: 10px !important;
-                background: rgba(255, 255, 255, 0.2) !important;
-                border-radius: 5px !important;
-                overflow: hidden !important;
-                margin: 0 auto !important;
-                border: 2px solid rgba(255, 215, 0, 0.3) !important;
-            }
-            
-            .countdown-bar {
-                height: 100% !important;
-                background: linear-gradient(90deg, #FFD700, #FF6B6B, #4ECDC4) !important;
-                width: 100% !important;
-                border-radius: 3px !important;
-                transition: width 1s linear !important;
-            }
-            
-            @keyframes countdown {
-                from { width: 100%; }
-                to { width: 0%; }
-            }
-            
-            @keyframes pulse {
-                from { transform: scale(1); }
-                to { transform: scale(1.02); }
-            }
-            
-            @keyframes fadeOut {
-                from { opacity: 1; }
-                to { opacity: 0; }
-            }
-        `;
-        document.head.appendChild(styles);
-    }
-}
 
-// THÊM FUNCTION MỚI VÀO CLASS FlappyRaceClient:
-
-updateCountdownOverlay(seconds) {
-    const existingOverlay = document.querySelector('.countdown-overlay');
-    if (existingOverlay) {
-        // Chỉ update số, không tạo lại overlay
-        const numberElement = existingOverlay.querySelector('.countdown-number');
-        const progressBar = existingOverlay.querySelector('.countdown-bar');
-        
-        if (numberElement) {
-            numberElement.textContent = seconds;
-            numberElement.style.animation = 'none';
-            // Trigger reflow để restart animation
-            numberElement.offsetHeight;
-            numberElement.style.animation = 'pulse 0.8s ease-in-out infinite alternate';
-        }
-        
-        if (progressBar) {
-            progressBar.style.animation = `countdown ${seconds}s linear forwards`;
-        }
-    } else {
-        // Nếu chưa có overlay thì tạo mới
-        this.showCountdownOverlay(seconds);
-    }
-}
 
 
 
