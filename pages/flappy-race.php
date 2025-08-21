@@ -37,7 +37,7 @@ include $_SERVER['DOCUMENT_ROOT'].'./include/header.php';
         <!-- Game Modes -->
         <div class="row g-3 mb-4">
             <!-- Classic Race -->
-            <div class="col-md-6">
+            <div class="col-md-3">
                 <div class="game-mode-card" data-mode="classic">
                     <div class="mode-icon">🏁</div>
                     <h5>Classic Race</h5>
@@ -50,7 +50,7 @@ include $_SERVER['DOCUMENT_ROOT'].'./include/header.php';
             </div>
 
             <!-- Battle Royale -->
-            <div class="col-md-6">
+            <div class="col-md-3">
                 <div class="game-mode-card" data-mode="battle">
                     <div class="mode-icon">⚔️</div>
                     <h5>Battle Royale</h5>
@@ -63,7 +63,7 @@ include $_SERVER['DOCUMENT_ROOT'].'./include/header.php';
             </div>
 
             <!-- Time Trial -->
-            <div class="col-md-6">
+            <div class="col-md-3">
                 <div class="game-mode-card" data-mode="time">
                     <div class="mode-icon">⏱️</div>
                     <h5>Time Trial</h5>
@@ -76,7 +76,7 @@ include $_SERVER['DOCUMENT_ROOT'].'./include/header.php';
             </div>
 
             <!-- Endless -->
-            <div class="col-md-6">
+            <div class="col-md-3">
                 <div class="game-mode-card" data-mode="endless">
                     <div class="mode-icon">♾️</div>
                     <h5>Endless Mode</h5>

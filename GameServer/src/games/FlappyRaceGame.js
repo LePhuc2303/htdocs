@@ -1,47 +1,57 @@
-// src/games/FlappyRaceGame.js - Flappy Race Server Implementation
+// GameServer/src/games/FlappyRaceGame.js - Flappy Race Server Implementation (VIẾT LẠI HOÀN TOÀN)
+
 const BaseGame = require('../BaseGame');
 
 class FlappyRaceGame extends BaseGame {
     constructor(gameId) {
-    super(gameId, 'flappy-race', 8);
+        super(gameId, 'flappy-race', 8);
+        
+        console.log(`🎮 Creating FlappyRaceGame with ID: ${gameId}`);
+        
+        // Game configuration
+        this.config = {
+            width: 1200,
+            height: 600,
+            raceDistance: 2000,
+            gravity: 0.5,
+            flapStrength: -8,
+            pipeGap: 120,
+            pipeWidth: 60,
+            itemSpawnRate: 0.02
+        };
+        
+        // Game objects
+        this.pipes = [];
+        this.items = [];
+        this.projectiles = [];
+        this.playerStates = [];
+        this.traps = [];
+        
+        // Game state
+        this.gamePhase = 'waiting'; // waiting, countdown, playing, finished
+        this.gameTimer = 0;
+        this.leaderboard = [];
+        
+        // Game settings
+        this.gameSettings = {
+            mode: 'classic',
+            maxPlayers: 4,
+            difficulty: 'normal',
+            mapType: 'classic',
+            itemsEnabled: true
+        };
+        
+        // Game loop
+        this.gameLoop = null;
+        this.lastUpdate = Date.now();
+        
+        // Initialize map
+        this.generateMap();
+        
+        console.log(`✅ FlappyRaceGame created successfully - Pipes: ${this.pipes.length}, Items: ${this.items.length}`);
+    }
     
-    this.config = {
-        width: 1200,
-        height: 600,
-        raceDistance: 2000,
-        gravity: 0.5,
-        flapStrength: -8,
-        pipeGap: 120,
-        pipeWidth: 60,
-        itemSpawnRate: 0.02
-    };
-    
-    this.pipes = [];
-    this.items = [];
-    this.projectiles = [];
-    this.playerStates = [];
-    this.gamePhase = 'waiting';
-    this.gameTimer = 0;
-    this.leaderboard = [];
-    
-    this.gameSettings = {
-        mode: 'classic',
-        maxPlayers: 4,
-        difficulty: 'normal',
-        mapType: 'classic',
-        itemsEnabled: true
-    };
-    
-    this.gameLoop = null;
-    this.lastUpdate = Date.now();
-    
-    // Generate initial map
-    this.applyDifficulty(this.gameSettings.difficulty);
-    this.generateMap(this.gameSettings.mapType);
-    
-    console.log(`🎮 FlappyRaceGame created with ${this.pipes.length} pipes and ${this.items.length} items`);
-}
-
+    // === PLAYER MANAGEMENT ===
     onPlayerJoined(playerInfo) {
         const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF', '#5F27CD'];
         const color = colors[this.players.length - 1] || '#FFD700';
@@ -49,319 +59,327 @@ class FlappyRaceGame extends BaseGame {
         playerInfo.color = color;
         
         // Initialize player state
-const playerState = {
-    playerId: playerInfo.playerId,
-    x: 50, // Start further from pipes
-    y: this.config.height / 2, // Middle of screen
-    velocityY: 0,
-    color: color,
-    score: 0,
-    lives: 3,
-    phase: 'outbound',
-    alive: true, // Make sure starts alive
-    effects: {},
-    items: [],
-    rank: 0,
-    invulnerable: true, // Add 3 second invulnerability at start
-    invulnerabilityTime: 3000
-};
+        const playerState = {
+            playerId: playerInfo.playerId,
+            x: 100,
+            y: this.config.height / 2,
+            velocityY: 0,
+            color: color,
+            score: 0,
+            lives: 3,
+            phase: 'outbound', // outbound, return, finished
+            alive: true,
+            effects: {},
+            currentItem: null,
+            rank: 0,
+            invulnerable: false,
+            invulnerabilityTime: 0
+        };
         
         this.playerStates.push(playerState);
         
-        // Start game if enough players and all ready
-        if (this.players.length >= 2 && this.status === 'playing') {
-            this.startGameLoop();
-        }
+        console.log(`👤 Player ${playerInfo.playerId} joined with color ${color}`);
         
         this.broadcastGameState();
         
         return { 
-            color, 
-            playerIndex: this.players.length - 1,
-            gameConfig: this.config 
+            color: color, 
+            playerIndex: this.players.length - 1 
         };
     }
-
-generatePipes() {
-    this.pipes = [];
-    const pipeSpacing = 300; // Tăng từ 200 lên 300 (rộng hơn 50%)
-    const pipeCount = Math.floor(this.config.raceDistance / pipeSpacing);
     
-    console.log(`🔧 Generating ${pipeCount} pipes with spacing ${pipeSpacing}`);
-    
-    for (let i = 0; i < pipeCount; i++) {
-        const x = 300 + (i * pipeSpacing); // Tăng start từ 200 lên 300
-        const minGapTop = 80; // Tăng từ 50 lên 80
-        const maxGapTop = this.config.height - this.config.pipeGap - 80; // Tăng từ 50 lên 80
-        const gapTop = minGapTop + Math.random() * (maxGapTop - minGapTop);
-        
-        const pipe = {
-            x: x,
-            topHeight: gapTop,
-            bottomY: gapTop + this.config.pipeGap,
-            width: this.config.pipeWidth,
-            gap: this.config.pipeGap,
-            passed: false
-        };
-        
-        this.pipes.push(pipe);
-        
-        // DEBUG: Log first few pipes
-        if (i < 3) {
-            console.log(`🔧 Pipe ${i}:`, pipe);
-        }
-    }
-    
-    console.log(`✅ Generated ${this.pipes.length} pipes`);
-}
-
-
-
-
     onPlayerLeft(playerId) {
+        console.log(`👋 Player ${playerId} left the game`);
+        
+        // Remove player state
         this.playerStates = this.playerStates.filter(p => p.playerId !== playerId);
         
-        // Reset ready status when player leaves
-        delete this.playersReady[playerId];
-        
+        // Reset game if no players left
         if (this.players.length === 0) {
-            this.stopGameLoop();
-            this.status = 'waiting';
-            this.gamePhase = 'waiting';
+            this.resetGame();
         }
         
         this.broadcastGameState();
     }
-
-    applyGameSettings() {
-        const settingsArray = Object.values(this.gameSettings);
-        if (settingsArray.length > 0) {
-            const settings = settingsArray[0];
-            this.gameSettings = { ...this.gameSettings, ...settings };
+    
+    // === GAME ACTIONS ===
+    handleGameAction(playerId, action, data) {
+        const player = this.playerStates.find(p => p.playerId === playerId);
+        if (!player) {
+            return { error: 'Player not found' };
+        }
+        
+        console.log(`🎮 Game action: ${action} from player ${playerId}`);
+        
+        switch (action) {
+            case 'flap':
+                return this.handleFlap(player);
+                
+            case 'useItem':
+                return this.handleUseItem(player, data);
+                
+            default:
+                console.warn(`❓ Unknown action: ${action}`);
+                return { error: 'Unknown action' };
+        }
+    }
+    
+    handleFlap(player) {
+        if (this.gamePhase !== 'playing' || !player.alive) {
+            return { error: 'Cannot flap at this time' };
+        }
+        
+        // Check if stunned
+        if (player.effects.stunned && player.effects.stunned.timeLeft > 0) {
+            return { error: 'Player is stunned' };
+        }
+        
+        // Apply flap
+        player.velocityY = this.config.flapStrength;
+        
+        console.log(`🦅 Player ${player.playerId} flapped`);
+        return { success: true };
+    }
+    
+    handleUseItem(player, data) {
+        if (this.gamePhase !== 'playing' || !player.alive || !player.currentItem) {
+            return { error: 'Cannot use item at this time' };
+        }
+        
+        const itemType = player.currentItem.type;
+        console.log(`🎁 Player ${player.playerId} using item: ${itemType}`);
+        
+        let result = { success: false };
+        
+        switch (itemType) {
+            case 'speed':
+                result = this.handleSpeedBoost(player);
+                break;
+            case 'shield':
+                result = this.handleShield(player);
+                break;
+            case 'bomb':
+                result = this.handleBomb(player);
+                break;
+            case 'trap':
+                result = this.handleTrap(player, data);
+                break;
+            default:
+                result = { error: 'Unknown item type' };
+        }
+        
+        // Remove item after use
+        if (result.success) {
+            player.currentItem = null;
+        }
+        
+        return result;
+    }
+    
+    handleSpeedBoost(player) {
+        player.effects.speed = {
+            timeLeft: 5000, // 5 seconds
+            startTime: Date.now()
+        };
+        
+        this.broadcast({
+            type: 'speedBoostActivated',
+            playerId: player.playerId,
+            duration: 5000
+        });
+        
+        console.log(`⚡ Speed boost activated for player ${player.playerId}`);
+        return { success: true };
+    }
+    
+    handleShield(player) {
+        player.effects.shield = {
+            timeLeft: 3000, // 3 seconds
+            startTime: Date.now()
+        };
+        
+        this.broadcast({
+            type: 'shieldActivated',
+            playerId: player.playerId,
+            duration: 3000
+        });
+        
+        console.log(`🛡️ Shield activated for player ${player.playerId}`);
+        return { success: true };
+    }
+    
+    handleBomb(player) {
+        const bombRange = 150;
+        const affectedPlayers = [];
+        
+        this.playerStates.forEach(otherPlayer => {
+            if (otherPlayer.playerId === player.playerId || !otherPlayer.alive) return;
             
-            // Apply difficulty settings
-            this.applyDifficulty(this.gameSettings.difficulty);
+            const distance = Math.sqrt(
+                Math.pow(otherPlayer.x - player.x, 2) + 
+                Math.pow(otherPlayer.y - player.y, 2)
+            );
             
-            // Apply map settings
-            this.generateMap(this.gameSettings.mapType);
-            
-            // Set max players
-            if (settings.maxPlayers) {
-                this.maxPlayers = settings.maxPlayers;
+            if (distance <= bombRange) {
+                // Apply bomb effects
+                otherPlayer.velocityY = -15; // Knock up
+                otherPlayer.effects.stunned = {
+                    timeLeft: 2000, // 2 seconds
+                    startTime: Date.now()
+                };
+                
+                affectedPlayers.push(otherPlayer.playerId);
             }
-        }
-    }
-
-    applyDifficulty(difficulty) {
-        switch (difficulty) {
-            case 'easy':
-                this.config.gravity = 0.3;
-                this.config.pipeGap = 200; // Tăng từ 150 lên 200
-                this.config.flapStrength = -10;
-                break;
-            case 'normal':
-                this.config.gravity = 0.5;
-                this.config.pipeGap = 180; // Tăng từ 120 lên 180  
-                this.config.flapStrength = -8;
-                break;
-            case 'hard':
-                this.config.gravity = 0.7;
-                this.config.pipeGap = 150; // Tăng từ 100 lên 150
-                this.config.flapStrength = -7;
-                break;
-            case 'extreme':
-                this.config.gravity = 0.9;
-                this.config.pipeGap = 120; // Tăng từ 80 lên 120
-                this.config.flapStrength = -6;
-                break;
-        }
-    }
-
-    generateMap(mapType) {
-    this.pipes = [];
-    
-    // Generate pipes với khoảng cách xa hơn
-    for (let x = 200; x < this.config.raceDistance; x += 200) { // Tăng từ 150 lên 200
-        let pipeHeight;
-        
-        switch (mapType) {
-            case 'jungle':
-                pipeHeight = 120 + Math.sin(x * 0.01) * 40;
-                break;
-            case 'city':
-                pipeHeight = 100 + (x % 300) * 0.2;
-                break;
-            case 'space':
-                pipeHeight = 140 + Math.random() * 80;
-                break;
-            default: // classic
-                pipeHeight = 100 + Math.random() * 100;
-        }
-        
-        this.pipes.push({
-            x: x,
-            topHeight: pipeHeight,
-            bottomY: pipeHeight + this.config.pipeGap,
-            bottomHeight: this.config.height - (pipeHeight + this.config.pipeGap)
-        });
-    }
-    
-    // Generate items
-    if (this.gameSettings.itemsEnabled) {
-        this.generateItems();
-    }
-}
-
-generateItems() {
-    this.items = [];
-    
-    if (!this.pipes || this.pipes.length === 0) {
-        console.log('⚠️ No pipes found, generating pipes first...');
-        this.generatePipes();
-    }
-    
-    console.log(`🔧 Generating items for ${this.pipes.length} pipes`);
-    
-    // TẠO 2 ITEMS CHO MỖI ỐNG
-    this.pipes.forEach((pipe, index) => {
-        if (!pipe || pipe.x == null || pipe.topHeight == null || pipe.gap == null) {
-            console.error(`❌ Invalid pipe at index ${index}:`, pipe);
-            return;
-        }
-        
-        const gapCenter = pipe.topHeight + (pipe.gap / 2);
-        const gapQuarter = pipe.gap / 4;
-        
-        // ITEMS CỐ ĐỊNH VỊ TRÍ - KHÔNG DI CHUYỂN
-        const item1X = pipe.x + (pipe.width / 2);
-        const item1Y = gapCenter - gapQuarter;
-        
-        const item2X = pipe.x + (pipe.width / 2);
-        const item2Y = gapCenter + gapQuarter;
-        
-        const itemTypes = ['speed', 'shield', 'bomb', 'trap'];
-        
-        // Tạo item 1
-        this.items.push({
-            id: `item_pipe_${index}_1`,
-            type: itemTypes[Math.floor(Math.random() * itemTypes.length)],
-            x: item1X, // VỊ TRÍ CỐ ĐỊNH
-            y: item1Y, // VỊ TRÍ CỐ ĐỊNH
-            collected: false,
-            size: 37,
-            isBox: true,
-            pipeIndex: index // LIÊN KẾT VỚI PIPE
         });
         
-        // Tạo item 2
-        this.items.push({
-            id: `item_pipe_${index}_2`,
-            type: itemTypes[Math.floor(Math.random() * itemTypes.length)],
-            x: item2X, // VỊ TRÍ CỐ ĐỊNH
-            y: item2Y, // VỊ TRÍ CỐ ĐỊNH
-            collected: false,
-            size: 37,
-            isBox: true,
-            pipeIndex: index // LIÊN KẾT VỚI PIPE
+        this.broadcast({
+            type: 'bombExploded',
+            bomberId: player.playerId,
+            bomberX: player.x,
+            bomberY: player.y,
+            affectedPlayers: affectedPlayers,
+            range: bombRange
         });
-    });
+        
+        console.log(`💣 Bomb from ${player.playerId} affected ${affectedPlayers.length} players`);
+        return { success: true };
+    }
     
-    console.log(`✅ Generated ${this.items.length} items with fixed positions`);
-}
-    startGame() {
-    // Áp dụng cài đặt game trước
-    this.applyGameSettings();
+    handleTrap(player, data) {
+        const trapX = data?.targetX || (player.x + 100);
+        const trapY = data?.targetY || player.y;
+        
+        const trap = {
+            id: `trap_${Date.now()}_${player.playerId}`,
+            x: trapX,
+            y: trapY,
+            ownerId: player.playerId,
+            createdAt: Date.now(),
+            duration: 10000, // 10 seconds
+            triggered: false
+        };
+        
+        this.traps.push(trap);
+        
+        this.broadcast({
+            type: 'trapPlaced',
+            trap: trap,
+            placerId: player.playerId
+        });
+        
+        console.log(`🪤 Trap placed by ${player.playerId} at (${trapX}, ${trapY})`);
+        return { success: true };
+    }
     
-    // Regenerate map và items mỗi khi bắt đầu game
-    this.generateMap(this.gameSettings.mapType || 'classic');
+    // === READY SYSTEM ===
+    handlePlayerReady(playerId, settings) {
+        console.log(`✅ Player ${playerId} is ready in game ${this.gameId}`);
+        
+        // Update settings if provided
+        if (settings && this.players.find(p => p.playerId === playerId && p.isHost)) {
+            this.gameSettings = { ...this.gameSettings, ...settings };
+            console.log('🎛️ Game settings updated:', this.gameSettings);
+        }
+        
+        // If game is finished, this is for respawn
+        if (this.gamePhase === 'finished') {
+            this.playersReady[playerId] = true;
+            
+            console.log(`Players ready for respawn: ${Object.keys(this.playersReady).length}/${this.players.length}`);
+            
+            this.broadcast({
+                type: 'readyUpdate',
+                playersReady: this.playersReady
+            });
+            
+            // Check if should start new round
+            const readyCount = Object.keys(this.playersReady).length;
+            const totalPlayers = this.players.length;
+            
+            if (totalPlayers === 1 || readyCount === totalPlayers) {
+                console.log(`🚀 Starting new round - ${readyCount}/${totalPlayers} players ready`);
+                setTimeout(() => {
+                    this.respawnGame();
+                }, 1000);
+            }
+            
+            return { success: true };
+        }
+        
+        // Normal ready for game start
+        return super.handlePlayerReady(playerId, settings);
+    }
     
-    super.startGame();
-    this.gamePhase = 'countdown';
-    this.gameTimer = 3; // Giảm từ 10 xuống 3 giây
-    this.lastCountdown = 3;
-    
-    // Reset all players
-    this.playerStates.forEach(player => {
-        player.x = 50;
-        player.y = this.config.height / 2;
-        player.velocityY = 0;
-        player.score = 0;
-        player.lives = 3;
-        player.phase = 'outbound';
-        player.alive = true;
-        player.effects = {};
-        player.items = [];
-        player.rank = 0;
-    });
-    
-    this.startGameLoop();
-    
-    this.broadcast({
-        type: 'gameMessage',
-        message: `⏰ Game bắt đầu sau ${this.gameTimer} giây!`
-    });
-    
-    console.log('🎮 Flappy Race game started');
-    console.log('🟢 Generated pipes:', this.pipes.length);
-    console.log('🎁 Generated items:', this.items.length);
-}
-
+    // === GAME LOOP ===
     startGameLoop() {
-        if (this.gameLoop) return;
-        
-        this.lastUpdate = Date.now();
-        this.gameLoop = setInterval(() => {
-            this.updateGame();
-        }, 1000 / 60); // 60 FPS
-    }
-
-    stopGameLoop() {
         if (this.gameLoop) {
             clearInterval(this.gameLoop);
-            this.gameLoop = null;
+        }
+        
+        console.log('🔄 Starting game loop...');
+        
+        this.gamePhase = 'countdown';
+        this.gameTimer = 3; // 3 second countdown
+        
+        this.broadcast({
+            type: 'gameStarting',
+            countdown: this.gameTimer
+        });
+        
+        this.lastUpdate = Date.now();
+        
+        this.gameLoop = setInterval(() => {
+            this.update();
+        }, 16); // ~60 FPS
+    }
+    
+    update() {
+        const now = Date.now();
+        const deltaTime = (now - this.lastUpdate) / 1000; // Convert to seconds
+        this.lastUpdate = now;
+        
+        switch (this.gamePhase) {
+            case 'countdown':
+                this.updateCountdown(deltaTime);
+                break;
+            case 'playing':
+                this.updateGameplay(deltaTime);
+                break;
+            case 'finished':
+                // Game finished, waiting for respawn
+                break;
+        }
+        
+        // Always broadcast state during active phases
+        if (this.gamePhase === 'countdown' || this.gamePhase === 'playing') {
+            this.broadcastGameState();
         }
     }
-
-    updateGame() {
-    const now = Date.now();
-    const deltaTime = (now - this.lastUpdate) / 1000;
-    this.lastUpdate = now;
     
-    // Update countdown
-    if (this.gamePhase === 'countdown') {
+    updateCountdown(deltaTime) {
         this.gameTimer -= deltaTime;
         
-        // Broadcast countdown updates
-        const seconds = Math.ceil(this.gameTimer);
-        if (seconds !== this.lastCountdown && seconds > 0) {
-            this.lastCountdown = seconds;
-            
-            // GỬI CẢ MESSAGE VÀ GAME STATE
-            this.broadcast({
-                type: 'gameMessage',
-                message: `Bắt đầu sau ${seconds}...`
-            });
-            
-            // QUAN TRỌNG: Broadcast gameState để client update countdown
-            this.broadcastGameState();
-        }
-        
         if (this.gameTimer <= 0) {
+            console.log('🏁 Countdown finished, starting game!');
             this.gamePhase = 'playing';
             this.gameTimer = 0;
-            this.broadcast({
-                type: 'gameMessage',
-                message: '🚀 Game bắt đầu! Good luck!'
+            
+            // Make all players invulnerable for 2 seconds at start
+            this.playerStates.forEach(player => {
+                player.invulnerable = true;
+                player.invulnerabilityTime = 2000;
             });
-            // Broadcast game state khi chuyển sang playing
-            this.broadcastGameState();
+            
+            this.broadcast({
+                type: 'gameStarted',
+                message: 'Good luck!'
+            });
         }
     }
     
-    // Rest of function...
-    
-    // CHỈ BROADCAST GAME STATE KHI CẦN THIẾT
-    if (this.gamePhase === 'playing') {
+    updateGameplay(deltaTime) {
+        this.gameTimer += deltaTime;
+        
         // Update players
         this.updatePlayers(deltaTime);
         
@@ -369,263 +387,319 @@ generateItems() {
         this.updateProjectiles(deltaTime);
         
         // Update items
-        this.updateItems();
+        this.updateItems(deltaTime);
+        
+        // Update traps
+        this.updateTraps(deltaTime);
         
         // Check game end conditions
         this.checkGameEnd();
         
-        // Check for respawn
-        this.checkRespawnCondition();
-        
         // Update leaderboard
         this.updateLeaderboard();
-        
-        // Broadcast state (mỗi frame khi playing)
-        this.broadcastGameState();
     }
-}
-
-  updatePlayers(deltaTime) {
-    this.playerStates.forEach(player => {
-        // CHỈ UPDATE PLAYERS CÒN SỐNG
-        if (!player.alive || player.phase === 'gameOver') return;
-        
-        // CHỈ APPLY PHYSICS KHI GAME ĐANG PLAYING
-        if (this.gamePhase === 'playing') {
+    
+    updatePlayers(deltaTime) {
+        this.playerStates.forEach(player => {
+            if (!player.alive) return;
+            
+            // Update invulnerability
+            if (player.invulnerable) {
+                player.invulnerabilityTime -= deltaTime * 1000;
+                if (player.invulnerabilityTime <= 0) {
+                    player.invulnerable = false;
+                    player.invulnerabilityTime = 0;
+                }
+            }
+            
             // Apply gravity
             player.velocityY += this.config.gravity;
             
             // Apply velocity
             player.y += player.velocityY;
             
-            // Apply effects
+            // Update effects
             this.updatePlayerEffects(player, deltaTime);
             
-            // MOVE FORWARD HOẶC BACKWARD TÙY PHASE
-            let speed = 100;
+            // Move player forward/backward based on phase
+            let speed = 100; // Base speed
             if (player.effects.speed && player.effects.speed.timeLeft > 0) {
                 speed *= 1.5;
             }
             
-            // DI CHUYỂN THEO PHASE
             if (player.phase === 'return') {
                 player.x -= speed * deltaTime;
             } else if (player.phase === 'outbound') {
                 player.x += speed * deltaTime;
             }
-            // Không di chuyển nếu phase = 'gameOver'
             
-            // Check phase transition (chỉ khi còn sống)
+            // Check phase transitions
             this.checkPhaseTransition(player);
             
-            // Collision detection (chỉ khi còn sống)
+            // Check collisions
             this.checkCollisions(player);
             this.checkItemCollision(player);
             this.checkTrapCollisions(player);
-        }
-    });
-}
-
+        });
+    }
+    
     updatePlayerEffects(player, deltaTime) {
         Object.keys(player.effects).forEach(effectType => {
             const effect = player.effects[effectType];
             if (effect && effect.timeLeft > 0) {
-                effect.timeLeft -= deltaTime;
+                effect.timeLeft -= deltaTime * 1000;
+                
                 if (effect.timeLeft <= 0) {
                     delete player.effects[effectType];
+                    console.log(`✨ Effect ${effectType} expired for player ${player.playerId}`);
                 }
             }
         });
     }
-
+    
     checkPhaseTransition(player) {
-    // Chuyển từ outbound sang return khi đến cuối
-    if (player.phase === 'outbound' && player.x >= this.config.raceDistance) {
-        player.phase = 'return';
-        player.velocityY = 0; // Reset velocity khi quay lại
-        console.log(`Player ${player.playerId} reached end, turning back`);
-        
-        // Broadcast phase change
-        this.broadcast({
-            type: 'phaseChange',
-            playerId: player.playerId,
-            newPhase: 'return'
-        });
-    }
-    
-    // Chuyển từ return sang finished khi về đích
-    if (player.phase === 'return' && player.x <= 50) {
-        player.phase = 'finished';
-        player.rank = this.getFinishedCount() + 1;
-        console.log(`Player ${player.playerId} finished! Rank: ${player.rank}`);
-        
-        // Broadcast finish
-        this.broadcast({
-            type: 'playerFinished',
-            playerId: player.playerId,
-            rank: player.rank
-        });
-    }
-}
-
-   checkCollisions(player) {
-        // Pipe collisions với hitbox nhỏ hơn
-        if (!player.effects.shield || player.effects.shield.timeLeft <= 0) {
-            this.pipes.forEach(pipe => {
-                // Giảm hitbox từ 15 xuống 12 để dễ bay qua hơn
-                if (player.x + 12 > pipe.x && player.x - 12 < pipe.x + this.config.pipeWidth) {
-                    if (player.y - 12 < pipe.topHeight || player.y + 12 > pipe.bottomY) {
-                        this.damagePlayer(player);
-                    }
-                }
-            });
+        // Check if reached the end (outbound -> return)
+        if (player.phase === 'outbound' && player.x >= this.config.raceDistance) {
+            player.phase = 'return';
+            player.x = this.config.raceDistance;
+            console.log(`🔄 Player ${player.playerId} reached the end, now returning`);
         }
         
-        // Item collisions
-        this.items.forEach(item => {
-            if (!item.collected && this.distance(player, item) < 30) {
-                this.collectItem(player, item);
+        // Check if returned to start (return -> finished)
+        if (player.phase === 'return' && player.x <= 0) {
+            player.phase = 'finished';
+            player.x = 0;
+            player.alive = false; // Stop updating
+            
+            // Assign rank
+            const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished').length;
+            player.rank = finishedPlayers;
+            
+            console.log(`🏆 Player ${player.playerId} finished with rank ${player.rank}`);
+        }
+    }
+    
+    checkCollisions(player) {
+        if (!player.alive || player.invulnerable) return;
+        
+        // Check pipe collisions
+        this.pipes.forEach(pipe => {
+            if (this.isPlayerCollidingWithPipe(player, pipe)) {
+                this.handlePlayerDeath(player, 'pipe');
             }
         });
         
-        // Projectile collisions
-        this.projectiles.forEach(projectile => {
-            if (projectile.sourcePlayerId !== player.playerId && 
-                this.distance(player, projectile) < 20) {
-                this.damagePlayer(player);
-                projectile.active = false;
-            }
-        });
-    }
-
-handlePlayerDeath(player, cause) {
-    if (!player.alive) return; // Tránh double death
-    
-    console.log(`💀 Player ${player.playerId} died: ${cause}`);
-    
-    // Giảm mạng
-    player.lives--;
-    player.deathCount++;
-    
-    if (player.lives > 0) {
-        // CÒN MẠNG - RESPAWN
-        console.log(`🔄 Player ${player.playerId} respawning. Lives left: ${player.lives}`);
-        
-        // Reset về vạch xuất phát
-        player.x = 50;
-        player.y = this.config.height / 2;
-        player.velocityY = 0;
-        player.phase = 'outbound';
-        player.alive = true;
-        player.currentItem = null; // Mất item khi chết
-        
-        // Broadcast respawn
-        this.broadcast({
-            type: 'playerRespawned',
-            playerId: player.playerId,
-            livesLeft: player.lives,
-            cause: cause
-        });
-        
-        // Thông báo
-        this.broadcast({
-            type: 'gameMessage',
-            message: `💀 Player ${player.playerId.slice(-3)} chết! Còn ${player.lives} mạng`
-        });
-        
-    } else {
-        // HẾT MẠNG - GAME OVER
-        console.log(`☠️ Player ${player.playerId} game over!`);
-        
-        player.alive = false;
-        player.phase = 'gameOver';
-        
-        // Broadcast game over
-        this.broadcast({
-            type: 'playerGameOver',
-            playerId: player.playerId,
-            totalDeaths: player.deathCount
-        });
-        
-        // Thông báo
-        this.broadcast({
-            type: 'gameMessage',
-            message: `☠️ Player ${player.playerId.slice(-3)} đã hết mạng!`
-        });
-    }
-}
-
-    distance(obj1, obj2) {
-        const dx = obj1.x - obj2.x;
-        const dy = obj1.y - obj2.y;
-        return Math.sqrt(dx * dx + dy * dy);
-    }
-
-    collectItem(player, item) {
-        item.collected = true;
-        player.items.push(item.type);
-        player.score += 100;
-        
-        // Limit items
-        if (player.items.length > 4) {
-            player.items.shift();
+        // Check boundary collisions
+        if (player.y <= 0 || player.y >= this.config.height) {
+            this.handlePlayerDeath(player, 'boundary');
         }
     }
-
-    damagePlayer(player) {
+    
+    isPlayerCollidingWithPipe(player, pipe) {
+        const playerLeft = player.x - 15;
+        const playerRight = player.x + 15;
+        const playerTop = player.y - 15;
+        const playerBottom = player.y + 15;
+        
+        const pipeLeft = pipe.x;
+        const pipeRight = pipe.x + this.config.pipeWidth;
+        
+        // Check if player is horizontally within pipe
+        if (playerRight > pipeLeft && playerLeft < pipeRight) {
+            // Check if player hits top or bottom pipe
+            if (playerTop < pipe.topHeight || playerBottom > pipe.bottomY) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+    
+    handlePlayerDeath(player, cause) {
         if (player.effects.shield && player.effects.shield.timeLeft > 0) {
-            return; // Shield protects
+            // Shield absorbs the hit
+            delete player.effects.shield;
+            console.log(`🛡️ Shield saved player ${player.playerId} from ${cause}`);
+            
+            this.broadcast({
+                type: 'shieldDeflected',
+                playerId: player.playerId,
+                cause: cause
+            });
+            return;
         }
         
         player.lives--;
-        player.score = Math.max(0, player.score - 200);
+        console.log(`💀 Player ${player.playerId} died from ${cause}. Lives: ${player.lives}`);
         
         if (player.lives <= 0) {
-            this.killPlayer(player);
+            player.alive = false;
+            player.phase = 'gameOver';
+            
+            this.broadcast({
+                type: 'playerDied',
+                playerId: player.playerId,
+                cause: cause,
+                finalScore: player.score
+            });
+        } else {
+            // Respawn with invulnerability
+            player.y = this.config.height / 2;
+            player.velocityY = 0;
+            player.invulnerable = true;
+            player.invulnerabilityTime = 2000;
+            
+            this.broadcast({
+                type: 'playerRespawned',
+                playerId: player.playerId,
+                livesLeft: player.lives
+            });
         }
     }
-
-    killPlayer(player) {
-        player.alive = false;
-        player.velocityY = 0;
+    
+    checkItemCollision(player) {
+        if (!player.alive) return;
+        
+        this.items.forEach(item => {
+            if (item.collected) return;
+            
+            const distance = Math.sqrt(
+                Math.pow(player.x - item.x, 2) + 
+                Math.pow(player.y - item.y, 2)
+            );
+            
+            if (distance < 25) { // Collision threshold
+                item.collected = true;
+                
+                // Replace current item
+                player.currentItem = {
+                    type: item.type,
+                    collectedAt: Date.now()
+                };
+                
+                console.log(`🎁 Player ${player.playerId} collected ${item.type}`);
+                
+                this.broadcast({
+                    type: 'itemCollected',
+                    playerId: player.playerId,
+                    itemType: item.type,
+                    itemId: item.id
+                });
+            }
+        });
     }
-
+    
+    checkTrapCollisions(player) {
+        if (!player.alive || player.invulnerable) return;
+        
+        this.traps.forEach(trap => {
+            if (trap.triggered || trap.ownerId === player.playerId) return;
+            
+            const distance = Math.sqrt(
+                Math.pow(player.x - trap.x, 2) + 
+                Math.pow(player.y - trap.y, 2)
+            );
+            
+            if (distance < 30) { // Trap trigger range
+                trap.triggered = true;
+                
+                // Apply trap effect
+                player.effects.stunned = {
+                    timeLeft: 3000, // 3 seconds
+                    startTime: Date.now()
+                };
+                
+                // Knock player up
+                player.velocityY = -10;
+                
+                console.log(`🪤 Player ${player.playerId} triggered trap from ${trap.ownerId}`);
+                
+                this.broadcast({
+                    type: 'trapTriggered',
+                    trapId: trap.id,
+                    victimId: player.playerId,
+                    ownerId: trap.ownerId
+                });
+            }
+        });
+    }
+    
     updateProjectiles(deltaTime) {
         this.projectiles = this.projectiles.filter(projectile => {
-            if (!projectile.active) return false;
-            
             projectile.x += projectile.velocityX * deltaTime;
             projectile.y += projectile.velocityY * deltaTime;
             
             // Remove if out of bounds
-            if (projectile.x < 0 || projectile.x > this.config.raceDistance + 200 ||
-                projectile.y < 0 || projectile.y > this.config.height) {
-                return false;
-            }
-            
-            return true;
+            return projectile.x >= 0 && projectile.x <= this.config.raceDistance + 200 &&
+                   projectile.y >= 0 && projectile.y <= this.config.height;
         });
     }
-
-    updateItems() {
-        // Clean up collected items
-        this.items = this.items.filter(item => !item.collected);
+    
+    updateItems(deltaTime) {
+        // Remove collected items and old items
+        this.items = this.items.filter(item => {
+            if (item.collected) return false;
+            
+            const age = Date.now() - (item.createdAt || 0);
+            return age < 30000; // Remove after 30 seconds
+        });
     }
-
-    updateLeaderboard() {
+    
+    updateTraps(deltaTime) {
+        const now = Date.now();
+        
+        // Remove expired traps
+        this.traps = this.traps.filter(trap => {
+            const age = now - trap.createdAt;
+            return age < trap.duration;
+        });
+    }
+    
+    checkGameEnd() {
+        const alivePlayers = this.playerStates.filter(p => p.alive);
+        const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
+        
+        // Game ends when all players are either dead or finished
+        if (alivePlayers.length === 0 || finishedPlayers.length === this.players.length) {
+            this.endGame();
+        }
+    }
+    
+    endGame() {
+        console.log('🏁 Game ended!');
+        
+        this.gamePhase = 'finished';
+        
+        if (this.gameLoop) {
+            clearInterval(this.gameLoop);
+            this.gameLoop = null;
+        }
+        
+        // Calculate final rankings
+        this.calculateFinalRankings();
+        
+        this.broadcast({
+            type: 'gameEnded',
+            finalRankings: this.leaderboard,
+            gameTime: Math.floor(this.gameTimer)
+        });
+    }
+    
+    calculateFinalRankings() {
+        // Sort players by: 1) Finished first, 2) Progress, 3) Score
         this.leaderboard = this.playerStates
-            .filter(p => p.alive || p.phase === 'finished')
+            .slice()
             .sort((a, b) => {
-                // Finished players first
+                // Finished players rank higher
                 if (a.phase === 'finished' && b.phase !== 'finished') return -1;
                 if (b.phase === 'finished' && a.phase !== 'finished') return 1;
                 
-                // Then by rank (if finished)
+                // If both finished, sort by rank
                 if (a.phase === 'finished' && b.phase === 'finished') {
                     return a.rank - b.rank;
                 }
                 
-                // Then by progress
+                // For non-finished players, sort by progress
                 const aProgress = a.phase === 'return' ? 
                     this.config.raceDistance + (this.config.raceDistance - a.x) : a.x;
                 const bProgress = b.phase === 'return' ? 
@@ -633,477 +707,47 @@ handlePlayerDeath(player, cause) {
                 
                 return bProgress - aProgress;
             })
-            .map(p => ({
+            .map((p, index) => ({
                 playerId: p.playerId,
                 score: p.score,
-                rank: p.rank
+                rank: index + 1,
+                phase: p.phase,
+                finalPosition: p.x
             }));
     }
-
-    checkRespawnCondition() {
-        // Check if we need to show respawn option
-        if (this.gamePhase === 'playing' || this.gamePhase === 'finished') {
-            const alivePlayers = this.playerStates.filter(p => p.alive);
-            const deadPlayers = this.playerStates.filter(p => !p.alive);
-            
-            // If there are dead players, allow them to trigger respawn
-            if (deadPlayers.length > 0) {
-                // Check if all players are ready for restart
-                const allPlayersReady = this.players.every(player => 
-                    this.playersReady[player.playerId] === true
-                );
+    
+    updateLeaderboard() {
+        // Real-time leaderboard during game
+        this.leaderboard = this.playerStates
+            .filter(p => p.alive)
+            .slice()
+            .sort((a, b) => {
+                const aProgress = a.phase === 'return' ? 
+                    this.config.raceDistance + (this.config.raceDistance - a.x) : a.x;
+                const bProgress = b.phase === 'return' ? 
+                    this.config.raceDistance + (this.config.raceDistance - b.x) : b.x;
                 
-                // Auto-start if no players in room or all ready
-                if (this.players.length === 0 || allPlayersReady) {
-                    this.respawnGame();
-                }
-            }
-        }
+                return bProgress - aProgress;
+            })
+            .map((p, index) => ({
+                playerId: p.playerId,
+                score: p.score,
+                rank: index + 1
+            }));
     }
-
-// THÊM VÀO CLASS FlappyRaceGame trong file GameServer/src/games/FlappyRaceGame.js
-
-checkItemCollision(player) {
-    this.items.forEach(item => {
-        if (item.collected) return;
-        
-        // COLLISION DETECTION - điều chỉnh cho size lớn hơn
-        const playerLeft = player.x - 15;  // Tăng từ 10 lên 15
-        const playerRight = player.x + 35; // Tăng từ 30 lên 35
-        const playerTop = player.y - 15;   // Tăng từ 10 lên 15
-        const playerBottom = player.y + 35; // Tăng từ 30 lên 35
-        
-        const itemSize = item.size || 37;  // Sử dụng size mới
-        const itemLeft = item.x - (itemSize / 2);
-        const itemRight = item.x + (itemSize / 2);
-        const itemTop = item.y - (itemSize / 2);
-        const itemBottom = item.y + (itemSize / 2);
-        
-        if (playerRight > itemLeft && 
-            playerLeft < itemRight && 
-            playerBottom > itemTop && 
-            playerTop < itemBottom) {
-            
-            // Thu thập item
-            item.collected = true;
-            
-            // CHỈ GIỮ 1 ITEM - Thay thế item cũ
-            player.currentItem = {
-                type: item.type,
-                collectedAt: Date.now()
-            };
-            
-            console.log(`Player ${player.playerId} collected ${item.type} (replaced previous item)`);
-            
-            // Broadcast item collected
-            this.broadcast({
-                type: 'itemCollected',
-                playerId: player.playerId,
-                itemType: item.type,
-                itemId: item.id
-            });
-        }
-    });
-}
-
-
-
-// THÊM VÀO CLASS FlappyRaceGame trong file GameServer/src/games/FlappyRaceGame.js
-
-handleBombAction(player) {
-    const bombRange = 150; // Tầm 3cm trên màn hình
-    const affectedPlayers = [];
     
-    this.playerStates.forEach(otherPlayer => {
-        if (otherPlayer.playerId === player.playerId) return;
-        if (!otherPlayer.alive) return;
-        
-        // Tính khoảng cách
-        const distance = Math.sqrt(
-            Math.pow(otherPlayer.x - player.x, 2) + 
-            Math.pow(otherPlayer.y - player.y, 2)
-        );
-        
-        if (distance <= bombRange) {
-            // Áp dụng hiệu ứng bomb
-            otherPlayer.velocityY = -15; // Đẩy lên mạnh
-            otherPlayer.effects.stunned = {
-                timeLeft: 2000, // Choáng 2 giây
-                startTime: Date.now()
-            };
-            
-            affectedPlayers.push(otherPlayer.playerId);
-        }
-    });
-    
-    // Broadcast bomb effect
-    this.broadcast({
-        type: 'bombExploded',
-        bomberId: player.playerId,
-        bomberX: player.x,
-        bomberY: player.y,
-        affectedPlayers: affectedPlayers,
-        range: bombRange
-    });
-    
-    console.log(`Bomb from ${player.playerId} affected ${affectedPlayers.length} players`);
-}
-
-// THÊM VÀO CLASS FlappyRaceGame
-
-handleShieldAction(player) {
-    player.effects.shield = {
-        timeLeft: 3000, // 3 giây
-        startTime: Date.now()
-    };
-    
-    this.broadcast({
-        type: 'shieldActivated',
-        playerId: player.playerId,
-        duration: 3000
-    });
-    
-    console.log(`Player ${player.playerId} activated shield for 3 seconds`);
-}
-
-// THÊM VÀO CLASS FlappyRaceGame
-
-handleTrapAction(player, data) {
-    // Đặt bẫy ở vị trí chỉ định hoặc vị trí hiện tại
-    const trapX = data.targetX || player.x + 100; // Phía trước player
-    const trapY = data.targetY || player.y;
-    
-    const trap = {
-        id: `trap_${Date.now()}_${player.playerId}`,
-        x: trapX,
-        y: trapY,
-        ownerId: player.playerId,
-        createdAt: Date.now(),
-        duration: 10000, // Tồn tại 10 giây
-        triggered: false
-    };
-    
-    if (!this.traps) this.traps = []; // Khởi tạo nếu chưa có
-    this.traps.push(trap);
-    
-    this.broadcast({
-        type: 'trapPlaced',
-        trap: trap,
-        placerId: player.playerId
-    });
-    
-    console.log(`Player ${player.playerId} placed trap at ${trapX}, ${trapY}`);
-}
-
-checkTrapCollisions(player) {
-    if (!this.traps) return;
-    
-    this.traps.forEach(trap => {
-        if (trap.triggered || trap.ownerId === player.playerId) return;
-        
-        const distance = Math.sqrt(
-            Math.pow(player.x - trap.x, 2) + 
-            Math.pow(player.y - trap.y, 2)
-        );
-        
-        if (distance <= 30) { // Kích hoạt bẫy
-            trap.triggered = true;
-            
-            // Hiệu ứng bẫy
-            player.effects.trapped = {
-                timeLeft: 2000, // Bị mắc kẹt 2 giây
-                startTime: Date.now()
-            };
-            player.velocityY = 0; // Dừng lại
-            
-            this.broadcast({
-                type: 'trapTriggered',
-                trapId: trap.id,
-                victimId: player.playerId,
-                placerId: trap.ownerId
-            });
-        }
-    });
-}
-
-
-
-
-
-
-
-
+    // === RESPAWN SYSTEM ===
     respawnGame() {
-        console.log('Respawning game...');
+        console.log('🔄 Respawning game...');
         
         // Reset game state
-        this.gamePhase = 'countdown';
-        this.gameTimer = 3; // 10 second countdown
-        this.lastCountdown = 3; // Reset countdown tracker
-        this.status = 'playing';
+        this.gamePhase = 'waiting';
+        this.gameTimer = 0;
+        this.playersReady = {};
         
         // Reset all players
         this.playerStates.forEach(player => {
-            player.x = 50;
-            player.y = this.config.height / 2;
-            player.velocityY = 0;
-            player.lives = 3;
-            player.phase = 'outbound';
-            player.alive = true;
-            player.effects = {};
-            player.items = [];
-            player.rank = 0;
-            // Keep score from previous round
-        });
-        
-        // Clear ready status for next round
-        this.playersReady = {};
-        
-        // Regenerate map items
-        if (this.gameSettings.itemsEnabled) {
-            this.generateItems();
-        }
-        
-        // Restart game loop if not running
-        if (!this.gameLoop) {
-            this.startGameLoop();
-        }
-        
-        this.broadcast({
-            type: 'gameMessage',
-            message: `🔄 Ván mới! Chuẩn bị trong ${this.gameTimer} giây!`
-        });
-        
-        // Reset ready buttons on client and go back to game
-        this.broadcast({
-            type: 'respawnStarted'
-        });
-    }
-
-    checkGameEnd() {
-        const alivePlayers = this.playerStates.filter(p => p.alive);
-        const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
-        
-        // End conditions based on game mode
-        switch (this.gameSettings.mode) {
-            case 'classic':
-                if (finishedPlayers.length > 0 || alivePlayers.length === 0) {
-                    this.endRound(); // Change to endRound instead of endGame
-                }
-                break;
-                
-            case 'battle':
-                if (alivePlayers.length <= 1) {
-                    this.endRound();
-                }
-                break;
-                
-            case 'time':
-                if (this.gameTimer >= 300) { // 5 minutes
-                    this.endRound();
-                }
-                break;
-                
-            case 'endless':
-                // Endless mode doesn't end automatically
-                if (alivePlayers.length === 0) {
-                    this.endRound();
-                }
-                break;
-        }
-    }
-
-    endRound() {
-        this.gamePhase = 'finished';
-        // Don't change status to 'finished' - keep it as 'playing' to allow respawn
-        
-        // Determine round winner
-        let roundWinner = null;
-        if (this.leaderboard.length > 0) {
-            roundWinner = this.leaderboard[0].playerId;
-        }
-        
-        this.broadcast({
-            type: 'gameMessage',
-            message: roundWinner ? 
-                `🏆 Người chơi ${roundWinner.slice(-3)} thắng round này!` : 
-                '🏁 Round kết thúc!'
-        });
-        
-        // Show respawn ready button
-        this.broadcast({
-            type: 'showRespawn'
-        });
-        
-        this.broadcastGameState();
-    }
-
-    endGame() {
-        this.gamePhase = 'finished';
-        this.status = 'finished';
-        this.stopGameLoop();
-        
-        // Determine final winner
-        if (this.leaderboard.length > 0) {
-            this.winner = this.leaderboard[0].playerId;
-        }
-        
-        this.broadcastGameState();
-    }
-
-handleGameAction(playerId, action, data) {
-    const player = this.playerStates.find(p => p.playerId === playerId);
-    if (!player || !player.alive) return { error: 'Player not found or dead' };
-
-    switch (action) {
-        case 'flap':
-            return this.handleFlap(player);
-            
-        case 'useItem':
-    // CHỈ KIỂM TRA currentItem THAY VÌ items array
-    if (player.currentItem) {
-        const itemType = player.currentItem.type;
-        
-        // Sử dụng item
-        switch (itemType) {
-            case 'speed':
-                player.effects.speed = { 
-                    timeLeft: 5000,
-                    startTime: Date.now()
-                };
-                this.broadcast({
-                    type: 'speedActivated',
-                    playerId: player.playerId,
-                    duration: 5000
-                });
-                break;
-                
-            case 'shield':
-                this.handleShieldAction(player);
-                break;
-                
-            case 'bomb':
-                this.handleBombAction(player);
-                break;
-                
-            case 'trap':
-                this.handleTrapAction(player, data);
-                break;
-        }
-        
-        // XÓA ITEM SAU KHI DÙNG
-        const usedItemType = player.currentItem.type;
-        player.currentItem = null;
-        
-        this.broadcast({
-            type: 'itemUsed',
-            playerId: player.playerId,
-            itemType: usedItemType
-        });
-        
-        return { success: true, itemUsed: usedItemType };
-    } else {
-        return { error: 'No item to use' };
-    }
-            return { error: 'No items in inventory' };
-            
-        case 'pause':
-            return this.handlePause();
-            
-        default:
-            return { error: 'Unknown action' };
-    }
-}
-
-    handleFlap(player) {
-        if (this.gamePhase !== 'playing') return { error: 'Game not in playing state' };
-        
-        player.velocityY = this.config.flapStrength;
-        player.score += 10; // Small score for flapping
-        
-        return { success: true };
-    }
-
-    handleUseItem(player, itemType) {
-        const itemIndex = player.items.indexOf(itemType);
-        if (itemIndex === -1) return { error: 'Item not found' };
-        
-        // Remove item from inventory
-        player.items.splice(itemIndex, 1);
-        
-        switch (itemType) {
-            case 'speed':
-                player.effects.speed = { timeLeft: 5 };
-                break;
-                
-            case 'shield':
-                player.effects.shield = { timeLeft: 8 };
-                break;
-                
-            case 'bomb':
-                this.createProjectile(player, 'bomb');
-                break;
-                
-            case 'trap':
-                this.createTrap(player);
-                break;
-        }
-        
-        return { success: true };
-    }
-
-    createProjectile(player, type) {
-        this.projectiles.push({
-            id: `proj_${Date.now()}_${Math.random()}`,
-            type: type,
-            x: player.x + 20,
-            y: player.y,
-            velocityX: 200,
-            velocityY: 0,
-            sourcePlayerId: player.playerId,
-            active: true
-        });
-    }
-
-    createTrap(player) {
-        this.items.push({
-            id: `trap_${Date.now()}_${Math.random()}`,
-            type: 'trap_active',
-            x: player.x + 50,
-            y: player.y,
-            collected: false,
-            sourcePlayerId: player.playerId
-        });
-    }
-
-    handlePause() {
-        // Toggle pause state
-        if (this.gamePhase === 'playing') {
-            this.gamePhase = 'paused';
-            this.stopGameLoop();
-        } else if (this.gamePhase === 'paused') {
-            this.gamePhase = 'playing';
-            this.startGameLoop();
-        }
-        
-        return { success: true };
-    }
-
-    resetGame() {
-        super.resetGame();
-        
-        // Reset game state
-        this.pipes = [];
-        this.items = [];
-        this.projectiles = [];
-        this.gamePhase = 'waiting';
-        this.gameTimer = 0;
-        this.leaderboard = [];
-        this.playersReady = {}; // Reset ready status
-        
-        // Reset players
-        this.playerStates.forEach(player => {
-            player.x = 50;
+            player.x = 100;
             player.y = this.config.height / 2;
             player.velocityY = 0;
             player.score = 0;
@@ -1111,70 +755,149 @@ handleGameAction(playerId, action, data) {
             player.phase = 'outbound';
             player.alive = true;
             player.effects = {};
-            player.items = [];
+            player.currentItem = null;
             player.rank = 0;
+            player.invulnerable = false;
+            player.invulnerabilityTime = 0;
         });
         
-        this.stopGameLoop();
-        this.status = 'setup'; // Back to setup mode
-        this.broadcastGameState();
-    }
-
-    // Override handlePlayerReady to support respawn
- handlePlayerReady(playerId, settings) {
-    console.log(`Player ${playerId} ready for game ${this.gameId}`);
-    
-    // If game is in finished state (round ended), this is for respawn
-    if (this.gamePhase === 'finished') {
-        this.playersReady[playerId] = true;
+        // Reset game objects
+        this.projectiles = [];
+        this.traps = [];
         
-        console.log(`Players ready: ${Object.keys(this.playersReady).length}/${this.players.length}`);
+        // Reset items (mark as not collected)
+        this.items.forEach(item => {
+            item.collected = false;
+        });
         
-        // Broadcast ready update
+        // Generate new map if needed
+        this.generateMap();
+        
         this.broadcast({
-            type: 'readyUpdate',
-            playersReady: this.playersReady
+            type: 'gameRespawned',
+            message: 'New round starting!'
         });
         
-        // AUTO-START nếu chỉ có 1 người HOẶC tất cả đã ready
-        const readyCount = Object.keys(this.playersReady).length;
-        const totalPlayers = this.players.length;
+        // Auto-start if players are ready
+        setTimeout(() => {
+            if (this.players.length > 0) {
+                this.startGameLoop();
+            }
+        }, 2000);
+    }
+    
+    // === MAP GENERATION ===
+    generateMap() {
+        console.log('🗺️ Generating map...');
         
-        if (totalPlayers === 1 || readyCount === totalPlayers) {
-            console.log(`🚀 Starting new round - ${readyCount}/${totalPlayers} players ready`);
-            setTimeout(() => {
-                this.respawnGame();
-            }, 1000); // Delay 1s để người chơi thấy
+        this.pipes = [];
+        this.items = [];
+        
+        const pipeSpacing = 300;
+        const numPipes = Math.floor(this.config.raceDistance / pipeSpacing);
+        
+        for (let i = 0; i < numPipes; i++) {
+            const x = (i + 1) * pipeSpacing;
+            const gapY = 150 + Math.random() * (this.config.height - 300);
+            
+            const pipe = {
+                x: x,
+                topHeight: gapY - this.config.pipeGap / 2,
+                bottomY: gapY + this.config.pipeGap / 2,
+                bottomHeight: this.config.height - (gapY + this.config.pipeGap / 2)
+            };
+            
+            this.pipes.push(pipe);
+            
+            // Add items near pipes
+            if (Math.random() < 0.3) { // 30% chance
+                const itemTypes = ['speed', 'shield', 'bomb', 'trap'];
+                const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+                
+                const item = {
+                    id: `item_${i}_${Date.now()}`,
+                    type: itemType,
+                    x: x + 80,
+                    y: gapY + (Math.random() - 0.5) * 50,
+                    collected: false,
+                    createdAt: Date.now()
+                };
+                
+                this.items.push(item);
+            }
         }
         
-        return { success: true };
+        console.log(`✅ Map generated: ${this.pipes.length} pipes, ${this.items.length} items`);
     }
     
-    // Otherwise, use parent implementation for initial ready
-    return super.handlePlayerReady(playerId, settings);
-}
-
-broadcastGameState() {
-    const payload = {
-        ...this.getGameState(),
-        config: this.config,
-        pipes: this.pipes,
-        items: this.items,
-        projectiles: this.projectiles,
-        playerStates: this.playerStates,
-        gamePhase: this.gamePhase,
-        gameTimer: Math.floor(this.gameTimer),
-        leaderboard: this.leaderboard,
-        settings: this.gameSettings
-    };
+    // === GAME STATE BROADCAST ===
+    broadcastGameState() {
+        const payload = {
+            ...this.getGameState(),
+            config: this.config,
+            pipes: this.pipes,
+            items: this.items,
+            projectiles: this.projectiles,
+            playerStates: this.playerStates,
+            traps: this.traps,
+            gamePhase: this.gamePhase,
+            gameTimer: Math.floor(this.gameTimer * 100) / 100, // Round to 2 decimals
+            leaderboard: this.leaderboard,
+            settings: this.gameSettings
+        };
+        
+        this.broadcast(payload);
+    }
     
-    // Debug log để kiểm tra
-    console.log(`📡 Broadcasting game state - Pipes: ${this.pipes.length}, Items: ${this.items.length}`);
-    console.log('📦 First pipe:', this.pipes[0]);
-    console.log('🎁 First item:', this.items[0]);
+    // === RESET ===
+    resetGame() {
+        console.log('🔄 Resetting game...');
+        
+        super.resetGame();
+        
+        // Stop game loop
+        if (this.gameLoop) {
+            clearInterval(this.gameLoop);
+            this.gameLoop = null;
+        }
+        
+        // Reset game state
+        this.gamePhase = 'waiting';
+        this.gameTimer = 0;
+        this.playerStates = [];
+        this.projectiles = [];
+        this.traps = [];
+        this.leaderboard = [];
+        
+        // Regenerate map
+        this.generateMap();
+        
+        this.broadcastGameState();
+    }
     
-    this.broadcast(payload);
-}
+    // === SETTINGS BROADCAST ===
+    broadcastSettings(settings) {
+        this.gameSettings = { ...this.gameSettings, ...settings };
+        
+        this.broadcast({
+            type: 'settingsUpdate',
+            settings: this.gameSettings
+        });
+        
+        console.log('⚙️ Settings updated and broadcast:', this.gameSettings);
+    }
+    
+    // === CLEANUP ===
+    onGameDestroyed() {
+        console.log('🗑️ Cleaning up FlappyRaceGame...');
+        
+        if (this.gameLoop) {
+            clearInterval(this.gameLoop);
+            this.gameLoop = null;
+        }
+        
+        super.onGameDestroyed();
+    }
 }
 
 module.exports = FlappyRaceGame;

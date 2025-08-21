@@ -148,7 +148,7 @@ border-color: #007bff;
 /* Canvas Container - Normal Mode */
 .flappy-race-page .flappy-canvas-container {
     width: 100%;
-    max-width: 1200px;
+    max-width: 100%;
     margin: 20px auto;
     background: linear-gradient(135deg, #87CEEB 0%, #98D8E8 50%, #B6E5F0 100%);
     padding: 20px;
