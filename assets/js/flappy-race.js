@@ -53,6 +53,11 @@ class FlappyRaceClient {
         this.setupEventListeners();
         this.setupGameModeSelection();
         this.startRenderLoop();
+          // Setup main menu button overrides
+        setTimeout(() => {
+            this.setupMainMenuButtons();
+        }, 1000);
+         this.setupFullscreenListeners();
     }
     
     // === CANVAS SETUP ===
@@ -231,50 +236,71 @@ class FlappyRaceClient {
     }
     
     // === FULLSCREEN METHODS (KEY FIX) ===
+   
     showGamePlaying() {
-        console.log('🎮 [FIXED] Showing game playing mode - GamePhase:', this.gameState?.gamePhase);
+        console.log('🎮 Showing game playing mode - GamePhase:', this.gameState?.gamePhase);
         
         const gameSetup = document.getElementById('gameSetup');
         const gameSection = document.getElementById('gameSection');
+        const mainMenu = document.getElementById('mainMenu');
         
+        if (mainMenu) mainMenu.classList.add('hidden');
         if (gameSetup) gameSetup.classList.add('hidden');
         if (gameSection) gameSection.classList.remove('hidden');
         
-        // Force enter fullscreen with multiple attempts
-        setTimeout(() => {
-            console.log('🖥️ Entering fullscreen mode...');
-            this.enterFullscreenMode();
-            this.resizeCanvas();
-        }, 100);
+        // Add CSS first
+        this.addFullscreenCSS();
         
-        // Backup attempt
+        // Enter fullscreen
         setTimeout(() => {
-            if (!document.body.classList.contains('game-playing')) {
-                console.log('🔧 Backup fullscreen attempt...');
-                this.enterFullscreenMode();
-            }
-        }, 500);
+            this.enterFullscreenMode();
+        }, 300);
     }
     
-    enterFullscreenMode() {
-        console.log('🖥️ [FIXED] Entering fullscreen mode');
+    async enterFullscreenMode() {
+        console.log('🖥️ Entering REAL fullscreen mode');
         
-        // Add fullscreen class to body
+        try {
+            // Request REAL browser fullscreen
+            const element = document.documentElement; // Hoặc this.canvas
+            
+            if (element.requestFullscreen) {
+                await element.requestFullscreen();
+            } else if (element.webkitRequestFullscreen) {
+                await element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) {
+                await element.msRequestFullscreen();
+            } else if (element.mozRequestFullScreen) {
+                await element.mozRequestFullScreen();
+            }
+            
+            console.log('✅ Browser fullscreen activated');
+            
+        } catch (error) {
+            console.warn('❌ Could not enter browser fullscreen:', error);
+            // Fallback to CSS fullscreen
+            this.enterCSSFullscreen();
+            return;
+        }
+        
+        // Setup game for fullscreen after successful browser fullscreen
+        setTimeout(() => {
+            this.setupGameFullscreen();
+        }, 100);
+    }
+
+    setupGameFullscreen() {
+        console.log('🎮 Setting up game for fullscreen');
+        
+        // Add fullscreen class
         document.body.classList.add('game-playing');
         
-        // Add fullscreen class to page
         const flappyPage = document.querySelector('.flappy-race-page');
         if (flappyPage) {
             flappyPage.classList.add('game-playing');
         }
         
-        // Hide header/navbar
-        const header = document.querySelector('nav, .navbar');
-        if (header) {
-            header.style.display = 'none';
-        }
-        
-        // Hide other UI elements
+        // Hide UI elements
         const elementsToHide = [
             '#mainMenu', '#gameSetup', '.game-header', 
             '.game-hud', '.game-controls-bottom'
@@ -287,47 +313,226 @@ class FlappyRaceClient {
             }
         });
         
-        // Add exit fullscreen button
+        // Setup canvas for fullscreen
+        this.setupCanvasFullscreen();
+        
+        // Add exit button
         this.addExitFullscreenButton();
         
-        // Prevent scrolling
-        document.body.style.overflow = 'hidden';
-        document.documentElement.style.overflow = 'hidden';
-        
-        // Force canvas visibility and fullscreen styles
-        if (this.canvas) {
-            this.canvas.style.display = 'block';
-            this.canvas.style.visibility = 'visible';
-            this.canvas.style.position = 'fixed';
-            this.canvas.style.top = '0';
-            this.canvas.style.left = '0';
-            this.canvas.style.zIndex = '9999';
-        }
-        
-        // Force game section to fullscreen
-        const gameSection = document.getElementById('gameSection');
-        if (gameSection) {
-            gameSection.style.position = 'fixed';
-            gameSection.style.top = '0';
-            gameSection.style.left = '0';
-            gameSection.style.width = '100vw';
-            gameSection.style.height = '100vh';
-            gameSection.style.zIndex = '9998';
-            gameSection.style.display = 'block';
-        }
-        
-        // Resize canvas for fullscreen
-        setTimeout(() => {
-            this.resizeCanvasFullscreen();
-        }, 100);
-        
-        console.log('✅ Fullscreen mode activated');
+        console.log('✅ Game setup for fullscreen complete');
     }
+setupCanvasFullscreen() {
+        if (!this.canvas) return;
+        
+        console.log('🎨 Setting up canvas for fullscreen');
+        
+        // Get actual screen dimensions
+        const screenWidth = screen.width;
+        const screenHeight = screen.height;
+        
+        console.log(`Full screen dimensions: ${screenWidth}x${screenHeight}`);
+        
+        // Set canvas to full screen size
+        this.canvas.width = screenWidth;
+        this.canvas.height = screenHeight;
+        
+        // Update config
+        this.config.width = screenWidth;
+        this.config.height = screenHeight;
+        this.scale = 1;
+        
+        // Style canvas to fill screen
+        this.canvas.style.cssText = `
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            z-index: 9999 !important;
+            background: #87CEEB !important;
+            cursor: crosshair !important;
+        `;
+        
+        console.log(`✅ Canvas set to ${this.canvas.width}x${this.canvas.height}`);
+    }
+ enterCSSFullscreen() {
+        console.log('🖥️ Using CSS fullscreen (fallback)');
+        
+        // Add fullscreen class
+        document.body.classList.add('game-playing');
+        
+        const flappyPage = document.querySelector('.flappy-race-page');
+        if (flappyPage) {
+            flappyPage.classList.add('game-playing');
+        }
+        
+        // Hide browser UI with CSS
+        document.body.style.cssText = `
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: hidden !important;
+            width: 100vw !important;
+            height: 100vh !important;
+        `;
+        
+        // Hide elements
+        const elementsToHide = [
+            '#mainMenu', '#gameSetup', '.game-header', 
+            '.game-hud', '.game-controls-bottom'
+        ];
+        
+        elementsToHide.forEach(selector => {
+            const element = document.querySelector(selector);
+            if (element) {
+                element.style.display = 'none';
+            }
+        });
+        
+        // Setup canvas
+        this.setupCanvasFullscreen();
+        this.addExitFullscreenButton();
+    }
+
+
+
+
+
+
+
+
+
+    addFullscreenCSS() {
+        const cssId = 'fullscreen-canvas-fix';
+        
+        // Remove existing CSS if any
+        const existingCSS = document.getElementById(cssId);
+        if (existingCSS) {
+            existingCSS.remove();
+        }
+        
+        // Add CSS to force fullscreen
+        const style = document.createElement('style');
+        style.id = cssId;
+        style.textContent = `
+            /* Force fullscreen for game */
+            body.game-playing {
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: hidden !important;
+                width: 100vw !important;
+                height: 100vh !important;
+            }
+            
+            .flappy-race-page.game-playing {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            .flappy-race-page.game-playing #gameSection {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                z-index: 9998 !important;
+            }
+            
+            .flappy-race-page.game-playing #flappyCanvas,
+            .flappy-race-page.game-playing .flappy-canvas {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100vw !important;
+                height: 100vh !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                z-index: 9999 !important;
+                display: block !important;
+            }
+        `;
+        
+        document.head.appendChild(style);
+        console.log('✅ Fullscreen CSS added');
+    }
+    resizeCanvasForFullscreen() {
+        if (!this.canvas) return;
+        
+        console.log('📐 Resizing canvas for FULL screen...');
+        
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        
+        console.log(`Screen dimensions: ${screenWidth}x${screenHeight}`);
+        
+        // Set canvas size to EXACTLY screen size
+        this.canvas.width = screenWidth;
+        this.canvas.height = screenHeight;
+        
+        // Update config to match screen
+        this.config.width = screenWidth;
+        this.config.height = screenHeight;
+        
+        // Reset scale to 1 (no scaling in fullscreen)
+        this.scale = 1;
+        
+        console.log(`✅ Canvas resized to: ${this.canvas.width}x${this.canvas.height}`);
+        console.log(`Config updated to: ${this.config.width}x${this.config.height}`);
+    }
+   
     
-    exitFullscreenMode() {
+    async exitFullscreenMode() {
         console.log('🚪 Exiting fullscreen mode');
         
-        // Remove fullscreen class
+        // Exit browser fullscreen first
+        try {
+            if (document.fullscreenElement || 
+                document.webkitFullscreenElement || 
+                document.msFullscreenElement || 
+                document.mozFullScreenElement) {
+                
+                if (document.exitFullscreen) {
+                    await document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    await document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    await document.msExitFullscreen();
+                } else if (document.mozCancelFullScreen) {
+                    await document.mozCancelFullScreen();
+                }
+                
+                console.log('✅ Browser fullscreen exited');
+            }
+        } catch (error) {
+            console.warn('❌ Error exiting browser fullscreen:', error);
+        }
+        
+        // Clean up game fullscreen setup
+        this.cleanupGameFullscreen();
+        
+        // Show full page with lobby
+        setTimeout(() => {
+            this.showFullPageWithLobby();
+            this.resetReadyStatusForNewRound();
+            this.resizeCanvas();
+            this.showSuccess('🏠 Đã về trang chủ đầy đủ. Game room vẫn hoạt động!');
+        }, 100);
+    }
+
+cleanupGameFullscreen() {
+        console.log('🧹 Cleaning up fullscreen setup');
+        
+        // Remove fullscreen classes
         document.body.classList.remove('game-playing');
         
         const flappyPage = document.querySelector('.flappy-race-page');
@@ -335,23 +540,27 @@ class FlappyRaceClient {
             flappyPage.classList.remove('game-playing');
         }
         
-        // Show navbar/header again
-        const navbar = document.querySelector('.navbar, nav');
-        if (navbar) {
-            navbar.style.display = '';
-        }
+        // Reset body styles
+        document.body.style.cssText = '';
         
         // Show UI elements
         const elementsToShow = [
-            '.game-hud', '.game-controls-bottom'
+            '#mainMenu', '#gameSetup', '#gameSection',
+            '.game-header', '.game-hud', '.game-controls-bottom'
         ];
         
         elementsToShow.forEach(selector => {
             const element = document.querySelector(selector);
             if (element) {
                 element.style.display = '';
+                element.classList.remove('hidden');
             }
         });
+        
+        // Reset canvas styles
+        if (this.canvas) {
+            this.canvas.style.cssText = '';
+        }
         
         // Remove exit button
         const exitBtn = document.querySelector('.exit-fullscreen-btn');
@@ -359,34 +568,317 @@ class FlappyRaceClient {
             exitBtn.remove();
         }
         
-        // Restore scrolling
-        document.body.style.overflow = '';
-        document.documentElement.style.overflow = '';
-        
-        // Reset canvas styles
-        if (this.canvas) {
-            this.canvas.style.position = '';
-            this.canvas.style.top = '';
-            this.canvas.style.left = '';
-            this.canvas.style.zIndex = '';
-        }
-        
-        // Reset game section styles
-        const gameSection = document.getElementById('gameSection');
-        if (gameSection) {
-            gameSection.style.position = '';
-            gameSection.style.top = '';
-            gameSection.style.left = '';
-            gameSection.style.width = '';
-            gameSection.style.height = '';
-            gameSection.style.zIndex = '';
-        }
-        
-        // Resize canvas back to normal
-        this.resizeCanvas();
+        console.log('✅ Fullscreen cleanup complete');
     }
     
-    addExitFullscreenButton() {
+    setupFullscreenListeners() {
+        // Listen for fullscreen changes
+        const fullscreenEvents = [
+            'fullscreenchange',
+            'webkitfullscreenchange', 
+            'mozfullscreenchange',
+            'msfullscreenchange'
+        ];
+        
+        fullscreenEvents.forEach(event => {
+            document.addEventListener(event, () => {
+                const isFullscreen = !!(
+                    document.fullscreenElement || 
+                    document.webkitFullscreenElement || 
+                    document.msFullscreenElement || 
+                    document.mozFullScreenElement
+                );
+                
+                console.log('📺 Fullscreen state changed:', isFullscreen);
+                
+                if (isFullscreen) {
+                    // Entered fullscreen
+                    setTimeout(() => {
+                        this.setupGameFullscreen();
+                    }, 100);
+                } else {
+                    // Exited fullscreen (by ESC or other means)
+                    if (document.body.classList.contains('game-playing')) {
+                        this.cleanupGameFullscreen();
+                        setTimeout(() => {
+                            this.showFullPageWithLobby();
+                            this.resetReadyStatusForNewRound();
+                            this.resizeCanvas();
+                        }, 100);
+                    }
+                }
+            });
+        });
+        
+        console.log('✅ Fullscreen listeners setup');
+    }
+showFullPageWithLobby() {
+        console.log('🏠 Showing full page with lobby');
+        
+        const mainMenu = document.getElementById('mainMenu');
+        const gameSetup = document.getElementById('gameSetup');
+        const gameSection = document.getElementById('gameSection');
+        
+        // HIỂN THỊ TẤT CẢ: main menu + lobby + game section
+        if (mainMenu) {
+            mainMenu.style.display = 'block';
+            mainMenu.classList.remove('hidden');
+            console.log('✅ Main menu shown');
+        }
+        
+        if (gameSetup) {
+            gameSetup.style.display = 'block';
+            gameSetup.classList.remove('hidden');
+            console.log('✅ Game setup (lobby) shown');
+        }
+        
+        if (gameSection) {
+            gameSection.style.display = 'block';
+            gameSection.classList.remove('hidden');
+            console.log('✅ Game section shown');
+        }
+        
+        // Update game ID trong lobby
+        if (this.gameId) {
+            const setupGameId = document.getElementById('setupGameId');
+            const currentGameId = document.getElementById('currentGameId');
+            
+            if (setupGameId) setupGameId.textContent = this.gameId;
+            if (currentGameId) currentGameId.textContent = this.gameId;
+        }
+        
+        // Highlight lobby để user chú ý
+        this.highlightLobbySection();
+        
+        console.log('✅ Full page with all sections displayed');
+    }
+highlightLobbySection() {
+        const lobbyCard = document.querySelector('#gameSetup .card');
+        if (lobbyCard) {
+            // Add glow effect
+            lobbyCard.style.transition = 'all 0.5s ease';
+            lobbyCard.style.border = '3px solid #28a745';
+            lobbyCard.style.boxShadow = '0 0 20px rgba(40, 167, 69, 0.6)';
+            lobbyCard.style.transform = 'scale(1.02)';
+            
+            // Remove after 4 seconds
+            setTimeout(() => {
+                if (lobbyCard.style.border) {
+                    lobbyCard.style.transition = 'all 0.5s ease';
+                    lobbyCard.style.border = '';
+                    lobbyCard.style.boxShadow = '';
+                    lobbyCard.style.transform = '';
+                }
+            }, 4000);
+            
+            console.log('✨ Lobby section highlighted');
+        }
+    }
+   testFullscreenCSS() {
+        // Debug function
+        console.log('=== FULLSCREEN CSS DEBUG ===');
+        console.log('Body has game-playing:', document.body.classList.contains('game-playing'));
+        console.log('Page has game-playing:', document.querySelector('.flappy-race-page')?.classList.contains('game-playing'));
+        
+        const canvas = document.getElementById('flappyCanvas');
+        if (canvas) {
+            const styles = window.getComputedStyle(canvas);
+            console.log('Canvas computed styles:');
+            console.log('- position:', styles.position);
+            console.log('- top:', styles.top);
+            console.log('- left:', styles.left);
+            console.log('- width:', styles.width);
+            console.log('- height:', styles.height);
+            console.log('- z-index:', styles.zIndex);
+        }
+    }
+    
+    emergencyFullscreen() {
+        console.log('🚨 Emergency fullscreen activation');
+        
+        // Force add classes
+        document.body.classList.add('game-playing');
+        const flappyPage = document.querySelector('.flappy-race-page');
+        if (flappyPage) {
+            flappyPage.classList.add('game-playing');
+        }
+        
+        // Hide navbar
+        const nav = document.querySelector('nav, .navbar');
+        if (nav) nav.style.display = 'none';
+        
+        // Add exit button
+        this.addExitFullscreenButton();
+        
+        // Simple canvas resize
+        const canvas = document.getElementById('flappyCanvas');
+        if (canvas) {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        console.log('✅ Emergency fullscreen applied');
+    }
+    showMainPageWithLobby() {
+        console.log('🏠 Showing main page with active lobby');
+        
+        const mainMenu = document.getElementById('mainMenu');
+        const gameSetup = document.getElementById('gameSetup');
+        const gameSection = document.getElementById('gameSection');
+        
+        // HIỂN THỊ CẢ MAIN MENU VÀ GAME SETUP (LOBBY)
+        if (mainMenu) {
+            mainMenu.style.display = 'block';
+            mainMenu.classList.remove('hidden');
+        }
+        if (gameSetup) {
+            gameSetup.style.display = 'block'; // Vẫn hiển thị lobby
+            gameSetup.classList.remove('hidden');
+        }
+        if (gameSection) {
+            gameSection.style.display = 'none';
+            gameSection.classList.add('hidden');
+        }
+        
+        // Update game ID displays trong lobby
+        if (this.gameId) {
+            const setupGameId = document.getElementById('setupGameId');
+            const currentGameId = document.getElementById('currentGameId');
+            
+            if (setupGameId) setupGameId.textContent = this.gameId;
+            if (currentGameId) currentGameId.textContent = this.gameId;
+        }
+        
+        // Scroll xuống lobby section để user thấy
+        setTimeout(() => {
+            const lobbySection = document.getElementById('gameSetup');
+            if (lobbySection) {
+                lobbySection.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+            }
+        }, 500);
+        
+        console.log('✅ Main page with lobby displayed');
+    }
+
+
+    
+
+
+   resetReadyStatusForNewRound() {
+        console.log('🔄 Resetting ready status for new round');
+        
+        // Reset ready button
+        const readyBtn = document.getElementById('readyBtn');
+        if (readyBtn) {
+            readyBtn.disabled = false;
+            readyBtn.textContent = '✅ Sẵn sàng chiến đấu!';
+            readyBtn.className = 'btn btn-success btn-lg px-5';
+            readyBtn.style.display = 'inline-block';
+        }
+        
+        // Reset ready status display
+        const readyStatus = document.getElementById('readyStatus');
+        if (readyStatus) {
+            readyStatus.innerHTML = '<span class="not-ready-status">Chưa sẵn sàng cho round mới</span>';
+        }
+        
+        // Update lobby title
+        const lobbyTitle = document.querySelector('#gameSetup .card-header h4');
+        if (lobbyTitle) {
+            lobbyTitle.textContent = '🎮 Lobby Game - Sẵn Sàng Round Mới?';
+        }
+        
+        // Clear game timer
+        const timerEl = document.getElementById('gameTimer');
+        if (timerEl) {
+            timerEl.textContent = '00:00';
+        }
+    }
+    
+    ensureFullPageVisibility() {
+        // Remove any height constraints
+        const body = document.body;
+        const html = document.documentElement;
+        
+        body.style.height = '';
+        body.style.maxHeight = '';
+        html.style.height = '';
+        html.style.maxHeight = '';
+        
+        // Ensure all main containers are visible
+        const containers = [
+            '.flappy-race-page',
+            '#mainMenu', 
+            '#gameSetup', 
+            '#gameSection'
+        ];
+        
+        containers.forEach(selector => {
+            const element = document.querySelector(selector);
+            if (element) {
+                element.style.display = '';
+                element.style.height = '';
+                element.style.maxHeight = '';
+                element.style.overflow = '';
+            }
+        });
+        
+        console.log('✅ Full page visibility ensured');
+    }
+
+addLeaveRoomButton() {
+        // Kiểm tra xem đã có nút chưa
+        const existingBtn = document.getElementById('leaveRoomBtn');
+        if (existingBtn) return;
+        
+        // Tìm container để thêm nút
+        const buttonContainer = document.querySelector('#gameSetup .text-center');
+        if (!buttonContainer) return;
+        
+        // Tạo nút rời phòng
+        const leaveBtn = document.createElement('button');
+        leaveBtn.id = 'leaveRoomBtn';
+        leaveBtn.className = 'btn btn-outline-danger btn-sm ms-3';
+        leaveBtn.innerHTML = '🚪 Rời phòng';
+        
+        leaveBtn.onclick = () => {
+            if (confirm('🚪 Bạn có chắc muốn rời phòng và về trang chủ không?')) {
+                this.leaveGameCompletely();
+            }
+        };
+        
+        // Thêm nút vào sau nút ready
+        buttonContainer.appendChild(leaveBtn);
+        
+        console.log('✅ Added leave room button to lobby');
+    }
+        leaveGameCompletely() {
+        console.log('🚪 Leaving game completely and returning to main menu');
+        
+        // Send leave game message
+        if (this.gameId && this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({
+                type: 'leaveGame',
+                gameId: this.gameId
+            }));
+        }
+        
+        // Reset game state
+        this.gameId = null;
+        this.playerColor = null;
+        this.gameState = null;
+        this.playersReady = {};
+        
+        // Show main menu (trang chọn chế độ chơi)
+        this.showMainMenu();
+        
+        this.showSuccess('🏠 Đã rời phòng và về trang chủ!');
+    }
+    
+  addExitFullscreenButton() {
         // Remove existing button
         const existingBtn = document.querySelector('.exit-fullscreen-btn');
         if (existingBtn) {
@@ -396,7 +888,7 @@ class FlappyRaceClient {
         // Create exit button
         const exitBtn = document.createElement('button');
         exitBtn.className = 'exit-fullscreen-btn';
-        exitBtn.innerHTML = '✖️ ESC - Thoát';
+        exitBtn.innerHTML = '✖️ ESC - Thoát Fullscreen';
         exitBtn.style.cssText = `
             position: fixed !important;
             top: 20px !important;
@@ -434,22 +926,66 @@ class FlappyRaceClient {
             exitBtn.style.background = 'rgba(220, 53, 69, 0.95) !important';
             exitBtn.style.transform = 'scale(1) !important';
         });
+        
+        console.log('✅ Exit fullscreen button added');
     }
     
-    showMainMenu() {
+showMainMenu() {
+        console.log('🏠 Showing main menu (game mode selection)');
+        
         const mainMenu = document.getElementById('mainMenu');
+        const gameSetup = document.getElementById('gameSetup');
         const gameSection = document.getElementById('gameSection');
         
-        if (mainMenu) mainMenu.style.display = 'block';
-        if (gameSection) gameSection.style.display = 'none';
+        // Show main menu, hide others
+        if (mainMenu) {
+            mainMenu.style.display = 'block';
+            mainMenu.classList.remove('hidden');
+        }
+        if (gameSetup) {
+            gameSetup.style.display = 'none';
+            gameSetup.classList.add('hidden');
+        }
+        if (gameSection) {
+            gameSection.style.display = 'none';
+            gameSection.classList.add('hidden');
+        }
         
+        // Reset game state
         this.gameId = null;
         this.playerId = null;
         this.playerColor = null;
+        this.gameState = null;
+        
+        // Clear input fields
+        const gameIdInput = document.getElementById('gameIdInput');
+        if (gameIdInput) {
+            gameIdInput.value = '';
+        }
+        
+        // Reset ready button if exists
+        const readyBtn = document.getElementById('readyBtn');
+        if (readyBtn) {
+            readyBtn.disabled = false;
+            readyBtn.textContent = '✅ Sẵn sàng chiến đấu!';
+            readyBtn.className = 'btn btn-success btn-lg px-5';
+        }
+        
+        // Show success message
+        this.showSuccess('🏠 Đã về trang chủ. Chọn chế độ chơi mới!');
+        
+        console.log('✅ Main menu displayed');
     }
     
     showGameSetupSection() {
+        // Nếu đang ở main page với lobby, không thay đổi gì
         const mainMenu = document.getElementById('mainMenu');
+        if (mainMenu && !mainMenu.classList.contains('hidden')) {
+            console.log('Already showing main page with lobby, no change needed');
+            return;
+        }
+        
+        // Nếu không, hiển thị bình thường
         const gameSetup = document.getElementById('gameSetup');
         const gameSection = document.getElementById('gameSection');
         
@@ -466,14 +1002,78 @@ class FlappyRaceClient {
         }
     }
     
-    showGameResult() {
-        if (this.gameState.status === 'finished') {
-            this.exitFullscreenMode();
-            this.showSuccess('🏁 Game kết thúc!');
-        } else {
-            this.showSuccess('🏆 Round kết thúc! Nhấn ESC để về lobby hoặc chờ respawn...');
+    setupMainMenuButtons() {
+        // Override nút "Tạo phòng ngay"
+        const createBtn = document.querySelector('button[onclick="createGame()"]');
+        if (createBtn) {
+            createBtn.onclick = (e) => {
+                e.preventDefault();
+                this.createNewGame();
+            };
+        }
+        
+        // Override nút "Vào phòng" 
+        const joinBtn = document.querySelector('button[onclick="joinGame()"]');
+        if (joinBtn) {
+            joinBtn.onclick = (e) => {
+                e.preventDefault();
+                this.joinNewGame();
+            };
         }
     }
+
+
+        joinNewGame() {
+        // Confirm nếu đang trong game
+        if (this.gameId) {
+            if (!confirm('🎮 Bạn đang trong phòng game. Vào phòng mới sẽ rời phòng hiện tại. Tiếp tục?')) {
+                return;
+            }
+            
+            // Leave current game
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify({
+                    type: 'leaveGame',
+                    gameId: this.gameId
+                }));
+            }
+        }
+        
+        // Proceed with joining new game
+        this.joinGame();
+    }
+
+    createNewGame() {
+        // Confirm nếu đang trong game
+        if (this.gameId) {
+            if (!confirm('🎮 Bạn đang trong phòng game. Tạo phòng mới sẽ rời phòng hiện tại. Tiếp tục?')) {
+                return;
+            }
+            
+            // Leave current game
+            if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                this.ws.send(JSON.stringify({
+                    type: 'leaveGame',
+                    gameId: this.gameId
+                }));
+            }
+        }
+        
+        // Proceed with creating new game
+        this.createGame();
+    }
+    showGameResult() {
+        if (this.gameState.status === 'finished') {
+            // Game hoàn toàn kết thúc - về lobby
+            this.exitFullscreenMode();
+            this.showSuccess('🏁 Game kết thúc! Sẵn sàng cho round mới?');
+        } else {
+            // Round kết thúc - về lobby
+            this.exitFullscreenMode();
+            this.showSuccess('🏆 Round kết thúc! Nhấn "Sẵn sàng" để chơi tiếp!');
+        }
+    }
+
     
     // === GAME ACTIONS ===
     createGame() {
@@ -568,6 +1168,34 @@ class FlappyRaceClient {
         }
     }
     
+    addLeaveGameButton() {
+        // Tìm container để thêm nút
+        const lobbyContainer = document.querySelector('#gameSetup .card-body');
+        if (!lobbyContainer) return;
+        
+        // Kiểm tra xem đã có nút chưa
+        const existingBtn = document.getElementById('leaveGameBtn');
+        if (existingBtn) return;
+        
+        // Tạo nút rời phòng
+        const leaveBtn = document.createElement('button');
+        leaveBtn.id = 'leaveGameBtn';
+        leaveBtn.className = 'btn btn-outline-danger btn-sm mt-3';
+        leaveBtn.innerHTML = '🚪 Rời phòng';
+        leaveBtn.style.cssText = 'margin-left: 10px;';
+        
+        leaveBtn.onclick = () => {
+            if (confirm('🚪 Bạn có chắc muốn rời phòng không?')) {
+                this.leaveGameCompletely();
+            }
+        };
+        
+        // Thêm vào sau nút ready
+        const readyBtn = document.getElementById('readyBtn');
+        if (readyBtn && readyBtn.parentNode) {
+            readyBtn.parentNode.appendChild(leaveBtn);
+        }
+    }
     // === INPUT HANDLING ===
     setupEventListeners() {
         // Clean up existing listeners
@@ -598,10 +1226,10 @@ class FlappyRaceClient {
             }
             
             // Exit fullscreen
-            if (e.code === 'Escape') {
+    if (e.code === 'Escape') {
                 e.preventDefault();
                 if (document.body.classList.contains('game-playing')) {
-                    this.exitFullscreenMode();
+                    this.exitFullscreenMode(); // Về lobby ngay lập tức
                 }
             }
             
@@ -767,7 +1395,13 @@ class FlappyRaceClient {
             return;
         }
         
-        this.ctx.scale(this.scale || 1, this.scale || 1);
+        // Use scale = 1 for fullscreen (no scaling)
+        const scale = document.body.classList.contains('game-playing') ? 1 : this.scale;
+        
+        if (scale !== 1) {
+            this.ctx.scale(scale, scale);
+        }
+        
         this.ctx.translate(-this.camera.x, -this.camera.y);
         
         // Render game objects
@@ -780,10 +1414,18 @@ class FlappyRaceClient {
         
         this.ctx.restore();
         
-        // Render UI on top
+        // Render UI on top (always unscaled)
         this.renderUI();
     }
-    
+        debugCanvasSize() {
+        console.log('=== CANVAS SIZE DEBUG ===');
+        console.log('Window size:', window.innerWidth, 'x', window.innerHeight);
+        console.log('Canvas size:', this.canvas?.width, 'x', this.canvas?.height);
+        console.log('Config size:', this.config.width, 'x', this.config.height);
+        console.log('Canvas CSS size:', this.canvas?.style.width, 'x', this.canvas?.style.height);
+        console.log('Is fullscreen:', document.body.classList.contains('game-playing'));
+        console.log('Scale:', this.scale);
+    }
     renderBackground() {
         // Simple background
         this.ctx.fillStyle = '#87CEEB';
@@ -1060,15 +1702,67 @@ class FlappyRaceClient {
     
     updateGameInfo() {
         if (!this.gameState) return;
-        
+
         const modeEl = document.getElementById('currentMode');
         const playersEl = document.getElementById('currentPlayers');
         const timerEl = document.getElementById('gameTimer');
-        
+
         if (modeEl) modeEl.textContent = this.getModeName(this.gameState.settings?.mode);
         if (playersEl) playersEl.textContent = `${this.gameState.players?.length || 0}/${this.gameState.settings?.maxPlayers || 8}`;
         if (timerEl) timerEl.textContent = this.formatTime(this.gameState.gameTimer);
+
+        // QUAN TRỌNG: Cập nhật danh sách người chơi
+        this.updatePlayersList();
     }
+
+updatePlayersList() {
+        const playersListEl = document.getElementById('playersList');
+        if (!playersListEl || !this.gameState.players) return;
+
+        playersListEl.innerHTML = '';
+
+        this.gameState.players.forEach((player, index) => {
+            const playerItem = document.createElement('div');
+            playerItem.className = 'player-item d-flex align-items-center p-2 mb-2';
+            playerItem.style.cssText = `
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+            `;
+
+            const isMe = player.playerId === this.playerId;
+            const readyStatus = this.gameState.playersReady && this.gameState.playersReady[player.playerId] ? '✅ Sẵn sàng' : '⏳ Chờ...';
+
+            playerItem.innerHTML = `
+                <div class="player-color me-2" style="
+                    width: 20px; 
+                    height: 20px; 
+                    border-radius: 50%; 
+                    background-color: ${player.color || '#FFD700'};
+                    border: 2px solid #fff;
+                "></div>
+                <div class="player-name flex-grow-1" style="color: #fff; font-weight: bold;">
+                    ${isMe ? '👤 Bạn' : `🎮 Player ${index + 1}`}
+                </div>
+                <div class="player-status" style="color: #fff; font-size: 12px;">
+                    ${readyStatus}
+                </div>
+            `;
+
+            if (isMe) {
+                playerItem.style.background = 'rgba(0, 123, 255, 0.3)';
+                playerItem.style.borderColor = '#007bff';
+            }
+
+            playersListEl.appendChild(playerItem);
+        });
+
+        console.log(`👥 Updated players list: ${this.gameState.players.length} players`);
+    }
+
+
+
+
     
     updateLeaderboard() {
         const leaderboardEl = document.getElementById('leaderboard');

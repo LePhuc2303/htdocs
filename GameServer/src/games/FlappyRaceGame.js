@@ -306,8 +306,30 @@ class FlappyRaceGame extends BaseGame {
             return { success: true };
         }
         
-        // Normal ready for game start
-        return super.handlePlayerReady(playerId, settings);
+        // NORMAL READY FOR GAME START
+        this.playersReady[playerId] = true;
+        
+        // Broadcast ready update
+        this.broadcast({
+            type: 'readyUpdate',
+            playersReady: this.playersReady
+        });
+        
+        console.log(`Ready check: ${Object.keys(this.playersReady).length}/${this.players.length} players`);
+        
+        // AUTO-START: Nếu chỉ có 1 người HOẶC tất cả đã ready
+        const readyCount = Object.keys(this.playersReady).length;
+        const totalPlayers = this.players.length;
+        
+        if (totalPlayers === 1 || readyCount === totalPlayers) {
+            console.log(`🚀 Starting game - ${readyCount}/${totalPlayers} players ready`);
+            this.status = 'playing'; // Chuyển status trước
+            setTimeout(() => {
+                this.startGameLoop(); // BẮT ĐẦU GAME LOOP
+            }, 1000);
+        }
+        
+        return { success: true };
     }
     
     // === GAME LOOP ===
@@ -831,7 +853,7 @@ class FlappyRaceGame extends BaseGame {
     }
     
     // === GAME STATE BROADCAST ===
-    broadcastGameState() {
+broadcastGameState() {
         const payload = {
             ...this.getGameState(),
             config: this.config,
@@ -841,12 +863,23 @@ class FlappyRaceGame extends BaseGame {
             playerStates: this.playerStates,
             traps: this.traps,
             gamePhase: this.gamePhase,
-            gameTimer: Math.floor(this.gameTimer * 100) / 100, // Round to 2 decimals
+            gameTimer: Math.floor(this.gameTimer * 100) / 100,
             leaderboard: this.leaderboard,
-            settings: this.gameSettings
+            settings: this.gameSettings,
+            // QUAN TRỌNG: Gửi đúng format players với color
+            players: this.players.map((p, index) => ({
+                playerId: p.playerId,
+                color: this.playerStates.find(ps => ps.playerId === p.playerId)?.color || '#FFD700',
+                index: index
+            }))
         };
         
         this.broadcast(payload);
+        
+        // Debug log
+        if (this.gamePhase === 'waiting') {
+            console.log(`📡 Broadcasting: ${this.players.length} players, gamePhase: ${this.gamePhase}`);
+        }
     }
     
     // === RESET ===
