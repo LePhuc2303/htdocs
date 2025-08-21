@@ -3,42 +3,44 @@ const BaseGame = require('../BaseGame');
 
 class FlappyRaceGame extends BaseGame {
     constructor(gameId) {
-        super(gameId, 'flappy-race', 8); // Max 8 players
-        
-        // Game config
-        this.config = {
-            width: 1200,
-            height: 600,
-            raceDistance: 2000,
-            gravity: 0.5,
-            flapStrength: -8,
-            pipeGap: 180,
-            pipeWidth: 60,
-            itemSpawnRate: 0.02
-        };
-        
-        // Game state
-        this.pipes = [];
-        this.items = [];
-        this.projectiles = [];
-        this.playerStates = [];
-        this.gamePhase = 'waiting'; // waiting, countdown, playing, finished
-        this.gameTimer = 0;
-        this.leaderboard = [];
-        
-        // Game settings (from room creation)
-        this.gameSettings = {
-            mode: 'classic',
-            maxPlayers: 4,
-            difficulty: 'normal',
-            mapType: 'classic',
-            itemsEnabled: true
-        };
-        
-        // Game loop
-        this.gameLoop = null;
-        this.lastUpdate = Date.now();
-    }
+    super(gameId, 'flappy-race', 8);
+    
+    this.config = {
+        width: 1200,
+        height: 600,
+        raceDistance: 2000,
+        gravity: 0.5,
+        flapStrength: -8,
+        pipeGap: 120,
+        pipeWidth: 60,
+        itemSpawnRate: 0.02
+    };
+    
+    this.pipes = [];
+    this.items = [];
+    this.projectiles = [];
+    this.playerStates = [];
+    this.gamePhase = 'waiting';
+    this.gameTimer = 0;
+    this.leaderboard = [];
+    
+    this.gameSettings = {
+        mode: 'classic',
+        maxPlayers: 4,
+        difficulty: 'normal',
+        mapType: 'classic',
+        itemsEnabled: true
+    };
+    
+    this.gameLoop = null;
+    this.lastUpdate = Date.now();
+    
+    // Generate initial map
+    this.applyDifficulty(this.gameSettings.difficulty);
+    this.generateMap(this.gameSettings.mapType);
+    
+    console.log(`🎮 FlappyRaceGame created with ${this.pipes.length} pipes and ${this.items.length} items`);
+}
 
     onPlayerJoined(playerInfo) {
         const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF', '#5F27CD'];
@@ -154,61 +156,61 @@ generatePipes() {
         switch (difficulty) {
             case 'easy':
                 this.config.gravity = 0.3;
-                this.config.pipeGap = 150;
+                this.config.pipeGap = 200; // Tăng từ 150 lên 200
                 this.config.flapStrength = -10;
                 break;
             case 'normal':
                 this.config.gravity = 0.5;
-                this.config.pipeGap = 120;
+                this.config.pipeGap = 180; // Tăng từ 120 lên 180  
                 this.config.flapStrength = -8;
                 break;
             case 'hard':
                 this.config.gravity = 0.7;
-                this.config.pipeGap = 100;
+                this.config.pipeGap = 150; // Tăng từ 100 lên 150
                 this.config.flapStrength = -7;
                 break;
             case 'extreme':
                 this.config.gravity = 0.9;
-                this.config.pipeGap = 80;
+                this.config.pipeGap = 120; // Tăng từ 80 lên 120
                 this.config.flapStrength = -6;
                 break;
         }
     }
 
     generateMap(mapType) {
-        this.pipes = [];
+    this.pipes = [];
+    
+    // Generate pipes với khoảng cách xa hơn
+    for (let x = 200; x < this.config.raceDistance; x += 200) { // Tăng từ 150 lên 200
+        let pipeHeight;
         
-        // Generate pipes based on map type
-        for (let x = 200; x < this.config.raceDistance; x += 150) {
-            let pipeHeight;
-            
-            switch (mapType) {
-                case 'jungle':
-                    pipeHeight = 100 + Math.sin(x * 0.01) * 50;
-                    break;
-                case 'city':
-                    pipeHeight = 80 + (x % 300) * 0.3;
-                    break;
-                case 'space':
-                    pipeHeight = 120 + Math.random() * 100;
-                    break;
-                default: // classic
-                    pipeHeight = 80 + Math.random() * 120;
-            }
-            
-            this.pipes.push({
-                x: x,
-                topHeight: pipeHeight,
-                bottomY: pipeHeight + this.config.pipeGap,
-                bottomHeight: this.config.height - (pipeHeight + this.config.pipeGap)
-            });
+        switch (mapType) {
+            case 'jungle':
+                pipeHeight = 120 + Math.sin(x * 0.01) * 40;
+                break;
+            case 'city':
+                pipeHeight = 100 + (x % 300) * 0.2;
+                break;
+            case 'space':
+                pipeHeight = 140 + Math.random() * 80;
+                break;
+            default: // classic
+                pipeHeight = 100 + Math.random() * 100;
         }
         
-        // Generate items if enabled
-        if (this.gameSettings.itemsEnabled) {
-            this.generateItems();
-        }
+        this.pipes.push({
+            x: x,
+            topHeight: pipeHeight,
+            bottomY: pipeHeight + this.config.pipeGap,
+            bottomHeight: this.config.height - (pipeHeight + this.config.pipeGap)
+        });
     }
+    
+    // Generate items
+    if (this.gameSettings.itemsEnabled) {
+        this.generateItems();
+    }
+}
 
 generateItems() {
     this.items = [];
@@ -267,10 +269,16 @@ generateItems() {
     console.log(`✅ Generated ${this.items.length} items with fixed positions`);
 }
     startGame() {
+    // Áp dụng cài đặt game trước
+    this.applyGameSettings();
+    
+    // Regenerate map và items mỗi khi bắt đầu game
+    this.generateMap(this.gameSettings.mapType || 'classic');
+    
     super.startGame();
     this.gamePhase = 'countdown';
-    this.gameTimer = 3; // THAY ĐỔI TỪ 10 XUỐNG 3
-    this.lastCountdown = 3; // THAY ĐỔI TỪ 10 XUỐNG 3
+    this.gameTimer = 3; // Giảm từ 10 xuống 3 giây
+    this.lastCountdown = 3;
     
     // Reset all players
     this.playerStates.forEach(player => {
@@ -278,30 +286,24 @@ generateItems() {
         player.y = this.config.height / 2;
         player.velocityY = 0;
         player.score = 0;
-        player.lives = 3; // 3 MẠNG
+        player.lives = 3;
         player.phase = 'outbound';
         player.alive = true;
         player.effects = {};
-        player.currentItem = null;
+        player.items = [];
         player.rank = 0;
-        player.deathCount = 0; // ĐẾM SỐ LẦN CHẾT
     });
-    
-    // ĐẢM BẢO THỨ TỰ: PIPES TRƯỚC, ITEMS SAU
-    console.log('🏗️ Generating game world...');
-    this.generatePipes();
-    console.log(`✅ Generated ${this.pipes.length} pipes`);
-    
-    this.generateItems();
-    console.log(`✅ Generated ${this.items.length} items`);
     
     this.startGameLoop();
     
-    // Broadcast countdown start
     this.broadcast({
         type: 'gameMessage',
         message: `⏰ Game bắt đầu sau ${this.gameTimer} giây!`
     });
+    
+    console.log('🎮 Flappy Race game started');
+    console.log('🟢 Generated pipes:', this.pipes.length);
+    console.log('🎁 Generated items:', this.items.length);
 }
 
     startGameLoop() {
@@ -466,31 +468,35 @@ generateItems() {
     }
 }
 
-    checkCollisions(player) {
-    // Collision với pipes
-    this.pipes.forEach(pipe => {
-        const playerLeft = player.x - 10;
-        const playerRight = player.x + 30;
-        const playerTop = player.y - 10;
-        const playerBottom = player.y + 30;
-        
-        const pipeLeft = pipe.x;
-        const pipeRight = pipe.x + pipe.width;
-        
-        // Check collision với ống trên hoặc ống dưới
-        if (playerRight > pipeLeft && playerLeft < pipeRight) {
-            if (playerTop < pipe.topHeight || playerBottom > pipe.bottomY) {
-                this.handlePlayerDeath(player, 'pipe collision');
-                return;
-            }
+   checkCollisions(player) {
+        // Pipe collisions với hitbox nhỏ hơn
+        if (!player.effects.shield || player.effects.shield.timeLeft <= 0) {
+            this.pipes.forEach(pipe => {
+                // Giảm hitbox từ 15 xuống 12 để dễ bay qua hơn
+                if (player.x + 12 > pipe.x && player.x - 12 < pipe.x + this.config.pipeWidth) {
+                    if (player.y - 12 < pipe.topHeight || player.y + 12 > pipe.bottomY) {
+                        this.damagePlayer(player);
+                    }
+                }
+            });
         }
-    });
-    
-    // Collision với đất và trần
-    if (player.y <= 0 || player.y >= this.config.height) {
-        this.handlePlayerDeath(player, 'boundary collision');
+        
+        // Item collisions
+        this.items.forEach(item => {
+            if (!item.collected && this.distance(player, item) < 30) {
+                this.collectItem(player, item);
+            }
+        });
+        
+        // Projectile collisions
+        this.projectiles.forEach(projectile => {
+            if (projectile.sourcePlayerId !== player.playerId && 
+                this.distance(player, projectile) < 20) {
+                this.damagePlayer(player);
+                projectile.active = false;
+            }
+        });
     }
-}
 
 handlePlayerDeath(player, cause) {
     if (!player.alive) return; // Tránh double death
@@ -832,8 +838,8 @@ checkTrapCollisions(player) {
         
         // Reset game state
         this.gamePhase = 'countdown';
-        this.gameTimer = 10; // 10 second countdown
-        this.lastCountdown = 10; // Reset countdown tracker
+        this.gameTimer = 3; // 10 second countdown
+        this.lastCountdown = 3; // Reset countdown tracker
         this.status = 'playing';
         
         // Reset all players
@@ -1148,12 +1154,12 @@ handleGameAction(playerId, action, data) {
     return super.handlePlayerReady(playerId, settings);
 }
 
-    broadcastGameState() {
+broadcastGameState() {
     const payload = {
         ...this.getGameState(),
         config: this.config,
         pipes: this.pipes,
-        items: this.items, // ← ĐẢM BẢO DÒNG NÀY CÓ
+        items: this.items,
         projectiles: this.projectiles,
         playerStates: this.playerStates,
         gamePhase: this.gamePhase,
@@ -1161,6 +1167,11 @@ handleGameAction(playerId, action, data) {
         leaderboard: this.leaderboard,
         settings: this.gameSettings
     };
+    
+    // Debug log để kiểm tra
+    console.log(`📡 Broadcasting game state - Pipes: ${this.pipes.length}, Items: ${this.items.length}`);
+    console.log('📦 First pipe:', this.pipes[0]);
+    console.log('🎁 First item:', this.items[0]);
     
     this.broadcast(payload);
 }

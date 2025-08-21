@@ -466,23 +466,33 @@ class FlappyRaceClient {
 
 
     handleMessage(data) {
-        console.log('📨 Received message:', data);
-
-        switch (data.type) {
-            case 'error':
-                console.error('❌ Server error:', data.message);
-
-                // Xử lý các loại lỗi cụ thể
-                if (data.message.includes('Game không tồn tại')) {
-                    this.showError('Phòng không tồn tại hoặc đã đóng. Vui lòng kiểm tra lại mã phòng.');
-                    // Reset về màn hình chính
-                    this.showMainMenu();
-                } else if (data.message.includes('đầy')) {
-                    this.showError('Phòng đã đầy người chơi');
-                } else {
-                    this.showError(data.message);
-                }
-                break;
+        console.log('📨 Received message:', data.type);
+    
+    switch (data.type) {
+        case 'gameState':
+            console.log('🔄 Game state update:', {
+                pipes: data.pipes?.length || 0,
+                items: data.items?.length || 0,
+                gamePhase: data.gamePhase,
+                playerStates: data.playerStates?.length || 0
+            });
+            
+            this.gameState = data;
+            this.config = data.config || this.config;
+            
+            // Debug: Log first pipe and item
+            if (data.pipes && data.pipes.length > 0) {
+                console.log('🟢 First pipe:', data.pipes[0]);
+            } else {
+                console.log('❌ No pipes received!');
+            }
+            
+            if (data.items && data.items.length > 0) {
+                console.log('🎁 First item:', data.items[0]);
+            } else {
+                console.log('❌ No items received!');
+            }
+            break;
 
             case 'playerInfo':
                 this.playerId = data.playerId;
@@ -839,65 +849,115 @@ class FlappyRaceClient {
     }
 
     renderPipes() {
-        if (!this.gameState || !this.gameState.pipes) return;
-
-        this.gameState.pipes.forEach(pipe => {
-            const screenX = pipe.x - this.camera.x;
-
-            // Chỉ render pipes trong view
-            if (screenX > -pipe.width && screenX < this.config.width + pipe.width) {
-
-                // ỐNG TRÊN (màu xanh đậm)
-                this.ctx.fillStyle = '#228B22';
-                this.ctx.fillRect(screenX, 0, pipe.width, pipe.topHeight);
-
-                // VIỀN ỐNG TRÊN
-                this.ctx.strokeStyle = '#006400';
-                this.ctx.lineWidth = 2;
-                this.ctx.strokeRect(screenX, 0, pipe.width, pipe.topHeight);
-
-                // ỐNG DƯỚI (màu xanh đậm)
-                this.ctx.fillStyle = '#228B22';
-                this.ctx.fillRect(screenX, pipe.bottomY, pipe.width, this.config.height - pipe.bottomY);
-
-                // VIỀN ỐNG DƯỚI
-                this.ctx.strokeStyle = '#006400';
-                this.ctx.lineWidth = 2;
-                this.ctx.strokeRect(screenX, pipe.bottomY, pipe.width, this.config.height - pipe.bottomY);
-
-                // MŨ ỐNG TRÊN (phần nhô ra)
-                this.ctx.fillStyle = '#32CD32';
-                this.ctx.fillRect(screenX - 5, pipe.topHeight - 20, pipe.width + 10, 20);
-                this.ctx.strokeStyle = '#228B22';
-                this.ctx.strokeRect(screenX - 5, pipe.topHeight - 20, pipe.width + 10, 20);
-
-                // MŨ ỐNG DƯỚI (phần nhô ra)
-                this.ctx.fillStyle = '#32CD32';
-                this.ctx.fillRect(screenX - 5, pipe.bottomY, pipe.width + 10, 20);
-                this.ctx.strokeStyle = '#228B22';
-                this.ctx.strokeRect(screenX - 5, pipe.bottomY, pipe.width + 10, 20);
-            }
-        });
+    if (!this.gameState) {
+        console.log('❌ No gameState for renderPipes');
+        return;
     }
+    
+    if (!this.gameState.pipes) {
+        console.log('❌ No pipes in gameState');
+        return;
+    }
+    
+    if (this.gameState.pipes.length === 0) {
+        console.log('⚠️ Pipes array is empty');
+        return;
+    }
+    
+    console.log(`🟢 Rendering ${this.gameState.pipes.length} pipes`);
+    
+    this.ctx.fillStyle = '#228B22';
+    this.ctx.strokeStyle = '#006400';
+    this.ctx.lineWidth = 2;
+    
+    this.gameState.pipes.forEach((pipe, index) => {
+        // Debug: Log pipe position relative to camera
+        const relativeX = pipe.x - (this.camera?.x || 0);
+        if (index === 0) {
+            console.log(`🎯 Pipe ${index}: x=${pipe.x}, relativeX=${relativeX}, camera.x=${this.camera?.x || 0}`);
+        }
+        
+        // Only render pipes that are visible on screen
+        if (relativeX > -100 && relativeX < this.canvas.width + 100) {
+            // Top pipe
+            this.ctx.fillRect(pipe.x, 0, 60, pipe.topHeight);
+            this.ctx.strokeRect(pipe.x, 0, 60, pipe.topHeight);
+            
+            // Bottom pipe
+            this.ctx.fillRect(pipe.x, pipe.bottomY, 60, pipe.bottomHeight);
+            this.ctx.strokeRect(pipe.x, pipe.bottomY, 60, pipe.bottomHeight);
+        }
+    });
+}
 
     renderItems() {
-        if (!this.gameState || !this.gameState.items) return;
-
-        this.gameState.items.forEach(item => {
-            if (item.collected) return;
-
-            // Item position (trong world coordinates)
-            const itemX = item.x;
-            const itemY = item.y;
-            const size = item.size || 37;
-
-            // Chỉ render nếu item trong view
-            if (itemX > this.camera.x - 50 && itemX < this.camera.x + this.config.width + 50) {
-                // LUÔN DÙNG THÙNG GỖ
-                this.renderWoodBox(itemX, itemY, size, item.type);
-            }
-        });
+    if (!this.gameState) {
+        console.log('❌ No gameState for renderItems');
+        return;
     }
+    
+    if (!this.gameState.items) {
+        console.log('❌ No items in gameState');
+        return;
+    }
+    
+    if (this.gameState.items.length === 0) {
+        console.log('⚠️ Items array is empty');
+        return;
+    }
+    
+    console.log(`🎁 Rendering ${this.gameState.items.length} items`);
+    
+    this.gameState.items.forEach((item, index) => {
+        if (!item.collected) {
+            this.renderItem(item);
+        }
+    });
+}
+updateCamera() {
+    const myPlayer = this.getMyPlayer();
+    if (myPlayer) {
+        this.camera.x = myPlayer.x - this.config.width / 2;
+        this.camera.x = Math.max(0, Math.min(this.camera.x, this.config.raceDistance));
+        
+        // Debug camera position
+        if (Math.floor(Date.now() / 1000) % 5 === 0) { // Log every 5 seconds
+            console.log(`📷 Camera: x=${this.camera.x}, Player: x=${myPlayer.x}`);
+        }
+    }
+}
+
+renderPipesDebug() {
+    if (!this.gameState?.pipes) return;
+    
+    console.log('🔍 DEBUG: Rendering pipes without camera transform');
+    
+    this.ctx.save();
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform
+    
+    this.ctx.fillStyle = '#FF0000'; // Red color for debug
+    this.ctx.strokeStyle = '#000000';
+    this.ctx.lineWidth = 3;
+    
+    // Render first few pipes at fixed positions for debugging
+    this.gameState.pipes.slice(0, 3).forEach((pipe, index) => {
+        const x = 200 + index * 150; // Fixed positions
+        const y = 100;
+        
+        // Simple rectangle
+        this.ctx.fillRect(x, y, 60, 100);
+        this.ctx.strokeRect(x, y, 60, 100);
+        
+        // Label
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = '16px Arial';
+        this.ctx.fillText(`P${index}`, x + 20, y + 50);
+        this.ctx.fillStyle = '#FF0000';
+    });
+    
+    this.ctx.restore();
+}
+
 
     renderWoodBox(x, y, size, itemType) {
         const ctx = this.ctx;
@@ -1035,7 +1095,43 @@ class FlappyRaceClient {
             this.ctx.stroke();
         });
     }
-
+resizeCanvasFullscreen() {
+    if (!this.canvas) return;
+    
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    
+    // Set canvas size to full screen
+    this.canvas.width = width;
+    this.canvas.height = height;
+    this.canvas.style.width = width + 'px';
+    this.canvas.style.height = height + 'px';
+    
+    // Update config for rendering
+    this.config.width = width;
+    this.config.height = height;
+    
+    console.log(`📐 Canvas resized to fullscreen: ${width}x${height}`);
+}
+setupFullscreenHotkeys() {
+    document.addEventListener('keydown', (e) => {
+        // F11 or F để toggle fullscreen
+        if (e.code === 'F11' || (e.code === 'KeyF' && e.ctrlKey)) {
+            e.preventDefault();
+            
+            if (document.body.classList.contains('game-playing')) {
+                this.exitFullscreenMode();
+            } else if (this.gameState?.status === 'playing') {
+                this.enterFullscreenMode();
+            }
+        }
+        
+        // ESC để thoát fullscreen
+        if (e.code === 'Escape' && document.body.classList.contains('game-playing')) {
+            this.exitFullscreenMode();
+        }
+    });
+}
     renderPlayers() {
         if (!this.gameState.playerStates) return;
 
@@ -1711,156 +1807,179 @@ showDeathEffect(data) {
     }
 
     updateUI() {
-        if (!this.gameState) return;
+    if (!this.gameState) return;
 
-        // DEBUG: Log items
-        if (this.gameState.items) {
-            console.log(`📦 Items count: ${this.gameState.items.length}`);
-            this.gameState.items.slice(0, 3).forEach(item => {
-                console.log(`  Item at (${item.x}, ${item.y}) type: ${item.type}`);
-            });
-        }
+    // Update game info
+    this.updateGameInfo();
+    this.updateLeaderboard();
+    this.updatePlayerInventory();
+    this.updatePlayerStatus();
 
-        // Update game info
-        this.updateGameInfo();
-        this.updateLeaderboard();
-        this.updatePlayerInventory();
-        this.updatePlayerStatus();
+    console.log('📱 UpdateUI - Status:', this.gameState.status, 'GamePhase:', this.gameState.gamePhase);
 
-        // UPDATE INVENTORY UI
-        this.updateInventoryUI();
-
-        switch (this.gameState.status) {
-            case 'setup':
-                this.showGameSetupSection();
-                break;
-            case 'playing':
+    switch (this.gameState.status) {
+        case 'setup':
+            this.showGameSetupSection();
+            break;
+        case 'playing':
+            // Force fullscreen cho tất cả phases của playing
+            if (this.gameState.gamePhase === 'countdown' || 
+                this.gameState.gamePhase === 'playing') {
                 this.showGamePlaying();
-                break;
-            case 'finished':
-                this.showGameResult();
-                break;
-        }
+            }
+            break;
+        case 'finished':
+            this.showGameResult();
+            break;
     }
+}
 
     // THAY THẾ FUNCTION showGamePlaying BẰNG CÁI NÀY:
 
-    showGamePlaying() {
-        console.log('🎮 Showing game playing mode');
-
-        const gameSetup = document.getElementById('gameSetup');
-        const gameSection = document.getElementById('gameSection');
-
-        if (gameSetup) gameSetup.classList.add('hidden');
-        if (gameSection) gameSection.classList.remove('hidden');
-
-        // VÀO FULLSCREEN NGAY LẬP TỨC - không quan tâm game phase
-        console.log('🖥️ Entering fullscreen immediately...');
-        setTimeout(() => {
-            this.enterFullscreenMode();
-            this.resizeCanvas();
-
-            // Hiển thị countdown nếu đang trong phase countdown
-            if (this.gameState?.gamePhase === 'countdown') {
-                console.log('⏰ Starting countdown display...');
-                this.showCountdownOverlay(Math.ceil(this.gameState.gameTimer));
-            }
-        }, 200); // Vào fullscreen nhanh hơn
-    }
+showGamePlaying() {
+    console.log('🎮 Showing game playing mode - GamePhase:', this.gameState?.gamePhase);
+    
+    const gameSetup = document.getElementById('gameSetup');
+    const gameSection = document.getElementById('gameSection');
+    
+    if (gameSetup) gameSetup.classList.add('hidden');
+    if (gameSection) gameSection.classList.remove('hidden');
+    
+    // Force enter fullscreen regardless of game phase
+    setTimeout(() => {
+        this.enterFullscreenMode();
+        this.resizeCanvas();
+    }, 300);
+}
 
     enterFullscreenMode() {
-        console.log('Entering fullscreen mode');
-
-        // Add fullscreen class to body
-        document.body.classList.add('game-playing');
-
-        // Hide header/navbar
-        const header = document.querySelector('nav, .navbar');
-        if (header) {
-            header.style.display = 'none';
-        }
-
-        // Add exit fullscreen button
-        this.addExitFullscreenButton();
-
-        // CREATE INVENTORY BAR
-        this.createInventoryBar();
-
-        // Prevent scrolling
-        document.body.style.overflow = 'hidden';
-        document.documentElement.style.overflow = 'hidden';
-
-        // Force canvas visibility
-        if (this.canvas) {
-            this.canvas.style.display = 'block';
-            this.canvas.style.visibility = 'visible';
-        }
-
-        // Resize canvas for fullscreen
-        setTimeout(() => {
-            this.resizeCanvasFullscreen();
-        }, 100);
+    console.log('🖥️ Entering fullscreen mode');
+    
+    // Add fullscreen class to body
+    document.body.classList.add('game-playing');
+    
+    // Add fullscreen class to page
+    const flappyPage = document.querySelector('.flappy-race-page');
+    if (flappyPage) {
+        flappyPage.classList.add('game-playing');
     }
+    
+    // Hide header/navbar
+    const header = document.querySelector('nav, .navbar');
+    if (header) {
+        header.style.display = 'none';
+    }
+    
+    // Hide other UI elements
+    const elementsToHide = [
+        '#mainMenu', '#gameSetup', '.game-header', 
+        '.game-hud', '.game-controls-bottom'
+    ];
+    
+    elementsToHide.forEach(selector => {
+        const element = document.querySelector(selector);
+        if (element) {
+            element.style.display = 'none';
+        }
+    });
+    
+    // Add exit fullscreen button
+    this.addExitFullscreenButton();
+    
+    // Prevent scrolling
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    
+    // Force canvas visibility and fullscreen styles
+    if (this.canvas) {
+        this.canvas.style.display = 'block';
+        this.canvas.style.visibility = 'visible';
+        this.canvas.style.position = 'fixed';
+        this.canvas.style.top = '0';
+        this.canvas.style.left = '0';
+        this.canvas.style.zIndex = '9999';
+    }
+    
+    // Force game section to fullscreen
+    const gameSection = document.getElementById('gameSection');
+    if (gameSection) {
+        gameSection.style.position = 'fixed';
+        gameSection.style.top = '0';
+        gameSection.style.left = '0';
+        gameSection.style.width = '100vw';
+        gameSection.style.height = '100vh';
+        gameSection.style.zIndex = '9998';
+        gameSection.style.display = 'block';
+    }
+    
+    // Resize canvas for fullscreen
+    setTimeout(() => {
+        this.resizeCanvasFullscreen();
+    }, 100);
+}
     // CŨNG THAY THẾ FUNCTION exitFullscreenMode BẰNG CÁI NÀY:
 
     exitFullscreenMode() {
-        console.log('🚪 Exiting fullscreen mode...');
-
-        // Force remove fullscreen class
-        document.body.classList.remove('game-playing');
-        // REMOVE INVENTORY BAR
-        this.removeInventoryBar();
-        // Show navbar/header again with force
-        const navbar = document.querySelector('.navbar, nav, header');
-        if (navbar) {
-            navbar.style.display = 'block';
-            navbar.style.visibility = 'visible';
-        }
-
-        // Remove exit button
-        const exitBtn = document.querySelector('.exit-fullscreen-btn');
-        if (exitBtn) {
-            exitBtn.remove();
-        }
-
-        // Restore scrolling
-        document.body.style.overflow = 'auto';
-        document.documentElement.style.overflow = 'auto';
-
-        // Reset canvas styles completely
-        if (this.canvas) {
-            this.canvas.style.position = 'relative';
-            this.canvas.style.top = 'auto';
-            this.canvas.style.left = 'auto';
-            this.canvas.style.zIndex = 'auto';
-            this.canvas.style.width = '100%';
-            this.canvas.style.height = '400px';
-            this.canvas.style.maxWidth = '800px';
-        }
-
-        // QUAN TRỌNG: Reset ready button để có thể chơi round mới
-        this.resetReadyButton();
-
-        // Force show setup section để có thể ready lại
-        const gameSetup = document.getElementById('gameSetup');
-        const gameSection = document.getElementById('gameSection');
-
-        if (gameSetup) {
-            gameSetup.classList.remove('hidden');
-            gameSetup.style.display = 'block';
-        }
-        if (gameSection) {
-            gameSection.classList.add('hidden');
-            gameSection.style.display = 'none';
-        }
-
-        // Resize canvas back to normal
-        setTimeout(() => {
-            this.resizeCanvas();
-        }, 100);
-
-        console.log('✅ Fullscreen mode exited successfully');
+    console.log('🚪 Exiting fullscreen mode');
+    
+    // Remove fullscreen class
+    document.body.classList.remove('game-playing');
+    
+    const flappyPage = document.querySelector('.flappy-race-page');
+    if (flappyPage) {
+        flappyPage.classList.remove('game-playing');
     }
+    
+    // Show navbar/header again
+    const navbar = document.querySelector('.navbar, nav');
+    if (navbar) {
+        navbar.style.display = '';
+    }
+    
+    // Show UI elements
+    const elementsToShow = [
+        '.game-hud', '.game-controls-bottom'
+    ];
+    
+    elementsToShow.forEach(selector => {
+        const element = document.querySelector(selector);
+        if (element) {
+            element.style.display = '';
+        }
+    });
+    
+    // Remove exit button
+    const exitBtn = document.querySelector('.exit-fullscreen-btn');
+    if (exitBtn) {
+        exitBtn.remove();
+    }
+    
+    // Restore scrolling
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+    
+    // Reset canvas styles
+    if (this.canvas) {
+        this.canvas.style.position = '';
+        this.canvas.style.top = '';
+        this.canvas.style.left = '';
+        this.canvas.style.zIndex = '';
+    }
+    
+    // Reset game section styles
+    const gameSection = document.getElementById('gameSection');
+    if (gameSection) {
+        gameSection.style.position = '';
+        gameSection.style.top = '';
+        gameSection.style.left = '';
+        gameSection.style.width = '';
+        gameSection.style.height = '';
+        gameSection.style.zIndex = '';
+    }
+    
+    // Resize canvas back to normal
+    this.resizeCanvas();
+}
 
     resetReadyButton() {
         console.log('🔄 Resetting ready button for new round');
