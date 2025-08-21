@@ -12,7 +12,7 @@ class FlappyRaceGame extends BaseGame {
             raceDistance: 2000,
             gravity: 0.5,
             flapStrength: -8,
-            pipeGap: 120,
+            pipeGap: 180,
             pipeWidth: 60,
             itemSpawnRate: 0.02
         };
@@ -174,23 +174,49 @@ const playerState = {
         }
     }
 
-    generateItems() {
-        this.items = [];
+generateItems() {
+    this.items = [];
+    
+    // TẠO 2 ITEMS CHO MỖI ỐNG
+    this.pipes.forEach((pipe, index) => {
+        const gapCenter = pipe.topHeight + (pipe.gap / 2);
+        const gapQuarter = pipe.gap / 4;
+        
+        // Item 1: Phía trên khoảng trống
+        const item1X = pipe.x + (pipe.width / 2);
+        const item1Y = gapCenter - gapQuarter;
+        
+        // Item 2: Phía dưới khoảng trống  
+        const item2X = pipe.x + (pipe.width / 2);
+        const item2Y = gapCenter + gapQuarter;
+        
         const itemTypes = ['speed', 'shield', 'bomb', 'trap'];
         
-        for (let x = 300; x < this.config.raceDistance; x += 200) {
-            if (Math.random() < 0.7) { // 70% chance to spawn item
-                const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
-                this.items.push({
-                    id: `item_${Date.now()}_${Math.random()}`,
-                    type: itemType,
-                    x: x + Math.random() * 100 - 50,
-                    y: 100 + Math.random() * 400,
-                    collected: false
-                });
-            }
-        }
-    }
+        // Tạo item 1
+        this.items.push({
+            id: `item_pipe_${index}_1`,
+            type: itemTypes[Math.floor(Math.random() * itemTypes.length)],
+            x: item1X,
+            y: item1Y,
+            collected: false,
+            size: 25,
+            isBox: true
+        });
+        
+        // Tạo item 2
+        this.items.push({
+            id: `item_pipe_${index}_2`, 
+            type: itemTypes[Math.floor(Math.random() * itemTypes.length)],
+            x: item2X,
+            y: item2Y,
+            collected: false,
+            size: 25,
+            isBox: true
+        });
+    });
+    
+    console.log(`Generated ${this.items.length} items for ${this.pipes.length} pipes (2 items per pipe)`);
+}
 
     startGame() {
         // Don't reset ready status here - we need it to check if all players are ready
@@ -302,7 +328,7 @@ const playerState = {
     }
 }
 
-    updatePlayers(deltaTime) {
+  updatePlayers(deltaTime) {
     this.playerStates.forEach(player => {
         if (!player.alive) return;
         
@@ -329,8 +355,11 @@ const playerState = {
             
             // Collision detection
             this.checkCollisions(player);
+            
+            // THÊM NHỮNG DÒNG NÀY:
+            this.checkItemCollision(player);
+            this.checkTrapCollisions(player);
         }
-        // TRONG COUNTDOWN THÌ KHÔNG LÀM GÌ CẢ
     });
 }
 
@@ -497,6 +526,177 @@ const playerState = {
         }
     }
 
+// THÊM VÀO CLASS FlappyRaceGame trong file GameServer/src/games/FlappyRaceGame.js
+
+checkItemCollision(player) {
+    this.items.forEach(item => {
+        if (item.collected) return;
+        
+        // COLLISION DETECTION
+        const playerLeft = player.x - 10;
+        const playerRight = player.x + 30;
+        const playerTop = player.y - 10;
+        const playerBottom = player.y + 30;
+        
+        const itemLeft = item.x - (item.size / 2);
+        const itemRight = item.x + (item.size / 2);
+        const itemTop = item.y - (item.size / 2);
+        const itemBottom = item.y + (item.size / 2);
+        
+        if (playerRight > itemLeft && 
+            playerLeft < itemRight && 
+            playerBottom > itemTop && 
+            playerTop < itemBottom) {
+            
+            // Thu thập item
+            item.collected = true;
+            
+            // CHỈ GIỮ 1 ITEM - Thay thế item cũ
+            player.currentItem = {
+                type: item.type,
+                collectedAt: Date.now()
+            };
+            
+            console.log(`Player ${player.playerId} collected ${item.type} (replaced previous item)`);
+            
+            // Broadcast item collected
+            this.broadcast({
+                type: 'itemCollected',
+                playerId: player.playerId,
+                itemType: item.type,
+                itemId: item.id
+            });
+        }
+    });
+}
+
+
+
+// THÊM VÀO CLASS FlappyRaceGame trong file GameServer/src/games/FlappyRaceGame.js
+
+handleBombAction(player) {
+    const bombRange = 150; // Tầm 3cm trên màn hình
+    const affectedPlayers = [];
+    
+    this.playerStates.forEach(otherPlayer => {
+        if (otherPlayer.playerId === player.playerId) return;
+        if (!otherPlayer.alive) return;
+        
+        // Tính khoảng cách
+        const distance = Math.sqrt(
+            Math.pow(otherPlayer.x - player.x, 2) + 
+            Math.pow(otherPlayer.y - player.y, 2)
+        );
+        
+        if (distance <= bombRange) {
+            // Áp dụng hiệu ứng bomb
+            otherPlayer.velocityY = -15; // Đẩy lên mạnh
+            otherPlayer.effects.stunned = {
+                timeLeft: 2000, // Choáng 2 giây
+                startTime: Date.now()
+            };
+            
+            affectedPlayers.push(otherPlayer.playerId);
+        }
+    });
+    
+    // Broadcast bomb effect
+    this.broadcast({
+        type: 'bombExploded',
+        bomberId: player.playerId,
+        bomberX: player.x,
+        bomberY: player.y,
+        affectedPlayers: affectedPlayers,
+        range: bombRange
+    });
+    
+    console.log(`Bomb from ${player.playerId} affected ${affectedPlayers.length} players`);
+}
+
+// THÊM VÀO CLASS FlappyRaceGame
+
+handleShieldAction(player) {
+    player.effects.shield = {
+        timeLeft: 3000, // 3 giây
+        startTime: Date.now()
+    };
+    
+    this.broadcast({
+        type: 'shieldActivated',
+        playerId: player.playerId,
+        duration: 3000
+    });
+    
+    console.log(`Player ${player.playerId} activated shield for 3 seconds`);
+}
+
+// THÊM VÀO CLASS FlappyRaceGame
+
+handleTrapAction(player, data) {
+    // Đặt bẫy ở vị trí chỉ định hoặc vị trí hiện tại
+    const trapX = data.targetX || player.x + 100; // Phía trước player
+    const trapY = data.targetY || player.y;
+    
+    const trap = {
+        id: `trap_${Date.now()}_${player.playerId}`,
+        x: trapX,
+        y: trapY,
+        ownerId: player.playerId,
+        createdAt: Date.now(),
+        duration: 10000, // Tồn tại 10 giây
+        triggered: false
+    };
+    
+    if (!this.traps) this.traps = []; // Khởi tạo nếu chưa có
+    this.traps.push(trap);
+    
+    this.broadcast({
+        type: 'trapPlaced',
+        trap: trap,
+        placerId: player.playerId
+    });
+    
+    console.log(`Player ${player.playerId} placed trap at ${trapX}, ${trapY}`);
+}
+
+checkTrapCollisions(player) {
+    if (!this.traps) return;
+    
+    this.traps.forEach(trap => {
+        if (trap.triggered || trap.ownerId === player.playerId) return;
+        
+        const distance = Math.sqrt(
+            Math.pow(player.x - trap.x, 2) + 
+            Math.pow(player.y - trap.y, 2)
+        );
+        
+        if (distance <= 30) { // Kích hoạt bẫy
+            trap.triggered = true;
+            
+            // Hiệu ứng bẫy
+            player.effects.trapped = {
+                timeLeft: 2000, // Bị mắc kẹt 2 giây
+                startTime: Date.now()
+            };
+            player.velocityY = 0; // Dừng lại
+            
+            this.broadcast({
+                type: 'trapTriggered',
+                trapId: trap.id,
+                victimId: player.playerId,
+                placerId: trap.ownerId
+            });
+        }
+    });
+}
+
+
+
+
+
+
+
+
     respawnGame() {
         console.log('Respawning game...');
         
@@ -615,21 +815,69 @@ const playerState = {
         this.broadcastGameState();
     }
 
-    handleGameAction(playerId, action, data) {
-        const player = this.playerStates.find(p => p.playerId === playerId);
-        if (!player || !player.alive) return { error: 'Player not found or dead' };
+handleGameAction(playerId, action, data) {
+    const player = this.playerStates.find(p => p.playerId === playerId);
+    if (!player || !player.alive) return { error: 'Player not found or dead' };
+
+    switch (action) {
+        case 'flap':
+            return this.handleFlap(player);
+            
+        case 'useItem':
+    // CHỈ KIỂM TRA currentItem THAY VÌ items array
+    if (player.currentItem) {
+        const itemType = player.currentItem.type;
         
-        switch (action) {
-            case 'flap':
-                return this.handleFlap(player);
-            case 'useItem':
-                return this.handleUseItem(player, data.itemType);
-            case 'pause':
-                return this.handlePause();
-            default:
-                return { error: 'Unknown action' };
+        // Sử dụng item
+        switch (itemType) {
+            case 'speed':
+                player.effects.speed = { 
+                    timeLeft: 5000,
+                    startTime: Date.now()
+                };
+                this.broadcast({
+                    type: 'speedActivated',
+                    playerId: player.playerId,
+                    duration: 5000
+                });
+                break;
+                
+            case 'shield':
+                this.handleShieldAction(player);
+                break;
+                
+            case 'bomb':
+                this.handleBombAction(player);
+                break;
+                
+            case 'trap':
+                this.handleTrapAction(player, data);
+                break;
         }
+        
+        // XÓA ITEM SAU KHI DÙNG
+        const usedItemType = player.currentItem.type;
+        player.currentItem = null;
+        
+        this.broadcast({
+            type: 'itemUsed',
+            playerId: player.playerId,
+            itemType: usedItemType
+        });
+        
+        return { success: true, itemUsed: usedItemType };
+    } else {
+        return { error: 'No item to use' };
     }
+            return { error: 'No items in inventory' };
+            
+        case 'pause':
+            return this.handlePause();
+            
+        default:
+            return { error: 'Unknown action' };
+    }
+}
 
     handleFlap(player) {
         if (this.gamePhase !== 'playing') return { error: 'Game not in playing state' };
@@ -737,23 +985,38 @@ const playerState = {
     }
 
     // Override handlePlayerReady to support respawn
-    handlePlayerReady(playerId, settings) {
-        // If game is in finished state (round ended), this is for respawn
-        if (this.gamePhase === 'finished') {
-            this.playersReady[playerId] = true;
-            
-            // Broadcast ready update
-            this.broadcast({
-                type: 'readyUpdate',
-                playersReady: this.playersReady
-            });
-            
-            return { success: true };
+ handlePlayerReady(playerId, settings) {
+    console.log(`Player ${playerId} ready for game ${this.gameId}`);
+    
+    // If game is in finished state (round ended), this is for respawn
+    if (this.gamePhase === 'finished') {
+        this.playersReady[playerId] = true;
+        
+        console.log(`Players ready: ${Object.keys(this.playersReady).length}/${this.players.length}`);
+        
+        // Broadcast ready update
+        this.broadcast({
+            type: 'readyUpdate',
+            playersReady: this.playersReady
+        });
+        
+        // AUTO-START nếu chỉ có 1 người HOẶC tất cả đã ready
+        const readyCount = Object.keys(this.playersReady).length;
+        const totalPlayers = this.players.length;
+        
+        if (totalPlayers === 1 || readyCount === totalPlayers) {
+            console.log(`🚀 Starting new round - ${readyCount}/${totalPlayers} players ready`);
+            setTimeout(() => {
+                this.respawnGame();
+            }, 1000); // Delay 1s để người chơi thấy
         }
         
-        // Otherwise, use parent implementation for initial ready
-        return super.handlePlayerReady(playerId, settings);
+        return { success: true };
     }
+    
+    // Otherwise, use parent implementation for initial ready
+    return super.handlePlayerReady(playerId, settings);
+}
 
     broadcastGameState() {
         const payload = {
