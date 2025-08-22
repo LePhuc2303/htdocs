@@ -9,16 +9,16 @@ class FlappyRaceGame extends BaseGame {
         console.log(`🎮 Creating FlappyRaceGame with ID: ${gameId}`);
         
         // Game configuration
-        this.config = {
-            width: 1200,
-            height: 600,
-            raceDistance: 2000,
-            gravity: 0.5,
-            flapStrength: -8,
-            pipeGap: 120,
-            pipeWidth: 60,
-            itemSpawnRate: 0.02
-        };
+     this.config = {
+        width: 1200,
+        height: 600,
+        raceDistance: 2000,
+        gravity: 0.4,           // Giảm gravity một chút
+        flapStrength: -7,       // Giảm flap strength một chút để cân bằng
+        pipeGap: 140,          // Tăng default gap size
+        pipeWidth: 50,         // Giảm pipe width một chút
+        itemSpawnRate: 0.02
+    };
         
         // Game objects
         this.pipes = [];
@@ -810,47 +810,78 @@ class FlappyRaceGame extends BaseGame {
     
     // === MAP GENERATION ===
     generateMap() {
-        console.log('🗺️ Generating map...');
+    console.log('🗺️ Generating map with improved pathways...');
+    
+    this.pipes = [];
+    this.items = [];
+    
+    const pipeSpacing = 300;
+    const numPipes = Math.floor(this.config.raceDistance / pipeSpacing);
+    
+    // Increased gap size for easier navigation
+    const minGapSize = 140; // Tăng từ 120 lên 140
+    const maxGapSize = 180; // Thêm variation cho gap size
+    
+    for (let i = 0; i < numPipes; i++) {
+        const x = (i + 1) * pipeSpacing;
         
-        this.pipes = [];
-        this.items = [];
+        // Dynamic gap size - bigger gaps for more pathways
+        const gapSize = minGapSize + Math.random() * (maxGapSize - minGapSize);
         
-        const pipeSpacing = 300;
-        const numPipes = Math.floor(this.config.raceDistance / pipeSpacing);
+        // Ensure gap is positioned to leave pathways at bottom and top
+        const minGapY = 120; // Minimum distance from top
+        const maxGapY = this.config.height - 120; // Minimum distance from bottom
+        const gapY = minGapY + Math.random() * (maxGapY - minGapY);
         
-        for (let i = 0; i < numPipes; i++) {
-            const x = (i + 1) * pipeSpacing;
-            const gapY = 150 + Math.random() * (this.config.height - 300);
-            
-            const pipe = {
-                x: x,
-                topHeight: gapY - this.config.pipeGap / 2,
-                bottomY: gapY + this.config.pipeGap / 2,
-                bottomHeight: this.config.height - (gapY + this.config.pipeGap / 2)
-            };
-            
-            this.pipes.push(pipe);
-            
-            // Add items near pipes
-            if (Math.random() < 0.3) { // 30% chance
-                const itemTypes = ['speed', 'shield', 'bomb', 'trap'];
-                const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
-                
-                const item = {
-                    id: `item_${i}_${Date.now()}`,
-                    type: itemType,
-                    x: x + 80,
-                    y: gapY + (Math.random() - 0.5) * 50,
-                    collected: false,
-                    createdAt: Date.now()
-                };
-                
-                this.items.push(item);
-            }
+        const pipe = {
+            x: x,
+            topHeight: gapY - gapSize / 2,
+            bottomY: gapY + gapSize / 2,
+            bottomHeight: this.config.height - (gapY + gapSize / 2),
+            gapSize: gapSize // Store gap size for debugging
+        };
+        
+        // Ensure minimum space at bottom and top
+        if (pipe.topHeight < 80) {
+            pipe.topHeight = 80;
+            pipe.bottomY = pipe.topHeight + gapSize;
+            pipe.bottomHeight = this.config.height - pipe.bottomY;
         }
         
-        console.log(`✅ Map generated: ${this.pipes.length} pipes, ${this.items.length} items`);
+        if (pipe.bottomHeight < 80) {
+            pipe.bottomHeight = 80;
+            pipe.bottomY = this.config.height - pipe.bottomHeight;
+            pipe.topHeight = pipe.bottomY - gapSize;
+        }
+        
+        this.pipes.push(pipe);
+        
+        // Add items near pipes (in the gap area)
+        if (Math.random() < 0.3) { // 30% chance
+            const itemTypes = ['speed', 'shield', 'bomb', 'trap'];
+            const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+            
+            const item = {
+                id: `item_${i}_${Date.now()}`,
+                type: itemType,
+                x: x + 80,
+                y: gapY + (Math.random() - 0.5) * (gapSize * 0.6), // Keep items within the gap
+                collected: false,
+                createdAt: Date.now()
+            };
+            
+            this.items.push(item);
+        }
     }
+    
+    console.log(`✅ Map generated with improved pathways: ${this.pipes.length} pipes, ${this.items.length} items`);
+    
+    // Debug log for first few pipes
+    this.pipes.slice(0, 3).forEach((pipe, i) => {
+        console.log(`Pipe ${i}: topHeight=${pipe.topHeight}, bottomY=${pipe.bottomY}, gapSize=${pipe.gapSize}`);
+    });
+}
+
     
     // === GAME STATE BROADCAST ===
 broadcastGameState() {

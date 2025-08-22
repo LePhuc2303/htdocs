@@ -1271,6 +1271,15 @@ showMainMenu() {
         window.addEventListener('resize', () => {
             this.resizeCanvas();
         });
+            this.keyDownHandler = (e) => {
+        // ... existing key handling ...
+        
+        // Toggle pathway debug with 'P' key
+        if (e.code === 'KeyP') {
+            this.showPathwayDebug = !this.showPathwayDebug;
+            console.log('Pathway debug:', this.showPathwayDebug ? 'ON' : 'OFF');
+        }
+    };
     }
     
     flap() {
@@ -1376,47 +1385,44 @@ showMainMenu() {
     }
     
     render() {
-        if (!this.ctx || !this.canvas) {
-            return;
-        }
-        
-        this.ctx.save();
-        
-        // Clear canvas with sky blue background
-        this.ctx.fillStyle = '#87CEEB';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        if (!this.gameState) {
-            this.ctx.fillStyle = '#FFFFFF';
-            this.ctx.font = 'bold 24px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText('Đang chờ game...', this.canvas.width / 2, this.canvas.height / 2);
-            this.ctx.restore();
-            return;
-        }
-        
-        // Use scale = 1 for fullscreen (no scaling)
-        const scale = document.body.classList.contains('game-playing') ? 1 : this.scale;
-        
-        if (scale !== 1) {
-            this.ctx.scale(scale, scale);
-        }
-        
-        this.ctx.translate(-this.camera.x, -this.camera.y);
-        
-        // Render game objects
-        this.renderBackground();
-        this.renderPipes();
-        this.renderItems();
-        this.renderPlayers();
-        this.renderProjectiles();
-        this.renderParticles();
-        
-        this.ctx.restore();
-        
-        // Render UI on top (always unscaled)
-        this.renderUI();
+    if (!this.canvas || !this.ctx || !this.gameState) return;
+    
+    this.ctx.save();
+    
+    // Camera and scaling
+    this.updateCamera();
+    const scale = document.body.classList.contains('game-playing') ? 1 : this.scale;
+    
+    if (scale !== 1) {
+        this.ctx.scale(scale, scale);
     }
+    
+    this.ctx.translate(-this.camera.x, -this.camera.y);
+    
+    // Render game objects
+    this.renderBackground();
+    this.renderPipes();
+    
+    // Show pathway debug during waiting/countdown phases
+    if (this.gameState.gamePhase === 'waiting' || this.gameState.gamePhase === 'countdown') {
+        this.renderPathwayDebug();
+    }
+    
+    this.renderItems();
+    this.renderPlayers();
+    this.renderProjectiles();
+    this.renderParticles();
+    
+    this.ctx.restore();
+    
+    // Render UI on top (always unscaled)
+    this.renderUI();
+    
+    // Show pathway stats during debug
+    if (this.gameState.gamePhase === 'waiting') {
+        this.renderPathwayStats();
+    }
+}
         debugCanvasSize() {
         console.log('=== CANVAS SIZE DEBUG ===');
         console.log('Window size:', window.innerWidth, 'x', window.innerHeight);
@@ -1432,24 +1438,141 @@ showMainMenu() {
         this.ctx.fillRect(this.camera.x, 0, this.canvas.width, this.config.height);
     }
     
-    renderPipes() {
-        if (!this.gameState.pipes) return;
-        
-        this.ctx.fillStyle = '#228B22';
-        this.ctx.strokeStyle = '#006400';
-        this.ctx.lineWidth = 2;
-        
-        this.gameState.pipes.forEach(pipe => {
-            // Top pipe
-            this.ctx.fillRect(pipe.x, 0, 60, pipe.topHeight);
-            this.ctx.strokeRect(pipe.x, 0, 60, pipe.topHeight);
-            
-            // Bottom pipe
-            this.ctx.fillRect(pipe.x, pipe.bottomY, 60, pipe.bottomHeight);
-            this.ctx.strokeRect(pipe.x, pipe.bottomY, 60, pipe.bottomHeight);
-        });
-    }
+renderPipes() {
+    if (!this.gameState.pipes) return;
     
+    // Main pipe color
+    this.ctx.fillStyle = '#228B22';
+    this.ctx.strokeStyle = '#006400';
+    this.ctx.lineWidth = 2;
+    
+    this.gameState.pipes.forEach((pipe, index) => {
+        const pipeWidth = 50; // Updated to match server config
+        
+        // Top pipe
+        this.ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
+        this.ctx.strokeRect(pipe.x, 0, pipeWidth, pipe.topHeight);
+        
+        // Bottom pipe
+        this.ctx.fillRect(pipe.x, pipe.bottomY, pipeWidth, pipe.bottomHeight);
+        this.ctx.strokeRect(pipe.x, pipe.bottomY, pipeWidth, pipe.bottomHeight);
+        
+        // Visual indicators for pathways (optional - for debugging)
+        if (this.gameState.gamePhase === 'waiting' || this.gameState.gamePhase === 'countdown') {
+            // Draw gap area indicator
+            this.ctx.save();
+            this.ctx.fillStyle = 'rgba(255, 255, 0, 0.2)'; // Semi-transparent yellow
+            this.ctx.fillRect(pipe.x, pipe.topHeight, pipeWidth, pipe.bottomY - pipe.topHeight);
+            
+            // Draw gap size text
+            this.ctx.fillStyle = '#000';
+            this.ctx.font = '12px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(
+                `${Math.floor(pipe.bottomY - pipe.topHeight)}px`, 
+                pipe.x + pipeWidth/2, 
+                pipe.topHeight + (pipe.bottomY - pipe.topHeight)/2
+            );
+            this.ctx.restore();
+        }
+        
+        // Enhanced pipe caps for better visual
+        this.ctx.fillStyle = '#1F5F1F';
+        // Top pipe cap
+        this.ctx.fillRect(pipe.x - 3, pipe.topHeight - 15, pipeWidth + 6, 15);
+        this.ctx.strokeRect(pipe.x - 3, pipe.topHeight - 15, pipeWidth + 6, 15);
+        
+        // Bottom pipe cap
+        this.ctx.fillRect(pipe.x - 3, pipe.bottomY, pipeWidth + 6, 15);
+        this.ctx.strokeRect(pipe.x - 3, pipe.bottomY, pipeWidth + 6, 15);
+    });
+}
+    renderPathwayDebug() {
+    if (!this.gameState.pipes) return;
+    
+    this.ctx.save();
+    
+    // Draw pathway analysis
+    this.gameState.pipes.forEach((pipe, index) => {
+        const gapHeight = pipe.bottomY - pipe.topHeight;
+        const gapCenter = pipe.topHeight + gapHeight / 2;
+        
+        // Color code based on gap size
+        let pathwayColor;
+        if (gapHeight >= 160) {
+            pathwayColor = '#00FF00'; // Green - Easy
+        } else if (gapHeight >= 130) {
+            pathwayColor = '#FFFF00'; // Yellow - Medium
+        } else {
+            pathwayColor = '#FF0000'; // Red - Hard
+        }
+        
+        // Draw pathway indicator line
+        this.ctx.strokeStyle = pathwayColor;
+        this.ctx.lineWidth = 4;
+        this.ctx.beginPath();
+        this.ctx.moveTo(pipe.x - 20, gapCenter);
+        this.ctx.lineTo(pipe.x + 70, gapCenter);
+        this.ctx.stroke();
+        
+        // Draw gap size label
+        this.ctx.fillStyle = pathwayColor;
+        this.ctx.font = 'bold 14px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(
+            `${Math.floor(gapHeight)}px`, 
+            pipe.x + 25, 
+            gapCenter - 10
+        );
+        
+        // Draw difficulty indicator
+        const difficulty = gapHeight >= 160 ? 'EASY' : gapHeight >= 130 ? 'MED' : 'HARD';
+        this.ctx.fillText(difficulty, pipe.x + 25, gapCenter + 20);
+    });
+    
+    this.ctx.restore();
+}
+
+
+renderPathwayStats() {
+    if (!this.gameState.pipes) return;
+    
+    const gaps = this.gameState.pipes.map(pipe => pipe.bottomY - pipe.topHeight);
+    const avgGap = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+    const minGap = Math.min(...gaps);
+    const maxGap = Math.max(...gaps);
+    
+    this.ctx.save();
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    this.ctx.fillRect(10, 10, 200, 80);
+    
+    this.ctx.fillStyle = '#FFF';
+    this.ctx.font = '12px Arial';
+    this.ctx.textAlign = 'left';
+    
+    this.ctx.fillText(`Pathway Stats:`, 15, 25);
+    this.ctx.fillText(`Avg Gap: ${Math.floor(avgGap)}px`, 15, 40);
+    this.ctx.fillText(`Min Gap: ${Math.floor(minGap)}px`, 15, 55);
+    this.ctx.fillText(`Max Gap: ${Math.floor(maxGap)}px`, 15, 70);
+    
+    this.ctx.restore();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     renderItems() {
         if (!this.gameState.items) return;
         
