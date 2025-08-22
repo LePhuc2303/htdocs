@@ -3,44 +3,42 @@ const BaseGame = require('../BaseGame');
 
 class FlappyRaceGame extends BaseGame {
     constructor(gameId) {
-    super(gameId, 'flappy-race', 8);
-    
-    this.config = {
-        width: 1200,
-        height: 600,
-        raceDistance: 2000,
-        gravity: 0.5,
-        flapStrength: -8,
-        pipeGap: 120,
-        pipeWidth: 60,
-        itemSpawnRate: 0.02
-    };
-    
-    this.pipes = [];
-    this.items = [];
-    this.projectiles = [];
-    this.playerStates = [];
-    this.gamePhase = 'waiting';
-    this.gameTimer = 0;
-    this.leaderboard = [];
-    
-    this.gameSettings = {
-        mode: 'classic',
-        maxPlayers: 4,
-        difficulty: 'normal',
-        mapType: 'classic',
-        itemsEnabled: true
-    };
-    
-    this.gameLoop = null;
-    this.lastUpdate = Date.now();
-    
-    // Generate initial map
-    this.applyDifficulty(this.gameSettings.difficulty);
-    this.generateMap(this.gameSettings.mapType);
-    
-    console.log(`🎮 FlappyRaceGame created with ${this.pipes.length} pipes and ${this.items.length} items`);
-}
+        super(gameId, 'flappy-race', 8); // Max 8 players
+        
+        // Game config
+        this.config = {
+            width: 1200,
+            height: 600,
+            raceDistance: 2000,
+            gravity: 0.5,
+            flapStrength: -8,
+            pipeGap: 120,
+            pipeWidth: 60,
+            itemSpawnRate: 0.02
+        };
+        
+        // Game state
+        this.pipes = [];
+        this.items = [];
+        this.projectiles = [];
+        this.playerStates = [];
+        this.gamePhase = 'waiting'; // waiting, countdown, playing, finished
+        this.gameTimer = 0;
+        this.leaderboard = [];
+        
+        // Game settings (from room creation)
+        this.gameSettings = {
+            mode: 'classic',
+            maxPlayers: 4,
+            difficulty: 'normal',
+            mapType: 'classic',
+            itemsEnabled: true
+        };
+        
+        // Game loop
+        this.gameLoop = null;
+        this.lastUpdate = Date.now();
+    }
 
     onPlayerJoined(playerInfo) {
         const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF', '#5F27CD'];
@@ -82,42 +80,6 @@ const playerState = {
         };
     }
 
-generatePipes() {
-    this.pipes = [];
-    const pipeSpacing = 300; // Tăng từ 200 lên 300 (rộng hơn 50%)
-    const pipeCount = Math.floor(this.config.raceDistance / pipeSpacing);
-    
-    console.log(`🔧 Generating ${pipeCount} pipes with spacing ${pipeSpacing}`);
-    
-    for (let i = 0; i < pipeCount; i++) {
-        const x = 300 + (i * pipeSpacing); // Tăng start từ 200 lên 300
-        const minGapTop = 80; // Tăng từ 50 lên 80
-        const maxGapTop = this.config.height - this.config.pipeGap - 80; // Tăng từ 50 lên 80
-        const gapTop = minGapTop + Math.random() * (maxGapTop - minGapTop);
-        
-        const pipe = {
-            x: x,
-            topHeight: gapTop,
-            bottomY: gapTop + this.config.pipeGap,
-            width: this.config.pipeWidth,
-            gap: this.config.pipeGap,
-            passed: false
-        };
-        
-        this.pipes.push(pipe);
-        
-        // DEBUG: Log first few pipes
-        if (i < 3) {
-            console.log(`🔧 Pipe ${i}:`, pipe);
-        }
-    }
-    
-    console.log(`✅ Generated ${this.pipes.length} pipes`);
-}
-
-
-
-
     onPlayerLeft(playerId) {
         this.playerStates = this.playerStates.filter(p => p.playerId !== playerId);
         
@@ -156,155 +118,110 @@ generatePipes() {
         switch (difficulty) {
             case 'easy':
                 this.config.gravity = 0.3;
-                this.config.pipeGap = 200; // Tăng từ 150 lên 200
+                this.config.pipeGap = 150;
                 this.config.flapStrength = -10;
                 break;
             case 'normal':
                 this.config.gravity = 0.5;
-                this.config.pipeGap = 180; // Tăng từ 120 lên 180  
+                this.config.pipeGap = 120;
                 this.config.flapStrength = -8;
                 break;
             case 'hard':
                 this.config.gravity = 0.7;
-                this.config.pipeGap = 150; // Tăng từ 100 lên 150
+                this.config.pipeGap = 100;
                 this.config.flapStrength = -7;
                 break;
             case 'extreme':
                 this.config.gravity = 0.9;
-                this.config.pipeGap = 120; // Tăng từ 80 lên 120
+                this.config.pipeGap = 80;
                 this.config.flapStrength = -6;
                 break;
         }
     }
 
     generateMap(mapType) {
-    this.pipes = [];
-    
-    // Generate pipes với khoảng cách xa hơn
-    for (let x = 200; x < this.config.raceDistance; x += 200) { // Tăng từ 150 lên 200
-        let pipeHeight;
+        this.pipes = [];
         
-        switch (mapType) {
-            case 'jungle':
-                pipeHeight = 120 + Math.sin(x * 0.01) * 40;
-                break;
-            case 'city':
-                pipeHeight = 100 + (x % 300) * 0.2;
-                break;
-            case 'space':
-                pipeHeight = 140 + Math.random() * 80;
-                break;
-            default: // classic
-                pipeHeight = 100 + Math.random() * 100;
+        // Generate pipes based on map type
+        for (let x = 200; x < this.config.raceDistance; x += 150) {
+            let pipeHeight;
+            
+            switch (mapType) {
+                case 'jungle':
+                    pipeHeight = 100 + Math.sin(x * 0.01) * 50;
+                    break;
+                case 'city':
+                    pipeHeight = 80 + (x % 300) * 0.3;
+                    break;
+                case 'space':
+                    pipeHeight = 120 + Math.random() * 100;
+                    break;
+                default: // classic
+                    pipeHeight = 80 + Math.random() * 120;
+            }
+            
+            this.pipes.push({
+                x: x,
+                topHeight: pipeHeight,
+                bottomY: pipeHeight + this.config.pipeGap,
+                bottomHeight: this.config.height - (pipeHeight + this.config.pipeGap)
+            });
         }
         
-        this.pipes.push({
-            x: x,
-            topHeight: pipeHeight,
-            bottomY: pipeHeight + this.config.pipeGap,
-            bottomHeight: this.config.height - (pipeHeight + this.config.pipeGap)
-        });
+        // Generate items if enabled
+        if (this.gameSettings.itemsEnabled) {
+            this.generateItems();
+        }
     }
-    
-    // Generate items
-    if (this.gameSettings.itemsEnabled) {
-        this.generateItems();
-    }
-}
 
-generateItems() {
-    this.items = [];
-    
-    if (!this.pipes || this.pipes.length === 0) {
-        console.log('⚠️ No pipes found, generating pipes first...');
-        this.generatePipes();
-    }
-    
-    console.log(`🔧 Generating items for ${this.pipes.length} pipes`);
-    
-    // TẠO 2 ITEMS CHO MỖI ỐNG
-    this.pipes.forEach((pipe, index) => {
-        if (!pipe || pipe.x == null || pipe.topHeight == null || pipe.gap == null) {
-            console.error(`❌ Invalid pipe at index ${index}:`, pipe);
-            return;
-        }
-        
-        const gapCenter = pipe.topHeight + (pipe.gap / 2);
-        const gapQuarter = pipe.gap / 4;
-        
-        // ITEMS CỐ ĐỊNH VỊ TRÍ - KHÔNG DI CHUYỂN
-        const item1X = pipe.x + (pipe.width / 2);
-        const item1Y = gapCenter - gapQuarter;
-        
-        const item2X = pipe.x + (pipe.width / 2);
-        const item2Y = gapCenter + gapQuarter;
-        
+    generateItems() {
+        this.items = [];
         const itemTypes = ['speed', 'shield', 'bomb', 'trap'];
         
-        // Tạo item 1
-        this.items.push({
-            id: `item_pipe_${index}_1`,
-            type: itemTypes[Math.floor(Math.random() * itemTypes.length)],
-            x: item1X, // VỊ TRÍ CỐ ĐỊNH
-            y: item1Y, // VỊ TRÍ CỐ ĐỊNH
-            collected: false,
-            size: 37,
-            isBox: true,
-            pipeIndex: index // LIÊN KẾT VỚI PIPE
+        for (let x = 300; x < this.config.raceDistance; x += 200) {
+            if (Math.random() < 0.7) { // 70% chance to spawn item
+                const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+                this.items.push({
+                    id: `item_${Date.now()}_${Math.random()}`,
+                    type: itemType,
+                    x: x + Math.random() * 100 - 50,
+                    y: 100 + Math.random() * 400,
+                    collected: false
+                });
+            }
+        }
+    }
+
+    startGame() {
+        // Don't reset ready status here - we need it to check if all players are ready
+        
+        super.startGame();
+        this.gamePhase = 'countdown';
+        this.gameTimer = 10; // 10 second countdown as requested
+        this.lastCountdown = 10; // Initialize countdown tracker
+        
+        // Reset all players
+        this.playerStates.forEach(player => {
+            player.x = 50;
+            player.y = this.config.height / 2;
+            player.velocityY = 0;
+            player.score = 0;
+            player.lives = 3;
+            player.phase = 'outbound';
+            player.alive = true;
+            player.effects = {};
+            player.items = [];
+            player.rank = 0;
         });
         
-        // Tạo item 2
-        this.items.push({
-            id: `item_pipe_${index}_2`,
-            type: itemTypes[Math.floor(Math.random() * itemTypes.length)],
-            x: item2X, // VỊ TRÍ CỐ ĐỊNH
-            y: item2Y, // VỊ TRÍ CỐ ĐỊNH
-            collected: false,
-            size: 37,
-            isBox: true,
-            pipeIndex: index // LIÊN KẾT VỚI PIPE
+        this.startGameLoop();
+        
+        // Broadcast countdown start
+        this.broadcast({
+            type: 'gameMessage',
+            message: `⏰ Game bắt đầu sau ${this.gameTimer} giây! Tất cả hãy chuẩn bị!`
         });
-    });
-    
-    console.log(`✅ Generated ${this.items.length} items with fixed positions`);
-}
-    startGame() {
-    // Áp dụng cài đặt game trước
-    this.applyGameSettings();
-    
-    // Regenerate map và items mỗi khi bắt đầu game
-    this.generateMap(this.gameSettings.mapType || 'classic');
-    
-    super.startGame();
-    this.gamePhase = 'countdown';
-    this.gameTimer = 3; // Giảm từ 10 xuống 3 giây
-    this.lastCountdown = 3;
-    
-    // Reset all players
-    this.playerStates.forEach(player => {
-        player.x = 50;
-        player.y = this.config.height / 2;
-        player.velocityY = 0;
-        player.score = 0;
-        player.lives = 3;
-        player.phase = 'outbound';
-        player.alive = true;
-        player.effects = {};
-        player.items = [];
-        player.rank = 0;
-    });
-    
-    this.startGameLoop();
-    
-    this.broadcast({
-        type: 'gameMessage',
-        message: `⏰ Game bắt đầu sau ${this.gameTimer} giây!`
-    });
-    
-    console.log('🎮 Flappy Race game started');
-    console.log('🟢 Generated pipes:', this.pipes.length);
-    console.log('🎁 Generated items:', this.items.length);
-}
+    }
 
     startGameLoop() {
         if (this.gameLoop) return;
@@ -385,10 +302,9 @@ generateItems() {
     }
 }
 
-  updatePlayers(deltaTime) {
+    updatePlayers(deltaTime) {
     this.playerStates.forEach(player => {
-        // CHỈ UPDATE PLAYERS CÒN SỐNG
-        if (!player.alive || player.phase === 'gameOver') return;
+        if (!player.alive) return;
         
         // CHỈ APPLY PHYSICS KHI GAME ĐANG PLAYING
         if (this.gamePhase === 'playing') {
@@ -401,28 +317,20 @@ generateItems() {
             // Apply effects
             this.updatePlayerEffects(player, deltaTime);
             
-            // MOVE FORWARD HOẶC BACKWARD TÙY PHASE
-            let speed = 100;
+            // Move forward automatically
+            let speed = 100; // base speed
             if (player.effects.speed && player.effects.speed.timeLeft > 0) {
                 speed *= 1.5;
             }
+            player.x += speed * deltaTime;
             
-            // DI CHUYỂN THEO PHASE
-            if (player.phase === 'return') {
-                player.x -= speed * deltaTime;
-            } else if (player.phase === 'outbound') {
-                player.x += speed * deltaTime;
-            }
-            // Không di chuyển nếu phase = 'gameOver'
-            
-            // Check phase transition (chỉ khi còn sống)
+            // Check phase transition
             this.checkPhaseTransition(player);
             
-            // Collision detection (chỉ khi còn sống)
+            // Collision detection
             this.checkCollisions(player);
-            this.checkItemCollision(player);
-            this.checkTrapCollisions(player);
         }
+        // TRONG COUNTDOWN THÌ KHÔNG LÀM GÌ CẢ
     });
 }
 
@@ -439,42 +347,27 @@ generateItems() {
     }
 
     checkPhaseTransition(player) {
-    // Chuyển từ outbound sang return khi đến cuối
-    if (player.phase === 'outbound' && player.x >= this.config.raceDistance) {
-        player.phase = 'return';
-        player.velocityY = 0; // Reset velocity khi quay lại
-        console.log(`Player ${player.playerId} reached end, turning back`);
+        if (player.phase === 'outbound' && player.x >= this.config.raceDistance) {
+            player.phase = 'return';
+            player.score += 1000; // Bonus for reaching end
+        }
         
-        // Broadcast phase change
-        this.broadcast({
-            type: 'phaseChange',
-            playerId: player.playerId,
-            newPhase: 'return'
-        });
+        if (player.phase === 'return' && player.x <= 50) {
+            player.phase = 'finished';
+            player.score += 2000; // Bonus for finishing
+            
+            // Assign rank
+            const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
+            player.rank = finishedPlayers.length;
+        }
     }
-    
-    // Chuyển từ return sang finished khi về đích
-    if (player.phase === 'return' && player.x <= 50) {
-        player.phase = 'finished';
-        player.rank = this.getFinishedCount() + 1;
-        console.log(`Player ${player.playerId} finished! Rank: ${player.rank}`);
-        
-        // Broadcast finish
-        this.broadcast({
-            type: 'playerFinished',
-            playerId: player.playerId,
-            rank: player.rank
-        });
-    }
-}
 
-   checkCollisions(player) {
-        // Pipe collisions với hitbox nhỏ hơn
+    checkCollisions(player) {
+        // Pipe collisions
         if (!player.effects.shield || player.effects.shield.timeLeft <= 0) {
             this.pipes.forEach(pipe => {
-                // Giảm hitbox từ 15 xuống 12 để dễ bay qua hơn
-                if (player.x + 12 > pipe.x && player.x - 12 < pipe.x + this.config.pipeWidth) {
-                    if (player.y - 12 < pipe.topHeight || player.y + 12 > pipe.bottomY) {
+                if (player.x + 15 > pipe.x && player.x - 15 < pipe.x + this.config.pipeWidth) {
+                    if (player.y - 15 < pipe.topHeight || player.y + 15 > pipe.bottomY) {
                         this.damagePlayer(player);
                     }
                 }
@@ -497,63 +390,6 @@ generateItems() {
             }
         });
     }
-
-handlePlayerDeath(player, cause) {
-    if (!player.alive) return; // Tránh double death
-    
-    console.log(`💀 Player ${player.playerId} died: ${cause}`);
-    
-    // Giảm mạng
-    player.lives--;
-    player.deathCount++;
-    
-    if (player.lives > 0) {
-        // CÒN MẠNG - RESPAWN
-        console.log(`🔄 Player ${player.playerId} respawning. Lives left: ${player.lives}`);
-        
-        // Reset về vạch xuất phát
-        player.x = 50;
-        player.y = this.config.height / 2;
-        player.velocityY = 0;
-        player.phase = 'outbound';
-        player.alive = true;
-        player.currentItem = null; // Mất item khi chết
-        
-        // Broadcast respawn
-        this.broadcast({
-            type: 'playerRespawned',
-            playerId: player.playerId,
-            livesLeft: player.lives,
-            cause: cause
-        });
-        
-        // Thông báo
-        this.broadcast({
-            type: 'gameMessage',
-            message: `💀 Player ${player.playerId.slice(-3)} chết! Còn ${player.lives} mạng`
-        });
-        
-    } else {
-        // HẾT MẠNG - GAME OVER
-        console.log(`☠️ Player ${player.playerId} game over!`);
-        
-        player.alive = false;
-        player.phase = 'gameOver';
-        
-        // Broadcast game over
-        this.broadcast({
-            type: 'playerGameOver',
-            playerId: player.playerId,
-            totalDeaths: player.deathCount
-        });
-        
-        // Thông báo
-        this.broadcast({
-            type: 'gameMessage',
-            message: `☠️ Player ${player.playerId.slice(-3)} đã hết mạng!`
-        });
-    }
-}
 
     distance(obj1, obj2) {
         const dx = obj1.x - obj2.x;
@@ -661,185 +497,13 @@ handlePlayerDeath(player, cause) {
         }
     }
 
-// THÊM VÀO CLASS FlappyRaceGame trong file GameServer/src/games/FlappyRaceGame.js
-
-checkItemCollision(player) {
-    this.items.forEach(item => {
-        if (item.collected) return;
-        
-        // COLLISION DETECTION - điều chỉnh cho size lớn hơn
-        const playerLeft = player.x - 15;  // Tăng từ 10 lên 15
-        const playerRight = player.x + 35; // Tăng từ 30 lên 35
-        const playerTop = player.y - 15;   // Tăng từ 10 lên 15
-        const playerBottom = player.y + 35; // Tăng từ 30 lên 35
-        
-        const itemSize = item.size || 37;  // Sử dụng size mới
-        const itemLeft = item.x - (itemSize / 2);
-        const itemRight = item.x + (itemSize / 2);
-        const itemTop = item.y - (itemSize / 2);
-        const itemBottom = item.y + (itemSize / 2);
-        
-        if (playerRight > itemLeft && 
-            playerLeft < itemRight && 
-            playerBottom > itemTop && 
-            playerTop < itemBottom) {
-            
-            // Thu thập item
-            item.collected = true;
-            
-            // CHỈ GIỮ 1 ITEM - Thay thế item cũ
-            player.currentItem = {
-                type: item.type,
-                collectedAt: Date.now()
-            };
-            
-            console.log(`Player ${player.playerId} collected ${item.type} (replaced previous item)`);
-            
-            // Broadcast item collected
-            this.broadcast({
-                type: 'itemCollected',
-                playerId: player.playerId,
-                itemType: item.type,
-                itemId: item.id
-            });
-        }
-    });
-}
-
-
-
-// THÊM VÀO CLASS FlappyRaceGame trong file GameServer/src/games/FlappyRaceGame.js
-
-handleBombAction(player) {
-    const bombRange = 150; // Tầm 3cm trên màn hình
-    const affectedPlayers = [];
-    
-    this.playerStates.forEach(otherPlayer => {
-        if (otherPlayer.playerId === player.playerId) return;
-        if (!otherPlayer.alive) return;
-        
-        // Tính khoảng cách
-        const distance = Math.sqrt(
-            Math.pow(otherPlayer.x - player.x, 2) + 
-            Math.pow(otherPlayer.y - player.y, 2)
-        );
-        
-        if (distance <= bombRange) {
-            // Áp dụng hiệu ứng bomb
-            otherPlayer.velocityY = -15; // Đẩy lên mạnh
-            otherPlayer.effects.stunned = {
-                timeLeft: 2000, // Choáng 2 giây
-                startTime: Date.now()
-            };
-            
-            affectedPlayers.push(otherPlayer.playerId);
-        }
-    });
-    
-    // Broadcast bomb effect
-    this.broadcast({
-        type: 'bombExploded',
-        bomberId: player.playerId,
-        bomberX: player.x,
-        bomberY: player.y,
-        affectedPlayers: affectedPlayers,
-        range: bombRange
-    });
-    
-    console.log(`Bomb from ${player.playerId} affected ${affectedPlayers.length} players`);
-}
-
-// THÊM VÀO CLASS FlappyRaceGame
-
-handleShieldAction(player) {
-    player.effects.shield = {
-        timeLeft: 3000, // 3 giây
-        startTime: Date.now()
-    };
-    
-    this.broadcast({
-        type: 'shieldActivated',
-        playerId: player.playerId,
-        duration: 3000
-    });
-    
-    console.log(`Player ${player.playerId} activated shield for 3 seconds`);
-}
-
-// THÊM VÀO CLASS FlappyRaceGame
-
-handleTrapAction(player, data) {
-    // Đặt bẫy ở vị trí chỉ định hoặc vị trí hiện tại
-    const trapX = data.targetX || player.x + 100; // Phía trước player
-    const trapY = data.targetY || player.y;
-    
-    const trap = {
-        id: `trap_${Date.now()}_${player.playerId}`,
-        x: trapX,
-        y: trapY,
-        ownerId: player.playerId,
-        createdAt: Date.now(),
-        duration: 10000, // Tồn tại 10 giây
-        triggered: false
-    };
-    
-    if (!this.traps) this.traps = []; // Khởi tạo nếu chưa có
-    this.traps.push(trap);
-    
-    this.broadcast({
-        type: 'trapPlaced',
-        trap: trap,
-        placerId: player.playerId
-    });
-    
-    console.log(`Player ${player.playerId} placed trap at ${trapX}, ${trapY}`);
-}
-
-checkTrapCollisions(player) {
-    if (!this.traps) return;
-    
-    this.traps.forEach(trap => {
-        if (trap.triggered || trap.ownerId === player.playerId) return;
-        
-        const distance = Math.sqrt(
-            Math.pow(player.x - trap.x, 2) + 
-            Math.pow(player.y - trap.y, 2)
-        );
-        
-        if (distance <= 30) { // Kích hoạt bẫy
-            trap.triggered = true;
-            
-            // Hiệu ứng bẫy
-            player.effects.trapped = {
-                timeLeft: 2000, // Bị mắc kẹt 2 giây
-                startTime: Date.now()
-            };
-            player.velocityY = 0; // Dừng lại
-            
-            this.broadcast({
-                type: 'trapTriggered',
-                trapId: trap.id,
-                victimId: player.playerId,
-                placerId: trap.ownerId
-            });
-        }
-    });
-}
-
-
-
-
-
-
-
-
     respawnGame() {
         console.log('Respawning game...');
         
         // Reset game state
         this.gamePhase = 'countdown';
-        this.gameTimer = 3; // 10 second countdown
-        this.lastCountdown = 3; // Reset countdown tracker
+        this.gameTimer = 10; // 10 second countdown
+        this.lastCountdown = 10; // Reset countdown tracker
         this.status = 'playing';
         
         // Reset all players
@@ -951,69 +615,21 @@ checkTrapCollisions(player) {
         this.broadcastGameState();
     }
 
-handleGameAction(playerId, action, data) {
-    const player = this.playerStates.find(p => p.playerId === playerId);
-    if (!player || !player.alive) return { error: 'Player not found or dead' };
-
-    switch (action) {
-        case 'flap':
-            return this.handleFlap(player);
-            
-        case 'useItem':
-    // CHỈ KIỂM TRA currentItem THAY VÌ items array
-    if (player.currentItem) {
-        const itemType = player.currentItem.type;
+    handleGameAction(playerId, action, data) {
+        const player = this.playerStates.find(p => p.playerId === playerId);
+        if (!player || !player.alive) return { error: 'Player not found or dead' };
         
-        // Sử dụng item
-        switch (itemType) {
-            case 'speed':
-                player.effects.speed = { 
-                    timeLeft: 5000,
-                    startTime: Date.now()
-                };
-                this.broadcast({
-                    type: 'speedActivated',
-                    playerId: player.playerId,
-                    duration: 5000
-                });
-                break;
-                
-            case 'shield':
-                this.handleShieldAction(player);
-                break;
-                
-            case 'bomb':
-                this.handleBombAction(player);
-                break;
-                
-            case 'trap':
-                this.handleTrapAction(player, data);
-                break;
+        switch (action) {
+            case 'flap':
+                return this.handleFlap(player);
+            case 'useItem':
+                return this.handleUseItem(player, data.itemType);
+            case 'pause':
+                return this.handlePause();
+            default:
+                return { error: 'Unknown action' };
         }
-        
-        // XÓA ITEM SAU KHI DÙNG
-        const usedItemType = player.currentItem.type;
-        player.currentItem = null;
-        
-        this.broadcast({
-            type: 'itemUsed',
-            playerId: player.playerId,
-            itemType: usedItemType
-        });
-        
-        return { success: true, itemUsed: usedItemType };
-    } else {
-        return { error: 'No item to use' };
     }
-            return { error: 'No items in inventory' };
-            
-        case 'pause':
-            return this.handlePause();
-            
-        default:
-            return { error: 'Unknown action' };
-    }
-}
 
     handleFlap(player) {
         if (this.gamePhase !== 'playing') return { error: 'Game not in playing state' };
@@ -1121,60 +737,40 @@ handleGameAction(playerId, action, data) {
     }
 
     // Override handlePlayerReady to support respawn
- handlePlayerReady(playerId, settings) {
-    console.log(`Player ${playerId} ready for game ${this.gameId}`);
-    
-    // If game is in finished state (round ended), this is for respawn
-    if (this.gamePhase === 'finished') {
-        this.playersReady[playerId] = true;
-        
-        console.log(`Players ready: ${Object.keys(this.playersReady).length}/${this.players.length}`);
-        
-        // Broadcast ready update
-        this.broadcast({
-            type: 'readyUpdate',
-            playersReady: this.playersReady
-        });
-        
-        // AUTO-START nếu chỉ có 1 người HOẶC tất cả đã ready
-        const readyCount = Object.keys(this.playersReady).length;
-        const totalPlayers = this.players.length;
-        
-        if (totalPlayers === 1 || readyCount === totalPlayers) {
-            console.log(`🚀 Starting new round - ${readyCount}/${totalPlayers} players ready`);
-            setTimeout(() => {
-                this.respawnGame();
-            }, 1000); // Delay 1s để người chơi thấy
+    handlePlayerReady(playerId, settings) {
+        // If game is in finished state (round ended), this is for respawn
+        if (this.gamePhase === 'finished') {
+            this.playersReady[playerId] = true;
+            
+            // Broadcast ready update
+            this.broadcast({
+                type: 'readyUpdate',
+                playersReady: this.playersReady
+            });
+            
+            return { success: true };
         }
         
-        return { success: true };
+        // Otherwise, use parent implementation for initial ready
+        return super.handlePlayerReady(playerId, settings);
     }
-    
-    // Otherwise, use parent implementation for initial ready
-    return super.handlePlayerReady(playerId, settings);
-}
 
-broadcastGameState() {
-    const payload = {
-        ...this.getGameState(),
-        config: this.config,
-        pipes: this.pipes,
-        items: this.items,
-        projectiles: this.projectiles,
-        playerStates: this.playerStates,
-        gamePhase: this.gamePhase,
-        gameTimer: Math.floor(this.gameTimer),
-        leaderboard: this.leaderboard,
-        settings: this.gameSettings
-    };
-    
-    // Debug log để kiểm tra
-    console.log(`📡 Broadcasting game state - Pipes: ${this.pipes.length}, Items: ${this.items.length}`);
-    console.log('📦 First pipe:', this.pipes[0]);
-    console.log('🎁 First item:', this.items[0]);
-    
-    this.broadcast(payload);
-}
+    broadcastGameState() {
+        const payload = {
+            ...this.getGameState(),
+            config: this.config,
+            pipes: this.pipes,
+            items: this.items,
+            projectiles: this.projectiles,
+            playerStates: this.playerStates,
+            gamePhase: this.gamePhase,
+            gameTimer: Math.floor(this.gameTimer),
+            leaderboard: this.leaderboard,
+            settings: this.gameSettings
+        };
+        
+        this.broadcast(payload);
+    }
 }
 
 module.exports = FlappyRaceGame;
