@@ -1,38 +1,32 @@
-// GameServer/src/games/FlappyRaceGame.js - Flappy Race Server Implementation (VIẾT LẠI HOÀN TOÀN)
-
+// src/games/FlappyRaceGame.js - Flappy Race Server Implementation
 const BaseGame = require('../BaseGame');
 
 class FlappyRaceGame extends BaseGame {
     constructor(gameId) {
-        super(gameId, 'flappy-race', 8);
+        super(gameId, 'flappy-race', 8); // Max 8 players
         
-        console.log(`🎮 Creating FlappyRaceGame with ID: ${gameId}`);
+        // Game config
+        this.config = {
+            width: 1200,
+            height: 600,
+            raceDistance: 2000,
+            gravity: 0.5,
+            flapStrength: -8,
+            pipeGap: 120,
+            pipeWidth: 60,
+            itemSpawnRate: 0.02
+        };
         
-        // Game configuration
-     this.config = {
-        width: 1200,
-        height: 600,
-        raceDistance: 2000,
-        gravity: 0.4,           // Giảm gravity một chút
-        flapStrength: -7,       // Giảm flap strength một chút để cân bằng
-        pipeGap: 140,          // Tăng default gap size
-        pipeWidth: 50,         // Giảm pipe width một chút
-        itemSpawnRate: 0.02
-    };
-        
-        // Game objects
+        // Game state
         this.pipes = [];
         this.items = [];
         this.projectiles = [];
         this.playerStates = [];
-        this.traps = [];
-        
-        // Game state
         this.gamePhase = 'waiting'; // waiting, countdown, playing, finished
         this.gameTimer = 0;
         this.leaderboard = [];
         
-        // Game settings
+        // Game settings (from room creation)
         this.gameSettings = {
             mode: 'classic',
             maxPlayers: 4,
@@ -44,14 +38,8 @@ class FlappyRaceGame extends BaseGame {
         // Game loop
         this.gameLoop = null;
         this.lastUpdate = Date.now();
-        
-        // Initialize map
-        this.generateMap();
-        
-        console.log(`✅ FlappyRaceGame created successfully - Pipes: ${this.pipes.length}, Items: ${this.items.length}`);
     }
-    
-    // === PLAYER MANAGEMENT ===
+
     onPlayerJoined(playerInfo) {
         const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF', '#5F27CD'];
         const color = colors[this.players.length - 1] || '#FFD700';
@@ -59,348 +47,231 @@ class FlappyRaceGame extends BaseGame {
         playerInfo.color = color;
         
         // Initialize player state
-        const playerState = {
-            playerId: playerInfo.playerId,
-            x: 100,
-            y: this.config.height / 2,
-            velocityY: 0,
-            color: color,
-            score: 0,
-            lives: 3,
-            phase: 'outbound', // outbound, return, finished
-            alive: true,
-            effects: {},
-            currentItem: null,
-            rank: 0,
-            invulnerable: false,
-            invulnerabilityTime: 0
-        };
+const playerState = {
+    playerId: playerInfo.playerId,
+    x: 50, // Start further from pipes
+    y: this.config.height / 2, // Middle of screen
+    velocityY: 0,
+    color: color,
+    score: 0,
+    lives: 3,
+    phase: 'outbound',
+    alive: true, // Make sure starts alive
+    effects: {},
+    items: [],
+    rank: 0,
+    invulnerable: true, // Add 3 second invulnerability at start
+    invulnerabilityTime: 3000
+};
         
         this.playerStates.push(playerState);
         
-        console.log(`👤 Player ${playerInfo.playerId} joined with color ${color}`);
+        // Start game if enough players and all ready
+        if (this.players.length >= 2 && this.status === 'playing') {
+            this.startGameLoop();
+        }
         
         this.broadcastGameState();
         
         return { 
-            color: color, 
-            playerIndex: this.players.length - 1 
+            color, 
+            playerIndex: this.players.length - 1,
+            gameConfig: this.config 
         };
     }
-    
+
     onPlayerLeft(playerId) {
-        console.log(`👋 Player ${playerId} left the game`);
-        
-        // Remove player state
         this.playerStates = this.playerStates.filter(p => p.playerId !== playerId);
         
-        // Reset game if no players left
+        // Reset ready status when player leaves
+        delete this.playersReady[playerId];
+        
         if (this.players.length === 0) {
-            this.resetGame();
+            this.stopGameLoop();
+            this.status = 'waiting';
+            this.gamePhase = 'waiting';
         }
         
         this.broadcastGameState();
     }
-    
-    // === GAME ACTIONS ===
-    handleGameAction(playerId, action, data) {
-        const player = this.playerStates.find(p => p.playerId === playerId);
-        if (!player) {
-            return { error: 'Player not found' };
-        }
-        
-        console.log(`🎮 Game action: ${action} from player ${playerId}`);
-        
-        switch (action) {
-            case 'flap':
-                return this.handleFlap(player);
-                
-            case 'useItem':
-                return this.handleUseItem(player, data);
-                
-            default:
-                console.warn(`❓ Unknown action: ${action}`);
-                return { error: 'Unknown action' };
-        }
-    }
-    
-    handleFlap(player) {
-        if (this.gamePhase !== 'playing' || !player.alive) {
-            return { error: 'Cannot flap at this time' };
-        }
-        
-        // Check if stunned
-        if (player.effects.stunned && player.effects.stunned.timeLeft > 0) {
-            return { error: 'Player is stunned' };
-        }
-        
-        // Apply flap
-        player.velocityY = this.config.flapStrength;
-        
-        console.log(`🦅 Player ${player.playerId} flapped`);
-        return { success: true };
-    }
-    
-    handleUseItem(player, data) {
-        if (this.gamePhase !== 'playing' || !player.alive || !player.currentItem) {
-            return { error: 'Cannot use item at this time' };
-        }
-        
-        const itemType = player.currentItem.type;
-        console.log(`🎁 Player ${player.playerId} using item: ${itemType}`);
-        
-        let result = { success: false };
-        
-        switch (itemType) {
-            case 'speed':
-                result = this.handleSpeedBoost(player);
-                break;
-            case 'shield':
-                result = this.handleShield(player);
-                break;
-            case 'bomb':
-                result = this.handleBomb(player);
-                break;
-            case 'trap':
-                result = this.handleTrap(player, data);
-                break;
-            default:
-                result = { error: 'Unknown item type' };
-        }
-        
-        // Remove item after use
-        if (result.success) {
-            player.currentItem = null;
-        }
-        
-        return result;
-    }
-    
-    handleSpeedBoost(player) {
-        player.effects.speed = {
-            timeLeft: 5000, // 5 seconds
-            startTime: Date.now()
-        };
-        
-        this.broadcast({
-            type: 'speedBoostActivated',
-            playerId: player.playerId,
-            duration: 5000
-        });
-        
-        console.log(`⚡ Speed boost activated for player ${player.playerId}`);
-        return { success: true };
-    }
-    
-    handleShield(player) {
-        player.effects.shield = {
-            timeLeft: 3000, // 3 seconds
-            startTime: Date.now()
-        };
-        
-        this.broadcast({
-            type: 'shieldActivated',
-            playerId: player.playerId,
-            duration: 3000
-        });
-        
-        console.log(`🛡️ Shield activated for player ${player.playerId}`);
-        return { success: true };
-    }
-    
-    handleBomb(player) {
-        const bombRange = 150;
-        const affectedPlayers = [];
-        
-        this.playerStates.forEach(otherPlayer => {
-            if (otherPlayer.playerId === player.playerId || !otherPlayer.alive) return;
-            
-            const distance = Math.sqrt(
-                Math.pow(otherPlayer.x - player.x, 2) + 
-                Math.pow(otherPlayer.y - player.y, 2)
-            );
-            
-            if (distance <= bombRange) {
-                // Apply bomb effects
-                otherPlayer.velocityY = -15; // Knock up
-                otherPlayer.effects.stunned = {
-                    timeLeft: 2000, // 2 seconds
-                    startTime: Date.now()
-                };
-                
-                affectedPlayers.push(otherPlayer.playerId);
-            }
-        });
-        
-        this.broadcast({
-            type: 'bombExploded',
-            bomberId: player.playerId,
-            bomberX: player.x,
-            bomberY: player.y,
-            affectedPlayers: affectedPlayers,
-            range: bombRange
-        });
-        
-        console.log(`💣 Bomb from ${player.playerId} affected ${affectedPlayers.length} players`);
-        return { success: true };
-    }
-    
-    handleTrap(player, data) {
-        const trapX = data?.targetX || (player.x + 100);
-        const trapY = data?.targetY || player.y;
-        
-        const trap = {
-            id: `trap_${Date.now()}_${player.playerId}`,
-            x: trapX,
-            y: trapY,
-            ownerId: player.playerId,
-            createdAt: Date.now(),
-            duration: 10000, // 10 seconds
-            triggered: false
-        };
-        
-        this.traps.push(trap);
-        
-        this.broadcast({
-            type: 'trapPlaced',
-            trap: trap,
-            placerId: player.playerId
-        });
-        
-        console.log(`🪤 Trap placed by ${player.playerId} at (${trapX}, ${trapY})`);
-        return { success: true };
-    }
-    
-    // === READY SYSTEM ===
-    handlePlayerReady(playerId, settings) {
-        console.log(`✅ Player ${playerId} is ready in game ${this.gameId}`);
-        
-        // Update settings if provided
-        if (settings && this.players.find(p => p.playerId === playerId && p.isHost)) {
+
+    applyGameSettings() {
+        const settingsArray = Object.values(this.gameSettings);
+        if (settingsArray.length > 0) {
+            const settings = settingsArray[0];
             this.gameSettings = { ...this.gameSettings, ...settings };
-            console.log('🎛️ Game settings updated:', this.gameSettings);
+            
+            // Apply difficulty settings
+            this.applyDifficulty(this.gameSettings.difficulty);
+            
+            // Apply map settings
+            this.generateMap(this.gameSettings.mapType);
+            
+            // Set max players
+            if (settings.maxPlayers) {
+                this.maxPlayers = settings.maxPlayers;
+            }
         }
+    }
+
+    applyDifficulty(difficulty) {
+        switch (difficulty) {
+            case 'easy':
+                this.config.gravity = 0.3;
+                this.config.pipeGap = 150;
+                this.config.flapStrength = -10;
+                break;
+            case 'normal':
+                this.config.gravity = 0.5;
+                this.config.pipeGap = 120;
+                this.config.flapStrength = -8;
+                break;
+            case 'hard':
+                this.config.gravity = 0.7;
+                this.config.pipeGap = 100;
+                this.config.flapStrength = -7;
+                break;
+            case 'extreme':
+                this.config.gravity = 0.9;
+                this.config.pipeGap = 80;
+                this.config.flapStrength = -6;
+                break;
+        }
+    }
+
+    generateMap(mapType) {
+        this.pipes = [];
         
-        // If game is finished, this is for respawn
-        if (this.gamePhase === 'finished') {
-            this.playersReady[playerId] = true;
+        // Generate pipes based on map type
+        for (let x = 200; x < this.config.raceDistance; x += 150) {
+            let pipeHeight;
             
-            console.log(`Players ready for respawn: ${Object.keys(this.playersReady).length}/${this.players.length}`);
-            
-            this.broadcast({
-                type: 'readyUpdate',
-                playersReady: this.playersReady
-            });
-            
-            // Check if should start new round
-            const readyCount = Object.keys(this.playersReady).length;
-            const totalPlayers = this.players.length;
-            
-            if (totalPlayers === 1 || readyCount === totalPlayers) {
-                console.log(`🚀 Starting new round - ${readyCount}/${totalPlayers} players ready`);
-                setTimeout(() => {
-                    this.respawnGame();
-                }, 1000);
+            switch (mapType) {
+                case 'jungle':
+                    pipeHeight = 100 + Math.sin(x * 0.01) * 50;
+                    break;
+                case 'city':
+                    pipeHeight = 80 + (x % 300) * 0.3;
+                    break;
+                case 'space':
+                    pipeHeight = 120 + Math.random() * 100;
+                    break;
+                default: // classic
+                    pipeHeight = 80 + Math.random() * 120;
             }
             
-            return { success: true };
+            this.pipes.push({
+                x: x,
+                topHeight: pipeHeight,
+                bottomY: pipeHeight + this.config.pipeGap,
+                bottomHeight: this.config.height - (pipeHeight + this.config.pipeGap)
+            });
         }
         
-        // NORMAL READY FOR GAME START
-        this.playersReady[playerId] = true;
-        
-        // Broadcast ready update
-        this.broadcast({
-            type: 'readyUpdate',
-            playersReady: this.playersReady
-        });
-        
-        console.log(`Ready check: ${Object.keys(this.playersReady).length}/${this.players.length} players`);
-        
-        // AUTO-START: Nếu chỉ có 1 người HOẶC tất cả đã ready
-        const readyCount = Object.keys(this.playersReady).length;
-        const totalPlayers = this.players.length;
-        
-        if (totalPlayers === 1 || readyCount === totalPlayers) {
-            console.log(`🚀 Starting game - ${readyCount}/${totalPlayers} players ready`);
-            this.status = 'playing'; // Chuyển status trước
-            setTimeout(() => {
-                this.startGameLoop(); // BẮT ĐẦU GAME LOOP
-            }, 1000);
+        // Generate items if enabled
+        if (this.gameSettings.itemsEnabled) {
+            this.generateItems();
         }
-        
-        return { success: true };
     }
-    
-    // === GAME LOOP ===
-    startGameLoop() {
-        if (this.gameLoop) {
-            clearInterval(this.gameLoop);
+
+    generateItems() {
+        this.items = [];
+        const itemTypes = ['speed', 'shield', 'bomb', 'trap'];
+        
+        for (let x = 300; x < this.config.raceDistance; x += 200) {
+            if (Math.random() < 0.7) { // 70% chance to spawn item
+                const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+                this.items.push({
+                    id: `item_${Date.now()}_${Math.random()}`,
+                    type: itemType,
+                    x: x + Math.random() * 100 - 50,
+                    y: 100 + Math.random() * 400,
+                    collected: false
+                });
+            }
         }
+    }
+
+    startGame() {
+        // Don't reset ready status here - we need it to check if all players are ready
         
-        console.log('🔄 Starting game loop...');
-        
+        super.startGame();
         this.gamePhase = 'countdown';
-        this.gameTimer = 3; // 3 second countdown
+        this.gameTimer = 10; // 10 second countdown as requested
+        this.lastCountdown = 10; // Initialize countdown tracker
         
-        this.broadcast({
-            type: 'gameStarting',
-            countdown: this.gameTimer
+        // Reset all players
+        this.playerStates.forEach(player => {
+            player.x = 50;
+            player.y = this.config.height / 2;
+            player.velocityY = 0;
+            player.score = 0;
+            player.lives = 3;
+            player.phase = 'outbound';
+            player.alive = true;
+            player.effects = {};
+            player.items = [];
+            player.rank = 0;
         });
+        
+        this.startGameLoop();
+        
+        // Broadcast countdown start
+        this.broadcast({
+            type: 'gameMessage',
+            message: `⏰ Game bắt đầu sau ${this.gameTimer} giây! Tất cả hãy chuẩn bị!`
+        });
+    }
+
+    startGameLoop() {
+        if (this.gameLoop) return;
         
         this.lastUpdate = Date.now();
-        
         this.gameLoop = setInterval(() => {
-            this.update();
-        }, 16); // ~60 FPS
+            this.updateGame();
+        }, 1000 / 60); // 60 FPS
     }
-    
-    update() {
+
+    stopGameLoop() {
+        if (this.gameLoop) {
+            clearInterval(this.gameLoop);
+            this.gameLoop = null;
+        }
+    }
+
+    updateGame() {
         const now = Date.now();
-        const deltaTime = (now - this.lastUpdate) / 1000; // Convert to seconds
+        const deltaTime = (now - this.lastUpdate) / 1000;
         this.lastUpdate = now;
         
-        switch (this.gamePhase) {
-            case 'countdown':
-                this.updateCountdown(deltaTime);
-                break;
-            case 'playing':
-                this.updateGameplay(deltaTime);
-                break;
-            case 'finished':
-                // Game finished, waiting for respawn
-                break;
+        // Update countdown
+        if (this.gamePhase === 'countdown') {
+            this.gameTimer -= deltaTime;
+            
+            // Broadcast countdown updates
+            const seconds = Math.ceil(this.gameTimer);
+            if (seconds !== this.lastCountdown && seconds > 0) {
+                this.lastCountdown = seconds;
+                this.broadcast({
+                    type: 'gameMessage',
+                    message: `Bắt đầu sau ${seconds}...`
+                });
+            }
+            
+            if (this.gameTimer <= 0) {
+                this.gamePhase = 'playing';
+                this.gameTimer = 0;
+                this.broadcast({
+                    type: 'gameMessage',
+                    message: '🚀 Game bắt đầu! Good luck!'
+                });
+            }
         }
         
-        // Always broadcast state during active phases
-        if (this.gamePhase === 'countdown' || this.gamePhase === 'playing') {
-            this.broadcastGameState();
+        // Update game timer
+        if (this.gamePhase === 'playing') {
+            this.gameTimer += deltaTime;
         }
-    }
-    
-    updateCountdown(deltaTime) {
-        this.gameTimer -= deltaTime;
-        
-        if (this.gameTimer <= 0) {
-            console.log('🏁 Countdown finished, starting game!');
-            this.gamePhase = 'playing';
-            this.gameTimer = 0;
-            
-            // Make all players invulnerable for 2 seconds at start
-            this.playerStates.forEach(player => {
-                player.invulnerable = true;
-                player.invulnerabilityTime = 2000;
-            });
-            
-            this.broadcast({
-                type: 'gameStarted',
-                message: 'Good luck!'
-            });
-        }
-    }
-    
-    updateGameplay(deltaTime) {
-        this.gameTimer += deltaTime;
         
         // Update players
         this.updatePlayers(deltaTime);
@@ -409,30 +280,24 @@ class FlappyRaceGame extends BaseGame {
         this.updateProjectiles(deltaTime);
         
         // Update items
-        this.updateItems(deltaTime);
-        
-        // Update traps
-        this.updateTraps(deltaTime);
+        this.updateItems();
         
         // Check game end conditions
         this.checkGameEnd();
         
+        // Check for respawn (if all players are dead, allow restart)
+        this.checkRespawnCondition();
+        
         // Update leaderboard
         this.updateLeaderboard();
+        
+        // Broadcast state
+        this.broadcastGameState();
     }
-    
+
     updatePlayers(deltaTime) {
         this.playerStates.forEach(player => {
             if (!player.alive) return;
-            
-            // Update invulnerability
-            if (player.invulnerable) {
-                player.invulnerabilityTime -= deltaTime * 1000;
-                if (player.invulnerabilityTime <= 0) {
-                    player.invulnerable = false;
-                    player.invulnerabilityTime = 0;
-                }
-            }
             
             // Apply gravity
             player.velocityY += this.config.gravity;
@@ -440,288 +305,161 @@ class FlappyRaceGame extends BaseGame {
             // Apply velocity
             player.y += player.velocityY;
             
-            // Update effects
+            // Apply effects
             this.updatePlayerEffects(player, deltaTime);
             
-            // Move player forward/backward based on phase
-            let speed = 100; // Base speed
+            // Move forward automatically
+            let speed = 100; // base speed
             if (player.effects.speed && player.effects.speed.timeLeft > 0) {
                 speed *= 1.5;
             }
+            player.x += speed * deltaTime;
             
-            if (player.phase === 'return') {
-                player.x -= speed * deltaTime;
-            } else if (player.phase === 'outbound') {
-                player.x += speed * deltaTime;
-            }
-            
-            // Check phase transitions
+            // Check phase transition
             this.checkPhaseTransition(player);
             
-            // Check collisions
+            // Collision detection
             this.checkCollisions(player);
-            this.checkItemCollision(player);
-            this.checkTrapCollisions(player);
+            
+            // Bounds checking
+            if (player.y < 0) {
+                player.y = 0;
+                player.velocityY = 0;
+            }
+            if (player.y > this.config.height) {
+                this.killPlayer(player);
+            }
         });
     }
-    
+
     updatePlayerEffects(player, deltaTime) {
         Object.keys(player.effects).forEach(effectType => {
             const effect = player.effects[effectType];
             if (effect && effect.timeLeft > 0) {
-                effect.timeLeft -= deltaTime * 1000;
-                
+                effect.timeLeft -= deltaTime;
                 if (effect.timeLeft <= 0) {
                     delete player.effects[effectType];
-                    console.log(`✨ Effect ${effectType} expired for player ${player.playerId}`);
                 }
             }
         });
     }
-    
+
     checkPhaseTransition(player) {
-        // Check if reached the end (outbound -> return)
         if (player.phase === 'outbound' && player.x >= this.config.raceDistance) {
             player.phase = 'return';
-            player.x = this.config.raceDistance;
-            console.log(`🔄 Player ${player.playerId} reached the end, now returning`);
+            player.score += 1000; // Bonus for reaching end
         }
         
-        // Check if returned to start (return -> finished)
-        if (player.phase === 'return' && player.x <= 0) {
+        if (player.phase === 'return' && player.x <= 50) {
             player.phase = 'finished';
-            player.x = 0;
-            player.alive = false; // Stop updating
+            player.score += 2000; // Bonus for finishing
             
             // Assign rank
-            const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished').length;
-            player.rank = finishedPlayers;
-            
-            console.log(`🏆 Player ${player.playerId} finished with rank ${player.rank}`);
+            const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
+            player.rank = finishedPlayers.length;
         }
     }
-    
+
     checkCollisions(player) {
-        if (!player.alive || player.invulnerable) return;
+        // Pipe collisions
+        if (!player.effects.shield || player.effects.shield.timeLeft <= 0) {
+            this.pipes.forEach(pipe => {
+                if (player.x + 15 > pipe.x && player.x - 15 < pipe.x + this.config.pipeWidth) {
+                    if (player.y - 15 < pipe.topHeight || player.y + 15 > pipe.bottomY) {
+                        this.damagePlayer(player);
+                    }
+                }
+            });
+        }
         
-        // Check pipe collisions
-        this.pipes.forEach(pipe => {
-            if (this.isPlayerCollidingWithPipe(player, pipe)) {
-                this.handlePlayerDeath(player, 'pipe');
+        // Item collisions
+        this.items.forEach(item => {
+            if (!item.collected && this.distance(player, item) < 30) {
+                this.collectItem(player, item);
             }
         });
         
-        // Check boundary collisions
-        if (player.y <= 0 || player.y >= this.config.height) {
-            this.handlePlayerDeath(player, 'boundary');
-        }
-    }
-    
-    isPlayerCollidingWithPipe(player, pipe) {
-        const playerLeft = player.x - 15;
-        const playerRight = player.x + 15;
-        const playerTop = player.y - 15;
-        const playerBottom = player.y + 15;
-        
-        const pipeLeft = pipe.x;
-        const pipeRight = pipe.x + this.config.pipeWidth;
-        
-        // Check if player is horizontally within pipe
-        if (playerRight > pipeLeft && playerLeft < pipeRight) {
-            // Check if player hits top or bottom pipe
-            if (playerTop < pipe.topHeight || playerBottom > pipe.bottomY) {
-                return true;
+        // Projectile collisions
+        this.projectiles.forEach(projectile => {
+            if (projectile.sourcePlayerId !== player.playerId && 
+                this.distance(player, projectile) < 20) {
+                this.damagePlayer(player);
+                projectile.active = false;
             }
-        }
-        
-        return false;
+        });
     }
-    
-    handlePlayerDeath(player, cause) {
+
+    distance(obj1, obj2) {
+        const dx = obj1.x - obj2.x;
+        const dy = obj1.y - obj2.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    collectItem(player, item) {
+        item.collected = true;
+        player.items.push(item.type);
+        player.score += 100;
+        
+        // Limit items
+        if (player.items.length > 4) {
+            player.items.shift();
+        }
+    }
+
+    damagePlayer(player) {
         if (player.effects.shield && player.effects.shield.timeLeft > 0) {
-            // Shield absorbs the hit
-            delete player.effects.shield;
-            console.log(`🛡️ Shield saved player ${player.playerId} from ${cause}`);
-            
-            this.broadcast({
-                type: 'shieldDeflected',
-                playerId: player.playerId,
-                cause: cause
-            });
-            return;
+            return; // Shield protects
         }
         
         player.lives--;
-        console.log(`💀 Player ${player.playerId} died from ${cause}. Lives: ${player.lives}`);
+        player.score = Math.max(0, player.score - 200);
         
         if (player.lives <= 0) {
-            player.alive = false;
-            player.phase = 'gameOver';
-            
-            this.broadcast({
-                type: 'playerDied',
-                playerId: player.playerId,
-                cause: cause,
-                finalScore: player.score
-            });
-        } else {
-            // Respawn with invulnerability
-            player.y = this.config.height / 2;
-            player.velocityY = 0;
-            player.invulnerable = true;
-            player.invulnerabilityTime = 2000;
-            
-            this.broadcast({
-                type: 'playerRespawned',
-                playerId: player.playerId,
-                livesLeft: player.lives
-            });
+            this.killPlayer(player);
         }
     }
-    
-    checkItemCollision(player) {
-        if (!player.alive) return;
-        
-        this.items.forEach(item => {
-            if (item.collected) return;
-            
-            const distance = Math.sqrt(
-                Math.pow(player.x - item.x, 2) + 
-                Math.pow(player.y - item.y, 2)
-            );
-            
-            if (distance < 25) { // Collision threshold
-                item.collected = true;
-                
-                // Replace current item
-                player.currentItem = {
-                    type: item.type,
-                    collectedAt: Date.now()
-                };
-                
-                console.log(`🎁 Player ${player.playerId} collected ${item.type}`);
-                
-                this.broadcast({
-                    type: 'itemCollected',
-                    playerId: player.playerId,
-                    itemType: item.type,
-                    itemId: item.id
-                });
-            }
-        });
+
+    killPlayer(player) {
+        player.alive = false;
+        player.velocityY = 0;
     }
-    
-    checkTrapCollisions(player) {
-        if (!player.alive || player.invulnerable) return;
-        
-        this.traps.forEach(trap => {
-            if (trap.triggered || trap.ownerId === player.playerId) return;
-            
-            const distance = Math.sqrt(
-                Math.pow(player.x - trap.x, 2) + 
-                Math.pow(player.y - trap.y, 2)
-            );
-            
-            if (distance < 30) { // Trap trigger range
-                trap.triggered = true;
-                
-                // Apply trap effect
-                player.effects.stunned = {
-                    timeLeft: 3000, // 3 seconds
-                    startTime: Date.now()
-                };
-                
-                // Knock player up
-                player.velocityY = -10;
-                
-                console.log(`🪤 Player ${player.playerId} triggered trap from ${trap.ownerId}`);
-                
-                this.broadcast({
-                    type: 'trapTriggered',
-                    trapId: trap.id,
-                    victimId: player.playerId,
-                    ownerId: trap.ownerId
-                });
-            }
-        });
-    }
-    
+
     updateProjectiles(deltaTime) {
         this.projectiles = this.projectiles.filter(projectile => {
+            if (!projectile.active) return false;
+            
             projectile.x += projectile.velocityX * deltaTime;
             projectile.y += projectile.velocityY * deltaTime;
             
             // Remove if out of bounds
-            return projectile.x >= 0 && projectile.x <= this.config.raceDistance + 200 &&
-                   projectile.y >= 0 && projectile.y <= this.config.height;
-        });
-    }
-    
-    updateItems(deltaTime) {
-        // Remove collected items and old items
-        this.items = this.items.filter(item => {
-            if (item.collected) return false;
+            if (projectile.x < 0 || projectile.x > this.config.raceDistance + 200 ||
+                projectile.y < 0 || projectile.y > this.config.height) {
+                return false;
+            }
             
-            const age = Date.now() - (item.createdAt || 0);
-            return age < 30000; // Remove after 30 seconds
+            return true;
         });
     }
-    
-    updateTraps(deltaTime) {
-        const now = Date.now();
-        
-        // Remove expired traps
-        this.traps = this.traps.filter(trap => {
-            const age = now - trap.createdAt;
-            return age < trap.duration;
-        });
+
+    updateItems() {
+        // Clean up collected items
+        this.items = this.items.filter(item => !item.collected);
     }
-    
-    checkGameEnd() {
-        const alivePlayers = this.playerStates.filter(p => p.alive);
-        const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
-        
-        // Game ends when all players are either dead or finished
-        if (alivePlayers.length === 0 || finishedPlayers.length === this.players.length) {
-            this.endGame();
-        }
-    }
-    
-    endGame() {
-        console.log('🏁 Game ended!');
-        
-        this.gamePhase = 'finished';
-        
-        if (this.gameLoop) {
-            clearInterval(this.gameLoop);
-            this.gameLoop = null;
-        }
-        
-        // Calculate final rankings
-        this.calculateFinalRankings();
-        
-        this.broadcast({
-            type: 'gameEnded',
-            finalRankings: this.leaderboard,
-            gameTime: Math.floor(this.gameTimer)
-        });
-    }
-    
-    calculateFinalRankings() {
-        // Sort players by: 1) Finished first, 2) Progress, 3) Score
+
+    updateLeaderboard() {
         this.leaderboard = this.playerStates
-            .slice()
+            .filter(p => p.alive || p.phase === 'finished')
             .sort((a, b) => {
-                // Finished players rank higher
+                // Finished players first
                 if (a.phase === 'finished' && b.phase !== 'finished') return -1;
                 if (b.phase === 'finished' && a.phase !== 'finished') return 1;
                 
-                // If both finished, sort by rank
+                // Then by rank (if finished)
                 if (a.phase === 'finished' && b.phase === 'finished') {
                     return a.rank - b.rank;
                 }
                 
-                // For non-finished players, sort by progress
+                // Then by progress
                 const aProgress = a.phase === 'return' ? 
                     this.config.raceDistance + (this.config.raceDistance - a.x) : a.x;
                 const bProgress = b.phase === 'return' ? 
@@ -729,47 +467,257 @@ class FlappyRaceGame extends BaseGame {
                 
                 return bProgress - aProgress;
             })
-            .map((p, index) => ({
+            .map(p => ({
                 playerId: p.playerId,
                 score: p.score,
-                rank: index + 1,
-                phase: p.phase,
-                finalPosition: p.x
+                rank: p.rank
             }));
     }
-    
-    updateLeaderboard() {
-        // Real-time leaderboard during game
-        this.leaderboard = this.playerStates
-            .filter(p => p.alive)
-            .slice()
-            .sort((a, b) => {
-                const aProgress = a.phase === 'return' ? 
-                    this.config.raceDistance + (this.config.raceDistance - a.x) : a.x;
-                const bProgress = b.phase === 'return' ? 
-                    this.config.raceDistance + (this.config.raceDistance - b.x) : b.x;
+
+    checkRespawnCondition() {
+        // Check if we need to show respawn option
+        if (this.gamePhase === 'playing' || this.gamePhase === 'finished') {
+            const alivePlayers = this.playerStates.filter(p => p.alive);
+            const deadPlayers = this.playerStates.filter(p => !p.alive);
+            
+            // If there are dead players, allow them to trigger respawn
+            if (deadPlayers.length > 0) {
+                // Check if all players are ready for restart
+                const allPlayersReady = this.players.every(player => 
+                    this.playersReady[player.playerId] === true
+                );
                 
-                return bProgress - aProgress;
-            })
-            .map((p, index) => ({
-                playerId: p.playerId,
-                score: p.score,
-                rank: index + 1
-            }));
+                // Auto-start if no players in room or all ready
+                if (this.players.length === 0 || allPlayersReady) {
+                    this.respawnGame();
+                }
+            }
+        }
     }
-    
-    // === RESPAWN SYSTEM ===
+
     respawnGame() {
-        console.log('🔄 Respawning game...');
+        console.log('Respawning game...');
         
         // Reset game state
-        this.gamePhase = 'waiting';
-        this.gameTimer = 0;
-        this.playersReady = {};
+        this.gamePhase = 'countdown';
+        this.gameTimer = 10; // 10 second countdown
+        this.lastCountdown = 10; // Reset countdown tracker
+        this.status = 'playing';
         
         // Reset all players
         this.playerStates.forEach(player => {
-            player.x = 100;
+            player.x = 50;
+            player.y = this.config.height / 2;
+            player.velocityY = 0;
+            player.lives = 3;
+            player.phase = 'outbound';
+            player.alive = true;
+            player.effects = {};
+            player.items = [];
+            player.rank = 0;
+            // Keep score from previous round
+        });
+        
+        // Clear ready status for next round
+        this.playersReady = {};
+        
+        // Regenerate map items
+        if (this.gameSettings.itemsEnabled) {
+            this.generateItems();
+        }
+        
+        // Restart game loop if not running
+        if (!this.gameLoop) {
+            this.startGameLoop();
+        }
+        
+        this.broadcast({
+            type: 'gameMessage',
+            message: `🔄 Ván mới! Chuẩn bị trong ${this.gameTimer} giây!`
+        });
+        
+        // Reset ready buttons on client and go back to game
+        this.broadcast({
+            type: 'respawnStarted'
+        });
+    }
+
+    checkGameEnd() {
+        const alivePlayers = this.playerStates.filter(p => p.alive);
+        const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
+        
+        // End conditions based on game mode
+        switch (this.gameSettings.mode) {
+            case 'classic':
+                if (finishedPlayers.length > 0 || alivePlayers.length === 0) {
+                    this.endRound(); // Change to endRound instead of endGame
+                }
+                break;
+                
+            case 'battle':
+                if (alivePlayers.length <= 1) {
+                    this.endRound();
+                }
+                break;
+                
+            case 'time':
+                if (this.gameTimer >= 300) { // 5 minutes
+                    this.endRound();
+                }
+                break;
+                
+            case 'endless':
+                // Endless mode doesn't end automatically
+                if (alivePlayers.length === 0) {
+                    this.endRound();
+                }
+                break;
+        }
+    }
+
+    endRound() {
+        this.gamePhase = 'finished';
+        // Don't change status to 'finished' - keep it as 'playing' to allow respawn
+        
+        // Determine round winner
+        let roundWinner = null;
+        if (this.leaderboard.length > 0) {
+            roundWinner = this.leaderboard[0].playerId;
+        }
+        
+        this.broadcast({
+            type: 'gameMessage',
+            message: roundWinner ? 
+                `🏆 Người chơi ${roundWinner.slice(-3)} thắng round này!` : 
+                '🏁 Round kết thúc!'
+        });
+        
+        // Show respawn ready button
+        this.broadcast({
+            type: 'showRespawn'
+        });
+        
+        this.broadcastGameState();
+    }
+
+    endGame() {
+        this.gamePhase = 'finished';
+        this.status = 'finished';
+        this.stopGameLoop();
+        
+        // Determine final winner
+        if (this.leaderboard.length > 0) {
+            this.winner = this.leaderboard[0].playerId;
+        }
+        
+        this.broadcastGameState();
+    }
+
+    handleGameAction(playerId, action, data) {
+        const player = this.playerStates.find(p => p.playerId === playerId);
+        if (!player || !player.alive) return { error: 'Player not found or dead' };
+        
+        switch (action) {
+            case 'flap':
+                return this.handleFlap(player);
+            case 'useItem':
+                return this.handleUseItem(player, data.itemType);
+            case 'pause':
+                return this.handlePause();
+            default:
+                return { error: 'Unknown action' };
+        }
+    }
+
+    handleFlap(player) {
+        if (this.gamePhase !== 'playing') return { error: 'Game not in playing state' };
+        
+        player.velocityY = this.config.flapStrength;
+        player.score += 10; // Small score for flapping
+        
+        return { success: true };
+    }
+
+    handleUseItem(player, itemType) {
+        const itemIndex = player.items.indexOf(itemType);
+        if (itemIndex === -1) return { error: 'Item not found' };
+        
+        // Remove item from inventory
+        player.items.splice(itemIndex, 1);
+        
+        switch (itemType) {
+            case 'speed':
+                player.effects.speed = { timeLeft: 5 };
+                break;
+                
+            case 'shield':
+                player.effects.shield = { timeLeft: 8 };
+                break;
+                
+            case 'bomb':
+                this.createProjectile(player, 'bomb');
+                break;
+                
+            case 'trap':
+                this.createTrap(player);
+                break;
+        }
+        
+        return { success: true };
+    }
+
+    createProjectile(player, type) {
+        this.projectiles.push({
+            id: `proj_${Date.now()}_${Math.random()}`,
+            type: type,
+            x: player.x + 20,
+            y: player.y,
+            velocityX: 200,
+            velocityY: 0,
+            sourcePlayerId: player.playerId,
+            active: true
+        });
+    }
+
+    createTrap(player) {
+        this.items.push({
+            id: `trap_${Date.now()}_${Math.random()}`,
+            type: 'trap_active',
+            x: player.x + 50,
+            y: player.y,
+            collected: false,
+            sourcePlayerId: player.playerId
+        });
+    }
+
+    handlePause() {
+        // Toggle pause state
+        if (this.gamePhase === 'playing') {
+            this.gamePhase = 'paused';
+            this.stopGameLoop();
+        } else if (this.gamePhase === 'paused') {
+            this.gamePhase = 'playing';
+            this.startGameLoop();
+        }
+        
+        return { success: true };
+    }
+
+    resetGame() {
+        super.resetGame();
+        
+        // Reset game state
+        this.pipes = [];
+        this.items = [];
+        this.projectiles = [];
+        this.gamePhase = 'waiting';
+        this.gameTimer = 0;
+        this.leaderboard = [];
+        this.playersReady = {}; // Reset ready status
+        
+        // Reset players
+        this.playerStates.forEach(player => {
+            player.x = 50;
             player.y = this.config.height / 2;
             player.velocityY = 0;
             player.score = 0;
@@ -777,114 +725,35 @@ class FlappyRaceGame extends BaseGame {
             player.phase = 'outbound';
             player.alive = true;
             player.effects = {};
-            player.currentItem = null;
+            player.items = [];
             player.rank = 0;
-            player.invulnerable = false;
-            player.invulnerabilityTime = 0;
         });
         
-        // Reset game objects
-        this.projectiles = [];
-        this.traps = [];
-        
-        // Reset items (mark as not collected)
-        this.items.forEach(item => {
-            item.collected = false;
-        });
-        
-        // Generate new map if needed
-        this.generateMap();
-        
-        this.broadcast({
-            type: 'gameRespawned',
-            message: 'New round starting!'
-        });
-        
-        // Auto-start if players are ready
-        setTimeout(() => {
-            if (this.players.length > 0) {
-                this.startGameLoop();
-            }
-        }, 2000);
+        this.stopGameLoop();
+        this.status = 'setup'; // Back to setup mode
+        this.broadcastGameState();
     }
-    
-    // === MAP GENERATION ===
-    generateMap() {
-    console.log('🗺️ Generating map with improved pathways...');
-    
-    this.pipes = [];
-    this.items = [];
-    
-    const pipeSpacing = 300;
-    const numPipes = Math.floor(this.config.raceDistance / pipeSpacing);
-    
-    // Increased gap size for easier navigation
-    const minGapSize = 140; // Tăng từ 120 lên 140
-    const maxGapSize = 180; // Thêm variation cho gap size
-    
-    for (let i = 0; i < numPipes; i++) {
-        const x = (i + 1) * pipeSpacing;
-        
-        // Dynamic gap size - bigger gaps for more pathways
-        const gapSize = minGapSize + Math.random() * (maxGapSize - minGapSize);
-        
-        // Ensure gap is positioned to leave pathways at bottom and top
-        const minGapY = 120; // Minimum distance from top
-        const maxGapY = this.config.height - 120; // Minimum distance from bottom
-        const gapY = minGapY + Math.random() * (maxGapY - minGapY);
-        
-        const pipe = {
-            x: x,
-            topHeight: gapY - gapSize / 2,
-            bottomY: gapY + gapSize / 2,
-            bottomHeight: this.config.height - (gapY + gapSize / 2),
-            gapSize: gapSize // Store gap size for debugging
-        };
-        
-        // Ensure minimum space at bottom and top
-        if (pipe.topHeight < 80) {
-            pipe.topHeight = 80;
-            pipe.bottomY = pipe.topHeight + gapSize;
-            pipe.bottomHeight = this.config.height - pipe.bottomY;
-        }
-        
-        if (pipe.bottomHeight < 80) {
-            pipe.bottomHeight = 80;
-            pipe.bottomY = this.config.height - pipe.bottomHeight;
-            pipe.topHeight = pipe.bottomY - gapSize;
-        }
-        
-        this.pipes.push(pipe);
-        
-        // Add items near pipes (in the gap area)
-        if (Math.random() < 0.3) { // 30% chance
-            const itemTypes = ['speed', 'shield', 'bomb', 'trap'];
-            const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
-            
-            const item = {
-                id: `item_${i}_${Date.now()}`,
-                type: itemType,
-                x: x + 80,
-                y: gapY + (Math.random() - 0.5) * (gapSize * 0.6), // Keep items within the gap
-                collected: false,
-                createdAt: Date.now()
-            };
-            
-            this.items.push(item);
-        }
-    }
-    
-    console.log(`✅ Map generated with improved pathways: ${this.pipes.length} pipes, ${this.items.length} items`);
-    
-    // Debug log for first few pipes
-    this.pipes.slice(0, 3).forEach((pipe, i) => {
-        console.log(`Pipe ${i}: topHeight=${pipe.topHeight}, bottomY=${pipe.bottomY}, gapSize=${pipe.gapSize}`);
-    });
-}
 
-    
-    // === GAME STATE BROADCAST ===
-broadcastGameState() {
+    // Override handlePlayerReady to support respawn
+    handlePlayerReady(playerId, settings) {
+        // If game is in finished state (round ended), this is for respawn
+        if (this.gamePhase === 'finished') {
+            this.playersReady[playerId] = true;
+            
+            // Broadcast ready update
+            this.broadcast({
+                type: 'readyUpdate',
+                playersReady: this.playersReady
+            });
+            
+            return { success: true };
+        }
+        
+        // Otherwise, use parent implementation for initial ready
+        return super.handlePlayerReady(playerId, settings);
+    }
+
+    broadcastGameState() {
         const payload = {
             ...this.getGameState(),
             config: this.config,
@@ -892,75 +761,13 @@ broadcastGameState() {
             items: this.items,
             projectiles: this.projectiles,
             playerStates: this.playerStates,
-            traps: this.traps,
             gamePhase: this.gamePhase,
-            gameTimer: Math.floor(this.gameTimer * 100) / 100,
+            gameTimer: Math.floor(this.gameTimer),
             leaderboard: this.leaderboard,
-            settings: this.gameSettings,
-            // QUAN TRỌNG: Gửi đúng format players với color
-            players: this.players.map((p, index) => ({
-                playerId: p.playerId,
-                color: this.playerStates.find(ps => ps.playerId === p.playerId)?.color || '#FFD700',
-                index: index
-            }))
+            settings: this.gameSettings
         };
         
         this.broadcast(payload);
-        
-        // Debug log
-        if (this.gamePhase === 'waiting') {
-            console.log(`📡 Broadcasting: ${this.players.length} players, gamePhase: ${this.gamePhase}`);
-        }
-    }
-    
-    // === RESET ===
-    resetGame() {
-        console.log('🔄 Resetting game...');
-        
-        super.resetGame();
-        
-        // Stop game loop
-        if (this.gameLoop) {
-            clearInterval(this.gameLoop);
-            this.gameLoop = null;
-        }
-        
-        // Reset game state
-        this.gamePhase = 'waiting';
-        this.gameTimer = 0;
-        this.playerStates = [];
-        this.projectiles = [];
-        this.traps = [];
-        this.leaderboard = [];
-        
-        // Regenerate map
-        this.generateMap();
-        
-        this.broadcastGameState();
-    }
-    
-    // === SETTINGS BROADCAST ===
-    broadcastSettings(settings) {
-        this.gameSettings = { ...this.gameSettings, ...settings };
-        
-        this.broadcast({
-            type: 'settingsUpdate',
-            settings: this.gameSettings
-        });
-        
-        console.log('⚙️ Settings updated and broadcast:', this.gameSettings);
-    }
-    
-    // === CLEANUP ===
-    onGameDestroyed() {
-        console.log('🗑️ Cleaning up FlappyRaceGame...');
-        
-        if (this.gameLoop) {
-            clearInterval(this.gameLoop);
-            this.gameLoop = null;
-        }
-        
-        super.onGameDestroyed();
     }
 }
 
