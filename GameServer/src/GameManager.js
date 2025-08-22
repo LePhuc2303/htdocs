@@ -231,21 +231,34 @@ class GameManager {
         }
         break;
       }
-
-      case 'leaveGame': {
-        const gameId = data.gameId;
-        console.log(`🚪 Player ${playerId} leaving game: ${gameId}`);
+case 'leaveGame': {
+    const gameId = data.gameId;
+    console.log(`👋 Player ${playerId} leaving game: ${gameId}`);
+    
+    const game = this.getGame(gameId);
+    if (game) {
+        // QUAN TRỌNG: Broadcast player left trước khi remove
+        game.broadcast({
+            type: 'playerLeft',
+            playerId: playerId,
+            message: `Player ${playerId.slice(-4)} đã rời phòng`
+        });
         
-        const game = this.getGame(gameId);
-        if (game) {
-          game.removePlayer(playerId);
-        }
-        
-        // Clear player data
-        playerData.currentGameId = null;
-        playerData.gameType = null;
-        break;
-      }
+        // Sau đó mới remove player
+        game.removePlayer(playerId);
+    }
+    
+    // Clear player data
+    playerData.currentGameId = null;
+    playerData.gameType = null;
+    
+    // Confirm leave thành công
+    ws.send(JSON.stringify({ 
+        type: 'leaveSuccess',
+        message: 'Đã rời phòng thành công'
+    }));
+    break;
+}
 
       case 'listGames': {
         console.log(`📋 Listing games for player: ${playerId}`);

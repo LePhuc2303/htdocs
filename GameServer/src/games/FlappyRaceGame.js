@@ -40,45 +40,49 @@ class FlappyRaceGame extends BaseGame {
         this.lastUpdate = Date.now();
     }
 
-    onPlayerJoined(playerInfo) {
-        const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF', '#5F27CD'];
-        const color = colors[this.players.length - 1] || '#FFD700';
+   onPlayerJoined(playerInfo) {
+    console.log(`✅ Player ${playerInfo.playerId} joined flappy race game`);
+    
+    // Kiểm tra xem player đã tồn tại chưa
+    const existingPlayerIndex = this.playerStates.findIndex(p => p.playerId === playerInfo.playerId);
+    
+    if (existingPlayerIndex === -1) {
+        // Player mới - thêm vào
+        const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF'];
+        const playerIndex = this.playerStates.length;
         
-        playerInfo.color = color;
+        this.playerStates.push({
+            playerId: playerInfo.playerId,
+            x: 50,
+            y: this.config.height / 2,
+            velocityY: 0,
+            score: 0,
+            lives: 3,
+            phase: 'outbound',
+            alive: true,
+            effects: {},
+            items: [],
+            rank: 0,
+            color: colors[playerIndex % colors.length],
+            invulnerable: true,
+            invulnerableTime: 3.0,
+            canCollideWithPlayers: false
+        });
         
-        // Initialize player state
-const playerState = {
-    playerId: playerInfo.playerId,
-    x: 50, // Start further from pipes
-    y: this.config.height / 2, // Middle of screen
-    velocityY: 0,
-    color: color,
-    score: 0,
-    lives: 3,
-    phase: 'outbound',
-    alive: true, // Make sure starts alive
-    effects: {},
-    items: [],
-    rank: 0,
-    invulnerable: true, // Add 3 second invulnerability at start
-    invulnerabilityTime: 3000
-};
-        
-        this.playerStates.push(playerState);
-        
-        // Start game if enough players and all ready
-        if (this.players.length >= 2 && this.status === 'playing') {
-            this.startGameLoop();
-        }
-        
-        this.broadcastGameState();
-        
-        return { 
-            color, 
-            playerIndex: this.players.length - 1,
-            gameConfig: this.config 
-        };
+        console.log(`Added new player. Total players: ${this.playerStates.length}`);
+    } else {
+        console.log(`Player already exists at index ${existingPlayerIndex}`);
     }
+    
+    // Broadcast updated game state
+    this.broadcastGameState();
+    
+    return {
+        isHost: this.players.length === 1,
+        gameConfig: this.config,
+        color: this.playerStates[this.playerStates.length - 1]?.color || '#FFD700'
+    };
+}
 
     onPlayerLeft(playerId) {
         this.playerStates = this.playerStates.filter(p => p.playerId !== playerId);
@@ -139,89 +143,164 @@ const playerState = {
         }
     }
 
-    generateMap(mapType) {
-        this.pipes = [];
+   generateMap(mapType) {
+    this.pipes = [];
+    
+    // ===== TĂNG KHOẢNG CÁCH GIỮA CÁC ỐNG =====
+    // 225px thay vì 150px (gấp rưỡi)
+    for (let x = 300; x < this.config.raceDistance; x += 225) {
         
-        // Generate pipes based on map type
-        for (let x = 200; x < this.config.raceDistance; x += 150) {
-            let pipeHeight;
+        // ===== MỞ RỘNG ĐƯỜNG BAY =====
+        const topPathCenter = this.config.height * 0.3;    // 30% chiều cao cho đường trên
+        const bottomPathCenter = this.config.height * 0.7; // 70% chiều cao cho đường dưới
+        const pathGap = 160; // TĂNG TỪNG 80px LÊN 160px (GẤP ĐÔI)
+        
+        // Tạo variation dựa trên map type (giảm để không quá khó)
+        let heightVariation = 0;
+        switch (mapType) {
+            case 'jungle':
+                heightVariation = Math.sin(x * 0.008) * 15; // Giảm variation
+                break;
+            case 'city':
+                heightVariation = (x % 400) * 0.08; // Giảm variation
+                break;
+            case 'space':
+                heightVariation = (Math.random() - 0.5) * 25; // Giảm variation
+                break;
+            default: // classic
+                heightVariation = (Math.random() - 0.5) * 20; // Giảm variation
+        }
+        
+        // ===== TÍNH TOÁN 3 ĐOẠN ỐNG VỚI KHOẢNG CÁCH LỚN HƠN =====
+        // Đoạn 1: Từ top xuống đến đường đi trên
+        const topGapStart = topPathCenter - pathGap/2 + heightVariation;
+        const topGapEnd = topPathCenter + pathGap/2 + heightVariation;
+        
+        // Đoạn 2: Từ sau đường đi trên xuống đến đường đi dưới  
+        const bottomGapStart = bottomPathCenter - pathGap/2 + heightVariation;
+        const bottomGapEnd = bottomPathCenter + pathGap/2 + heightVariation;
+        
+        // ===== TĂNG KHOẢNG CÁCH TỐI THIỂU GIỮA 2 GAP =====
+        const minSpacing = 100; // Tăng từ 60px lên 100px
+        const adjustedBottomGapStart = Math.max(bottomGapStart, topGapEnd + minSpacing);
+        const adjustedBottomGapEnd = adjustedBottomGapStart + pathGap;
+        
+        // ===== TẠO 3 PHẦN ỐNG VỚI AN TOÀN HƠN =====
+        const pipe = {
+            x: x,
+            // Phần 1: Ống trên cùng (từ 0 đến top gap)
+            topHeight: Math.max(30, topGapStart), // Tăng min height
             
-            switch (mapType) {
-                case 'jungle':
-                    pipeHeight = 100 + Math.sin(x * 0.01) * 50;
-                    break;
-                case 'city':
-                    pipeHeight = 80 + (x % 300) * 0.3;
-                    break;
-                case 'space':
-                    pipeHeight = 120 + Math.random() * 100;
-                    break;
-                default: // classic
-                    pipeHeight = 80 + Math.random() * 120;
-            }
+            // Phần 2: Ống giữa (giữa 2 gap)
+            middleY: topGapEnd,
+            middleHeight: Math.max(30, adjustedBottomGapStart - topGapEnd), // Tăng min height
             
-            this.pipes.push({
-                x: x,
-                topHeight: pipeHeight,
-                bottomY: pipeHeight + this.config.pipeGap,
-                bottomHeight: this.config.height - (pipeHeight + this.config.pipeGap)
+            // Phần 3: Ống dưới cùng (từ bottom gap đến cuối)
+            bottomY: adjustedBottomGapEnd,
+            bottomHeight: Math.max(30, this.config.height - adjustedBottomGapEnd), // Tăng min height
+            
+            // Lưu thông tin về 2 gaps để kiểm tra collision
+            topGapStart: topGapStart,
+            topGapEnd: topGapEnd,
+            bottomGapStart: adjustedBottomGapStart,
+            bottomGapEnd: adjustedBottomGapEnd
+        };
+        
+        this.pipes.push(pipe);
+    }
+    
+    console.log(`Generated ${this.pipes.length} pipes with wider paths (160px gaps, 225px spacing) for map: ${mapType}`);
+}
+
+generateItems() {
+    this.items = [];
+    const itemTypes = ['speed', 'shield', 'bomb', 'trap'];
+    
+    // Tăng khoảng cách tương ứng với pipes
+    for (let x = 400; x < this.config.raceDistance; x += 300) {
+        if (Math.random() < 0.6) { // Giảm tỷ lệ xuống 60% vì khoảng cách tăng
+            const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+            
+            // ===== ĐẶT ITEMS Ở 2 ĐƯỜNG ĐI VỚI VARIATION LỚN HƠN =====
+            const isTopPath = Math.random() < 0.5;
+            const pathY = isTopPath ? this.config.height * 0.3 : this.config.height * 0.7;
+            const yVariation = (Math.random() - 0.5) * 60; // Tăng variation
+            
+            this.items.push({
+                id: `item_${Date.now()}_${Math.random()}`,
+                type: itemType,
+                x: x + Math.random() * 150 - 75, // Tăng random range
+                y: Math.max(50, Math.min(this.config.height - 50, pathY + yVariation)),
+                collected: false
             });
         }
-        
-        // Generate items if enabled
-        if (this.gameSettings.itemsEnabled) {
-            this.generateItems();
-        }
     }
+}
 
-    generateItems() {
-        this.items = [];
-        const itemTypes = ['speed', 'shield', 'bomb', 'trap'];
+   startGame() {
+    console.log('🎮 Starting game...');
+    
+    // Chuyển sang playing status
+    this.status = 'playing';
+    this.gamePhase = 'countdown';
+    this.gameTimer = 10;
+    this.lastCountdown = 10;
+    
+    // ===== SETUP PLAYERS CHO ROUND ĐẦU =====
+    this.playerStates.forEach((player, index) => {
+        const totalPlayers = this.playerStates.length;
+        const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF'];
         
-        for (let x = 300; x < this.config.raceDistance; x += 200) {
-            if (Math.random() < 0.7) { // 70% chance to spawn item
-                const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
-                this.items.push({
-                    id: `item_${Date.now()}_${Math.random()}`,
-                    type: itemType,
-                    x: x + Math.random() * 100 - 50,
-                    y: 100 + Math.random() * 400,
-                    collected: false
-                });
-            }
-        }
+        // CHIA THÀNH 2 ĐƯỜNG: TRÊN VÀ DƯỚI
+        const isTopPath = index % 2 === 0;
+        const pathCenter = isTopPath ? this.config.height * 0.3 : this.config.height * 0.7;
+        
+        const playersInPath = Math.ceil(totalPlayers / 2);
+        const indexInPath = Math.floor(index / 2);
+        const spacing = 50;
+        
+        const totalHeight = (playersInPath - 1) * spacing;
+        const firstBirdY = pathCenter - (totalHeight / 2);
+        
+        player.x = 50;
+        player.y = firstBirdY + (indexInPath * spacing);
+        player.velocityY = 0;
+        player.score = 0; // Reset score cho game mới
+        player.lives = 3;
+        player.phase = 'outbound';
+        player.alive = true;
+        player.effects = {};
+        player.items = [];
+        player.rank = 0;
+        player.color = colors[index % colors.length];
+        
+        // ===== THÊM HỆ THỐNG BẤT TỬ 3 GIÂY =====
+        player.invulnerable = true;
+        player.invulnerableTime = 3.0;
+        player.canCollideWithPlayers = false;
+    });
+    
+    // Generate map và items
+    this.generateMap(this.gameSettings.mapType || 'classic');
+    if (this.gameSettings.itemsEnabled) {
+        this.generateItems();
     }
-
-    startGame() {
-        // Don't reset ready status here - we need it to check if all players are ready
-        
-        super.startGame();
-        this.gamePhase = 'countdown';
-        this.gameTimer = 10; // 10 second countdown as requested
-        this.lastCountdown = 10; // Initialize countdown tracker
-        
-        // Reset all players
-        this.playerStates.forEach(player => {
-            player.x = 50;
-            player.y = this.config.height / 2;
-            player.velocityY = 0;
-            player.score = 0;
-            player.lives = 3;
-            player.phase = 'outbound';
-            player.alive = true;
-            player.effects = {};
-            player.items = [];
-            player.rank = 0;
-        });
-        
-        this.startGameLoop();
-        
-        // Broadcast countdown start
-        this.broadcast({
-            type: 'gameMessage',
-            message: `⏰ Game bắt đầu sau ${this.gameTimer} giây! Tất cả hãy chuẩn bị!`
-        });
-    }
+    
+    // Start game loop
+    this.startGameLoop();
+    
+    this.broadcast({
+        type: 'gameMessage',
+        message: `⏰ Game bắt đầu sau ${this.gameTimer} giây! 3 giây đầu bất tử!`
+    });
+    
+    // Notify clients game started
+    this.broadcast({
+        type: 'gameStarted'
+    });
+    
+    this.broadcastGameState();
+}
 
     startGameLoop() {
         if (this.gameLoop) return;
@@ -308,6 +387,16 @@ const playerState = {
         
         // CHỈ APPLY PHYSICS KHI GAME ĐANG PLAYING
         if (this.gamePhase === 'playing') {
+            // ===== CẬP NHẬT THỜI GIAN BẤT TỬ =====
+            if (player.invulnerable && player.invulnerableTime > 0) {
+                player.invulnerableTime -= deltaTime;
+                if (player.invulnerableTime <= 0) {
+                    player.invulnerable = false;
+                    player.canCollideWithPlayers = true; // Bật va chạm với players
+                    console.log(`Player ${player.playerId} is no longer invulnerable`);
+                }
+            }
+            
             // Apply gravity
             player.velocityY += this.config.gravity;
             
@@ -327,10 +416,44 @@ const playerState = {
             // Check phase transition
             this.checkPhaseTransition(player);
             
-            // Collision detection
+            // ===== COLLISION DETECTION =====
             this.checkCollisions(player);
+            
+            // ===== KIỂM TRA VA CHẠM GIỮA CÁC CHIM =====
+            if (player.canCollideWithPlayers) {
+                this.checkPlayerCollisions(player);
+            }
         }
-        // TRONG COUNTDOWN THÌ KHÔNG LÀM GÌ CẢ
+    });
+}
+checkPlayerCollisions(currentPlayer) {
+    if (!currentPlayer.alive || currentPlayer.invulnerable) return;
+    
+    this.playerStates.forEach(otherPlayer => {
+        if (otherPlayer.playerId === currentPlayer.playerId) return; // Không tự va chạm
+        if (!otherPlayer.alive || otherPlayer.invulnerable) return; // Bỏ qua player chết hoặc bất tử
+        
+        // Tính khoảng cách giữa 2 chim
+        const dx = currentPlayer.x - otherPlayer.x;
+        const dy = currentPlayer.y - otherPlayer.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Nếu khoảng cách < 25 pixels thì va chạm
+        if (distance < 25) {
+            console.log(`Player collision: ${currentPlayer.playerId} vs ${otherPlayer.playerId}`);
+            
+            // Cả 2 chim đều chết
+            this.killPlayer(currentPlayer, 'player_collision');
+            this.killPlayer(otherPlayer, 'player_collision');
+            
+            // Broadcast thông báo va chạm
+            this.broadcast({
+                type: 'gameMessage',
+                message: `💥 ${currentPlayer.playerId.slice(-3)} và ${otherPlayer.playerId.slice(-3)} va chạm!`
+            });
+            
+            return; // Thoát khỏi vòng lặp
+        }
     });
 }
 
@@ -362,34 +485,58 @@ const playerState = {
         }
     }
 
-    checkCollisions(player) {
-        // Pipe collisions
-        if (!player.effects.shield || player.effects.shield.timeLeft <= 0) {
-            this.pipes.forEach(pipe => {
-                if (player.x + 15 > pipe.x && player.x - 15 < pipe.x + this.config.pipeWidth) {
-                    if (player.y - 15 < pipe.topHeight || player.y + 15 > pipe.bottomY) {
-                        this.damagePlayer(player);
-                    }
-                }
-            });
-        }
-        
-        // Item collisions
-        this.items.forEach(item => {
-            if (!item.collected && this.distance(player, item) < 30) {
-                this.collectItem(player, item);
+   checkCollisions(player) {
+    // ===== VA CHẠM VỚI ỐNG 3 PHẦN - LUÔN CHẾT =====
+    this.pipes.forEach(pipe => {
+        if (player.x + 15 > pipe.x && player.x - 15 < pipe.x + 60) {
+            const playerTop = player.y - 15;
+            const playerBottom = player.y + 15;
+            
+            // Kiểm tra va chạm với 3 phần ống
+            const hitTopPipe = playerTop < pipe.topHeight;
+            const hitMiddlePipe = (playerBottom > pipe.middleY && playerTop < pipe.middleY + pipe.middleHeight);
+            const hitBottomPipe = playerBottom > pipe.bottomY;
+            
+            if (hitTopPipe || hitMiddlePipe || hitBottomPipe) {
+                console.log(`Player ${player.playerId} hit pipe - invulnerable: ${player.invulnerable}`);
+                this.killPlayer(player, 'pipe'); // Ống luôn giết, kể cả khi bất tử
+                return;
             }
-        });
-        
-        // Projectile collisions
-        this.projectiles.forEach(projectile => {
-            if (projectile.sourcePlayerId !== player.playerId && 
-                this.distance(player, projectile) < 20) {
-                this.damagePlayer(player);
-                projectile.active = false;
+        }
+    });
+    
+    // Boundary collisions - cũng luôn chết
+    if (player.y <= 0 || player.y >= this.config.height) {
+        this.killPlayer(player, 'boundary');
+        return;
+    }
+    
+    // ===== VA CHẠM VỚI ITEMS - CHỈ KHI KHÔNG BẤT TỬ =====
+    if (!player.invulnerable) {
+        this.items.forEach(item => {
+            if (!item.collected && 
+                Math.abs(player.x - item.x) < 20 && 
+                Math.abs(player.y - item.y) < 20) {
+                
+                item.collected = true;
+                this.handleItemCollection(player, item);
             }
         });
     }
+    
+    // ===== VA CHẠM VỚI PROJECTILES - CHỈ KHI KHÔNG BẤT TỬ =====
+    if (!player.invulnerable) {
+        this.projectiles.forEach(proj => {
+            if (proj.playerId !== player.playerId && 
+                Math.abs(player.x - proj.x) < 15 && 
+                Math.abs(player.y - proj.y) < 15) {
+                
+                proj.active = false;
+                this.killPlayer(player, 'projectile');
+            }
+        });
+    }
+}
 
     distance(obj1, obj2) {
         const dx = obj1.x - obj2.x;
@@ -421,10 +568,21 @@ const playerState = {
         }
     }
 
-    killPlayer(player) {
-        player.alive = false;
-        player.velocityY = 0;
+    killPlayer(player, reason = 'pipe') {
+    if (player.invulnerable && reason === 'player_collision') {
+        return; // Không chết nếu đang bất tử và va chạm với player
     }
+    
+    player.alive = false;
+    player.velocityY = 0;
+    player.invulnerable = false; // Mất bất tử khi chết
+    player.canCollideWithPlayers = false;
+    
+    // Giảm mạng
+    player.lives--;
+    
+    console.log(`Player ${player.playerId} killed by ${reason}, lives left: ${player.lives}`);
+}
 
     updateProjectiles(deltaTime) {
         this.projectiles = this.projectiles.filter(projectile => {
@@ -497,110 +655,91 @@ const playerState = {
         }
     }
 
-    respawnGame() {
-        console.log('Respawning game...');
-        
-        // Reset game state
-        this.gamePhase = 'countdown';
-        this.gameTimer = 10; // 10 second countdown
-        this.lastCountdown = 10; // Reset countdown tracker
-        this.status = 'playing';
-        
-        // Reset all players
-        this.playerStates.forEach(player => {
-            player.x = 50;
-            player.y = this.config.height / 2;
-            player.velocityY = 0;
-            player.lives = 3;
-            player.phase = 'outbound';
-            player.alive = true;
-            player.effects = {};
-            player.items = [];
-            player.rank = 0;
-            // Keep score from previous round
-        });
-        
-        // Clear ready status for next round
-        this.playersReady = {};
-        
-        // Regenerate map items
-        if (this.gameSettings.itemsEnabled) {
-            this.generateItems();
-        }
-        
-        // Restart game loop if not running
-        if (!this.gameLoop) {
-            this.startGameLoop();
-        }
-        
-        this.broadcast({
-            type: 'gameMessage',
-            message: `🔄 Ván mới! Chuẩn bị trong ${this.gameTimer} giây!`
-        });
-        
-        // Reset ready buttons on client and go back to game
-        this.broadcast({
-            type: 'respawnStarted'
-        });
+   
+calculatePlayerSpawnPositions() {
+    const totalPlayers = this.playerStates.length;
+    const startY = this.config.height / 2; // Điểm giữa màn hình
+    const spacing = 60; // Khoảng cách giữa các con chim
+    
+    // Nếu chỉ có 1 người chơi, đặt ở giữa
+    if (totalPlayers === 1) {
+        return [{ x: 50, y: startY }];
     }
+    
+    // Căn giữa tất cả các con chim
+    const totalHeight = (totalPlayers - 1) * spacing;
+    const firstBirdY = startY - (totalHeight / 2);
+    
+    return this.playerStates.map((_, index) => ({
+        x: 50,
+        y: firstBirdY + (index * spacing)
+    }));
+}
 
     checkGameEnd() {
-        const alivePlayers = this.playerStates.filter(p => p.alive);
-        const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
-        
-        // End conditions based on game mode
-        switch (this.gameSettings.mode) {
-            case 'classic':
-                if (finishedPlayers.length > 0 || alivePlayers.length === 0) {
-                    this.endRound(); // Change to endRound instead of endGame
-                }
-                break;
-                
-            case 'battle':
-                if (alivePlayers.length <= 1) {
-                    this.endRound();
-                }
-                break;
-                
-            case 'time':
-                if (this.gameTimer >= 300) { // 5 minutes
-                    this.endRound();
-                }
-                break;
-                
-            case 'endless':
-                // Endless mode doesn't end automatically
-                if (alivePlayers.length === 0) {
-                    this.endRound();
-                }
-                break;
-        }
+    const alivePlayers = this.playerStates.filter(p => p.alive);
+    const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
+    
+    // End conditions based on game mode
+    switch (this.gameSettings.mode) {
+        case 'classic':
+            if (finishedPlayers.length > 0 || alivePlayers.length === 0) {
+                this.endRound(); // Đổi từ endGame sang endRound
+            }
+            break;
+            
+        case 'battle':
+            if (alivePlayers.length <= 1) {
+                this.endRound();
+            }
+            break;
+            
+        case 'time':
+            if (this.gameTimer >= 300) { // 5 minutes
+                this.endRound();
+            }
+            break;
+            
+        case 'endless':
+            if (alivePlayers.length === 0) {
+                this.endRound();
+            }
+            break;
     }
+}
 
     endRound() {
-        this.gamePhase = 'finished';
-        // Don't change status to 'finished' - keep it as 'playing' to allow respawn
-        
-        // Determine round winner
-        let roundWinner = null;
-        if (this.leaderboard.length > 0) {
-            roundWinner = this.leaderboard[0].playerId;
-        }
-        
-        this.broadcast({
-            type: 'gameMessage',
-            message: roundWinner ? 
-                `🏆 Người chơi ${roundWinner.slice(-3)} thắng round này!` : 
-                '🏁 Round kết thúc!'
-        });
-        
-        // Show respawn ready button
-        this.broadcast({
-            type: 'showRespawn'
-        });
-        
-        this.broadcastGameState();
+    console.log('🏁 Round finished, preparing for next round...');
+    
+    this.gamePhase = 'finished';
+    // QUAN TRỌNG: Không đổi this.status - giữ nguyên 'playing' để cho phép restart
+    this.stopGameLoop();
+    
+    // Determine round winner
+    let roundWinner = null;
+    if (this.leaderboard.length > 0) {
+        roundWinner = this.leaderboard[0].playerId;
     }
+    
+    // Clear ready status để chuẩn bị cho round mới
+    this.playersReady = {};
+    
+    this.broadcast({
+        type: 'gameMessage',
+        message: roundWinner ? 
+            `🏆 Người chơi ${roundWinner.slice(-3)} thắng round này!` : 
+            '🏁 Round kết thúc!'
+    });
+    
+    // Hiển thị nút sẵn sàng cho round mới
+    this.broadcast({
+        type: 'roundFinished',
+        winner: roundWinner,
+        leaderboard: this.leaderboard
+    });
+    
+    this.broadcastGameState();
+}
 
     endGame() {
         this.gamePhase = 'finished';
@@ -705,55 +844,153 @@ const playerState = {
         return { success: true };
     }
 
-    resetGame() {
-        super.resetGame();
+   resetGame() {
+    console.log('Resetting game...');
+    
+    // Reset ready status
+    this.playersReady = {};
+    this.status = 'setup';
+    this.gameSettings = {};
+    
+    // ===== RESET VỊ TRÍ PLAYERS THÀNH HÀNG =====
+    this.playerStates.forEach((player, index) => {
+        const totalPlayers = this.playerStates.length;
+        const startY = this.config.height / 2;
+        const spacing = 60;
         
-        // Reset game state
-        this.pipes = [];
-        this.items = [];
-        this.projectiles = [];
-        this.gamePhase = 'waiting';
-        this.gameTimer = 0;
-        this.leaderboard = [];
-        this.playersReady = {}; // Reset ready status
+        // Căn giữa tất cả các con chim
+        const totalHeight = (totalPlayers - 1) * spacing;
+        const firstBirdY = startY - (totalHeight / 2);
         
-        // Reset players
-        this.playerStates.forEach(player => {
-            player.x = 50;
-            player.y = this.config.height / 2;
-            player.velocityY = 0;
-            player.score = 0;
-            player.lives = 3;
-            player.phase = 'outbound';
-            player.alive = true;
-            player.effects = {};
-            player.items = [];
-            player.rank = 0;
-        });
+        player.x = 50;
+        player.y = firstBirdY + (index * spacing); // Xếp hàng
+        player.velocityY = 0;
+        player.score = 0;
+        player.lives = 3;
+        player.phase = 'outbound';
+        player.alive = true;
+        player.effects = {};
+        player.items = [];
+        player.rank = 0;
+    });
+    
+    this.stopGameLoop();
+    this.broadcastGameState();
+}
+startNewRound() {
+    console.log('🔄 Starting new round...');
+    
+    // Reset game phase
+    this.gamePhase = 'countdown';
+    this.gameTimer = 10; // 10 second countdown
+    this.lastCountdown = 10;
+    
+    // ===== RESET VỊ TRÍ PLAYERS CHO ROUND MỚI =====
+    this.playerStates.forEach((player, index) => {
+        const totalPlayers = this.playerStates.length;
         
-        this.stopGameLoop();
-        this.status = 'setup'; // Back to setup mode
-        this.broadcastGameState();
+        // CHIA THÀNH 2 ĐƯỜNG
+        const isTopPath = index % 2 === 0;
+        const pathCenter = isTopPath ? this.config.height * 0.3 : this.config.height * 0.7;
+        
+        const playersInPath = Math.ceil(totalPlayers / 2);
+        const indexInPath = Math.floor(index / 2);
+        const spacing = 50;
+        
+        const totalHeight = (playersInPath - 1) * spacing;
+        const firstBirdY = pathCenter - (totalHeight / 2);
+        
+        player.x = 50;
+        player.y = firstBirdY + (indexInPath * spacing);
+        player.velocityY = 0;
+        player.lives = 3;
+        player.phase = 'outbound';
+        player.alive = true;
+        player.effects = {};
+        player.items = [];
+        player.rank = 0;
+        // GIỮ NGUYÊN SCORE TÍCH LŨY QUA CÁC ROUND
+        
+        // Reset bất tử
+        player.invulnerable = true;
+        player.invulnerableTime = 3.0;
+        player.canCollideWithPlayers = false;
+    });
+    
+    // Clear ready status cho round mới
+    this.playersReady = {};
+    
+    // Regenerate map
+    this.generateMap(this.gameSettings.mapType || 'classic');
+    
+    // Regenerate items
+    if (this.gameSettings.itemsEnabled) {
+        this.generateItems();
     }
+    
+    // Clear projectiles
+    this.projectiles = [];
+    
+    // Start game loop
+    this.startGameLoop();
+    
+    this.broadcast({
+        type: 'gameMessage',
+        message: `🔄 Round mới bắt đầu! Tất cả hãy chuẩn bị!`
+    });
+    
+    // Notify clients that new round started
+    this.broadcast({
+        type: 'newRoundStarted'
+    });
+    
+    this.broadcastGameState();
+}
 
     // Override handlePlayerReady to support respawn
-    handlePlayerReady(playerId, settings) {
-        // If game is in finished state (round ended), this is for respawn
-        if (this.gamePhase === 'finished') {
-            this.playersReady[playerId] = true;
-            
-            // Broadcast ready update
-            this.broadcast({
-                type: 'readyUpdate',
-                playersReady: this.playersReady
-            });
-            
-            return { success: true };
-        }
-        
-        // Otherwise, use parent implementation for initial ready
-        return super.handlePlayerReady(playerId, settings);
+handlePlayerReady(playerId, settings) {
+    console.log(`🎯 Player ${playerId} ready - gamePhase: ${this.gamePhase}, status: ${this.status}`);
+    
+    this.playersReady[playerId] = true;
+    
+    // Lưu settings nếu có
+    if (settings && !this.gameSettings[playerId]) {
+        this.gameSettings[playerId] = settings;
     }
+    
+    console.log(`Ready status: ${Object.keys(this.playersReady).length}/${this.players.length}`);
+    
+    // Broadcast ready update
+    this.broadcast({
+        type: 'readyUpdate',
+        playersReady: this.playersReady
+    });
+    
+    // ===== LOGIC KHỞI ĐỘNG GAME =====
+    const readyCount = Object.keys(this.playersReady).length;
+    const totalPlayers = this.players.length;
+    
+    // Nếu tất cả đã ready
+    if (readyCount === totalPlayers && totalPlayers > 0) {
+        console.log('🚀 All players ready!');
+        
+        if (this.gamePhase === 'finished') {
+            // Đang ở cuối round → start round mới
+            console.log('Starting new round...');
+            setTimeout(() => {
+                this.startNewRound();
+            }, 1000);
+        } else {
+            // Đang ở setup → start game lần đầu
+            console.log('Starting first game...');
+            setTimeout(() => {
+                this.startGame();
+            }, 1000);
+        }
+    }
+    
+    return { success: true };
+}
 
     broadcastGameState() {
         const payload = {
