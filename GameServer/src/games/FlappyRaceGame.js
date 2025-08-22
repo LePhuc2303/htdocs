@@ -243,8 +243,8 @@ generateItems() {
     // Chuyển sang playing status
     this.status = 'playing';
     this.gamePhase = 'countdown';
-    this.gameTimer = 10;
-    this.lastCountdown = 10;
+    this.gameTimer = 3;
+    this.lastCountdown = 3;
     
     // ===== SETUP PLAYERS CHO ROUND ĐẦU =====
     this.playerStates.forEach((player, index) => {
@@ -318,27 +318,31 @@ generateItems() {
         }
     }
 
-    updateGame() {
+   updateGame() {
     const now = Date.now();
     const deltaTime = (now - this.lastUpdate) / 1000;
     this.lastUpdate = now;
     
-    // Update countdown
+    // ===== DEBUG: LOG DEAD PLAYERS =====
+    const deadPlayers = this.playerStates.filter(p => !p.alive && p.lives > 0);
+    if (deadPlayers.length > 0) {
+        console.log(`📊 Dead players waiting for respawn: ${deadPlayers.map(p => `${p.playerId.slice(-4)}(${p.lives}❤️)`).join(', ')}`);
+    }
+    
+    // ... rest of updateGame method stays the same
+    
     if (this.gamePhase === 'countdown') {
         this.gameTimer -= deltaTime;
         
-        // Broadcast countdown updates
         const seconds = Math.ceil(this.gameTimer);
         if (seconds !== this.lastCountdown && seconds > 0) {
             this.lastCountdown = seconds;
             
-            // GỬI CẢ MESSAGE VÀ GAME STATE
             this.broadcast({
                 type: 'gameMessage',
                 message: `Bắt đầu sau ${seconds}...`
             });
             
-            // QUAN TRỌNG: Broadcast gameState để client update countdown
             this.broadcastGameState();
         }
         
@@ -349,38 +353,105 @@ generateItems() {
                 type: 'gameMessage',
                 message: '🚀 Game bắt đầu! Good luck!'
             });
-            // Broadcast game state khi chuyển sang playing
             this.broadcastGameState();
         }
     }
     
-    // Rest of function...
-    
-    // CHỈ BROADCAST GAME STATE KHI CẦN THIẾT
     if (this.gamePhase === 'playing') {
-        // Update players
         this.updatePlayers(deltaTime);
-        
-        // Update projectiles
         this.updateProjectiles(deltaTime);
-        
-        // Update items
         this.updateItems();
-        
-        // Check game end conditions
         this.checkGameEnd();
-        
-        // Check for respawn
         this.checkRespawnCondition();
-        
-        // Update leaderboard
         this.updateLeaderboard();
-        
-        // Broadcast state (mỗi frame khi playing)
         this.broadcastGameState();
     }
 }
+respawnPlayer(playerId) {
+    const player = this.playerStates.find(p => p.playerId === playerId);
+    if (!player) {
+        console.log(`❌ Cannot respawn - player ${playerId} not found`);
+        return;
+    }
+    
+    if (player.lives <= 0) {
+        console.log(`❌ Cannot respawn - player ${playerId} has no lives left`);
+        return;
+    }
+    
+    console.log(`🔄 Respawning player ${playerId}, lives: ${player.lives}`);
+    
+    // ===== RESPAWN TẠI VỊ TRÍ XUẤT PHÁT =====
+    const spawnPositions = this.calculatePlayerSpawnPositions();
+    const playerIndex = this.playerStates.findIndex(p => p.playerId === playerId);
+    const spawnPos = spawnPositions[playerIndex] || { x: 50, y: this.config.height / 2 };
+    
+    // ===== RESET PLAYER STATE =====
+    player.x = spawnPos.x;
+    player.y = spawnPos.y;
+    player.velocityY = 0;
+    player.alive = true;
+    player.phase = 'outbound'; // Về lại phase đầu
+    
+    // ===== BẤT TỬ 1 GIÂY SAU KHI RESPAWN =====
+    player.invulnerable = true;
+    player.invulnerableTime = 1.0; // 1 giây bất tử
+    player.canCollideWithPlayers = false;
+    
+    // ===== BROADCAST RESPAWN =====
+    this.broadcast({
+        type: 'playerRespawned',
+        playerId: playerId,
+        position: { x: player.x, y: player.y },
+        livesLeft: player.lives
+    });
+    
+    console.log(`✅ Player ${playerId} respawned at (${player.x}, ${player.y}) with ${player.lives} lives left`);
+}
 
+
+
+ forceRespawnPlayer(playerId) {
+        console.log(`🔧 Force respawn requested for ${playerId}`);
+        const player = this.playerStates.find(p => p.playerId === playerId);
+        
+        if (!player) {
+            console.log(`❌ Player ${playerId} not found for force respawn`);
+            return;
+        }
+        
+        if (player.lives <= 0) {
+            player.lives = 1;
+            console.log(`🔧 Reset lives for ${playerId} to allow respawn`);
+        }
+        
+        this.respawnPlayer(playerId);
+    }
+respawnAllPlayers() {
+    const spawnPositions = this.calculatePlayerSpawnPositions();
+    
+    this.playerStates.forEach((player, index) => {
+        const spawnPos = spawnPositions[index] || { x: 50, y: this.config.height / 2 };
+        
+        player.x = spawnPos.x;
+        player.y = spawnPos.y;
+        player.velocityY = 0;
+        player.alive = true;
+        player.phase = 'outbound';
+        player.effects = {};
+        player.items = [];
+        
+        // ===== ĐẢM BẢO MỖI PLAYER CÓ 3 MẠNG =====
+        if (!player.lives || player.lives <= 0) {
+            player.lives = 3;
+        }
+        
+        // Bất tử 3 giây khi bắt đầu round
+        player.invulnerable = true;
+        player.invulnerableTime = 3.0;
+        player.canCollideWithPlayers = false;
+    });
+}
     updatePlayers(deltaTime) {
     this.playerStates.forEach(player => {
         if (!player.alive) return;
@@ -568,22 +639,102 @@ checkPlayerCollisions(currentPlayer) {
         }
     }
 
+   
+
+
+
     killPlayer(player, reason = 'pipe') {
     if (player.invulnerable && reason === 'player_collision') {
-        return; // Không chết nếu đang bất tử và va chạm với player
+        return;
     }
     
+    if (!player.alive) {
+        console.log(`⚠️ Player ${player.playerId} already dead, skipping kill`);
+        return;
+    }
+    
+    console.log(`💀 Killing player ${player.playerId}, reason: ${reason}, lives before: ${player.lives}`);
+    
+    // Set player as dead
     player.alive = false;
     player.velocityY = 0;
-    player.invulnerable = false; // Mất bất tử khi chết
+    player.invulnerable = false;
     player.canCollideWithPlayers = false;
     
-    // Giảm mạng
-    player.lives--;
+    // Decrease lives
+    player.lives = Math.max(0, player.lives - 1);
     
-    console.log(`Player ${player.playerId} killed by ${reason}, lives left: ${player.lives}`);
+    console.log(`💀 Player ${player.playerId} died, lives left: ${player.lives}`);
+    
+    // Broadcast death immediately
+    this.broadcast({
+        type: 'playerDied',
+        playerId: player.playerId,
+        reason: reason,
+        livesLeft: player.lives,
+        position: { x: player.x, y: player.y }
+    });
+    
+    // Schedule respawn or elimination
+    if (player.lives > 0) {
+        console.log(`⏰ Scheduling respawn for ${player.playerId} in 1000ms`);
+        
+        // Set a flag to track respawn
+        player.respawnTimer = setTimeout(() => {
+            console.log(`🔄 Executing respawn for ${player.playerId}`);
+            
+            // Double-check player still exists and is dead
+            const currentPlayer = this.playerStates.find(p => p.playerId === player.playerId);
+            if (currentPlayer && !currentPlayer.alive && currentPlayer.lives > 0) {
+                this.executeRespawn(currentPlayer);
+            } else {
+                console.log(`⚠️ Respawn cancelled for ${player.playerId} - conditions not met`);
+            }
+        }, 1000);
+        
+    } else {
+        console.log(`💀 Player ${player.playerId} eliminated - no lives left`);
+        this.broadcast({
+            type: 'playerEliminated',
+            playerId: player.playerId,
+            message: `💀 ${player.playerId.slice(-4)} đã bị loại!`
+        });
+    }
 }
-
+executeRespawn(player) {
+    console.log(`🔄 Executing respawn for ${player.playerId}`);
+    
+    // Calculate spawn position
+    const spawnPositions = this.calculatePlayerSpawnPositions();
+    const playerIndex = this.playerStates.findIndex(p => p.playerId === player.playerId);
+    const spawnPos = spawnPositions[playerIndex] || { x: 50, y: this.config.height / 2 };
+    
+    // Reset player state
+    player.x = spawnPos.x;
+    player.y = spawnPos.y;
+    player.velocityY = 0;
+    player.alive = true;
+    player.phase = 'outbound';
+    player.invulnerable = true;
+    player.invulnerableTime = 1.0;
+    player.canCollideWithPlayers = false;
+    
+    // Clear respawn timer
+    if (player.respawnTimer) {
+        clearTimeout(player.respawnTimer);
+        player.respawnTimer = null;
+    }
+    
+    console.log(`✅ Player ${player.playerId} respawned at (${player.x}, ${player.y})`);
+    
+    // Broadcast respawn
+    this.broadcast({
+        type: 'playerRespawned',
+        playerId: player.playerId,
+        position: { x: player.x, y: player.y },
+        livesLeft: player.lives
+    });
+}
     updateProjectiles(deltaTime) {
         this.projectiles = this.projectiles.filter(projectile => {
             if (!projectile.active) return false;
@@ -666,13 +817,13 @@ calculatePlayerSpawnPositions() {
         return [{ x: 50, y: startY }];
     }
     
-    // Căn giữa tất cả các con chim
+    // ===== CĂNG GIỮA TẤT CẢ CÁC CON CHIM =====
     const totalHeight = (totalPlayers - 1) * spacing;
     const firstBirdY = startY - (totalHeight / 2);
     
     return this.playerStates.map((_, index) => ({
-        x: 50,
-        y: firstBirdY + (index * spacing)
+        x: 50, // Vị trí X cố định tại xuất phát
+        y: Math.max(50, Math.min(this.config.height - 50, firstBirdY + (index * spacing))) // Đảm bảo trong bounds
     }));
 }
 
@@ -754,21 +905,33 @@ calculatePlayerSpawnPositions() {
         this.broadcastGameState();
     }
 
-    handleGameAction(playerId, action, data) {
-        const player = this.playerStates.find(p => p.playerId === playerId);
-        if (!player || !player.alive) return { error: 'Player not found or dead' };
-        
-        switch (action) {
-            case 'flap':
-                return this.handleFlap(player);
-            case 'useItem':
-                return this.handleUseItem(player, data.itemType);
-            case 'pause':
-                return this.handlePause();
-            default:
-                return { error: 'Unknown action' };
-        }
+  handleGameAction(playerId, action, data) {
+    const player = this.playerStates.find(p => p.playerId === playerId);
+    if (!player) return { error: 'Player not found' };
+    
+    switch (action) {
+        case 'flap':
+            if (player.alive && this.gamePhase === 'playing') {
+                player.velocityY = this.config.flapStrength;
+            }
+            break;
+            
+        case 'useItem':
+            this.usePlayerItem(player, data.itemType);
+            break;
+            
+        // ===== THÊM CASE MỚI CHO FORCE RESPAWN =====
+        case 'forceRespawn':
+            console.log(`🔧 Force respawn requested by ${playerId}`);
+            this.forceRespawnPlayer(playerId);
+            break;
+            
+        default:
+            return { error: 'Unknown action' };
     }
+    
+    return { success: true };
+}
 
     handleFlap(player) {
         if (this.gamePhase !== 'playing') return { error: 'Game not in playing state' };
@@ -882,8 +1045,8 @@ startNewRound() {
     
     // Reset game phase
     this.gamePhase = 'countdown';
-    this.gameTimer = 10; // 10 second countdown
-    this.lastCountdown = 10;
+    this.gameTimer = 3; // 10 second countdown
+    this.lastCountdown = 3;
     
     // ===== RESET VỊ TRÍ PLAYERS CHO ROUND MỚI =====
     this.playerStates.forEach((player, index) => {

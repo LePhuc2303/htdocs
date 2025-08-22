@@ -29,70 +29,8 @@ include $_SERVER['DOCUMENT_ROOT'].'./include/header.php';
     <!-- Menu chính -->
     <div id="mainMenu" class="game-controls card p-4 mb-4">
         <!-- Header -->
-        <div class="text-center mb-4">
-            <h3 class="mb-3">🏁 Chọn chế độ chơi</h3>
-            <p class="text-muted mb-0">Chọn chế độ game phù hợp với bạn!</p>
-        </div>
+      
 
-        <!-- Game Modes -->
-        <div class="row g-3 mb-4">
-            <!-- Classic Race -->
-            <div class="col-md-3">
-                <div class="game-mode-card" data-mode="classic">
-                    <div class="mode-icon">🏁</div>
-                    <h5>Classic Race</h5>
-                    <p>Đua cổ điển: Đi → Về → Thắng!</p>
-                    <div class="mode-stats">
-                        <span class="badge bg-primary">2-8 người</span>
-                        <span class="badge bg-success">5-10 phút</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Battle Royale -->
-            <div class="col-md-3">
-                <div class="game-mode-card" data-mode="battle">
-                    <div class="mode-icon">⚔️</div>
-                    <h5>Battle Royale</h5>
-                    <p>Sinh tồn cuối cùng với items và combat!</p>
-                    <div class="mode-stats">
-                        <span class="badge bg-danger">4-8 người</span>
-                        <span class="badge bg-warning">3-8 phút</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Time Trial -->
-            <div class="col-md-3">
-                <div class="game-mode-card" data-mode="time">
-                    <div class="mode-icon">⏱️</div>
-                    <h5>Time Trial</h5>
-                    <p>Đua với thời gian, ai nhanh nhất?</p>
-                    <div class="mode-stats">
-                        <span class="badge bg-info">1-8 người</span>
-                        <span class="badge bg-secondary">2-5 phút</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Endless -->
-            <div class="col-md-3">
-                <div class="game-mode-card" data-mode="endless">
-                    <div class="mode-icon">♾️</div>
-                    <h5>Endless Mode</h5>
-                    <p>Bay xa nhất có thể, thu thập điểm!</p>
-                    <div class="mode-stats">
-                        <span class="badge bg-purple">1-4 người</span>
-                        <span class="badge bg-dark">Không giới hạn</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Selected Mode Display -->
-        <div id="selectedMode" class="alert alert-info text-center mb-4" style="display: none;">
-            <strong>Đã chọn:</strong> <span id="selectedModeName">-</span>
-        </div>
 
         <!-- Room Creation -->
         <div class="row">
@@ -355,8 +293,7 @@ include $_SERVER['DOCUMENT_ROOT'].'./include/header.php';
 
         <!-- Game Controls (only shown in non-fullscreen) -->
         <div class="game-controls-bottom text-center mt-4">
-            <button class="btn btn-warning me-2" onclick="resetGame()">🔄 Chơi lại</button>
-            <button class="btn btn-secondary me-2" onclick="pauseGame()">⏸️ Tạm dừng</button>
+            
             <button class="btn btn-danger" onclick="leaveGame()">🚪 Rời phòng</button>
         </div>
     </div>
