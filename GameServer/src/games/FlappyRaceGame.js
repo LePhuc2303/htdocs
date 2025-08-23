@@ -375,62 +375,142 @@ class FlappyRaceGame extends BaseGame {
         }
     }
 
-    updateGame() {
-        const now = Date.now();
-        const deltaTime = (now - this.lastUpdate) / 1000;
-        this.lastUpdate = now;
+   updateGame() {
+    const now = Date.now();
+    const deltaTime = (now - this.lastUpdate) / 1000;
+    this.lastUpdate = now;
 
-        // ===== DEBUG: LOG DEAD PLAYERS (không ảnh hưởng game logic) =====
-        const deadPlayers = this.playerStates.filter(p => !p.alive && p.lives > 0);
-        if (deadPlayers.length > 0) {
-            console.log(`📊 Dead players waiting for respawn: ${deadPlayers.map(p => `${p.playerId.slice(-4)}(${p.lives}❤️)`).join(', ')}`);
+    // ===== CẬP NHẬT COUNTDOWN =====
+    if (this.gamePhase === 'countdown') {
+        this.gameTimer -= deltaTime;
+
+        const seconds = Math.ceil(this.gameTimer);
+        if (seconds !== this.lastCountdown && seconds > 0) {
+            this.lastCountdown = seconds;
+            this.broadcast({
+                type: 'gameMessage',
+                message: `Bắt đầu sau ${seconds}...`
+            });
+            this.broadcastGameState();
         }
 
-        // ===== CẬP NHẬT COUNTDOWN =====
-        if (this.gamePhase === 'countdown') {
-            this.gameTimer -= deltaTime;
-
-            const seconds = Math.ceil(this.gameTimer);
-            if (seconds !== this.lastCountdown && seconds > 0) {
-                this.lastCountdown = seconds;
-
-                this.broadcast({
-                    type: 'gameMessage',
-                    message: `Bắt đầu sau ${seconds}...`
-                });
-
-                this.broadcastGameState();
-            }
-
-            if (this.gameTimer <= 0) {
-                this.gamePhase = 'playing';
-                this.gameTimer = 0;
-                this.broadcast({
-                    type: 'gameMessage',
-                    message: '🚀 Game bắt đầu! Good luck!'
-                });
-                this.broadcastGameState();
-            }
-        }
-
-        // ===== CẬP NHẬT GAME PLAYING - QUAN TRỌNG: LUÔN CHẠY! =====
-        if (this.gamePhase === 'playing') {
-            // Cập nhật tất cả các thành phần game
-            this.updatePlayers(deltaTime);      // Cập nhật người chơi (bao gồm cả sống và chết)
-            this.updateProjectiles(deltaTime);  // Cập nhật đạn bắn
-            this.updateItems();                 // Cập nhật vật phẩm
-
-            // Kiểm tra điều kiện kết thúc - KHÔNG làm đứng hình game
-            this.checkGameEnd();                // Chỉ kiểm tra, không dừng game loop
-
-            // Kiểm tra điều kiện respawn - riêng biệt
-            this.checkRespawnCondition();       // Quản lý respawn độc lập
-
-            // Cập nhật bảng xếp hạng và broadcast state
-            this.updateLeaderboard();
+        if (this.gameTimer <= 0) {
+            this.gamePhase = 'playing';
+            this.gameTimer = 0;
+            this.broadcast({
+                type: 'gameMessage',
+                message: '🚀 Game bắt đầu! Good luck!'
+            });
             this.broadcastGameState();
         }
     }
+
+    // ===== CẬP NHẬT GAME PLAYING - LUÔN CHẠY! =====
+    if (this.gamePhase === 'playing') {
+        // ❌ XÓA TẤT CẢ các hàm có thể gây delay hoặc return
+        // ✅ CHỈ GIỮ LẠI logic cập nhật game state
+        
+        this.updatePlayers(deltaTime);      
+        this.updateProjectiles(deltaTime);  
+        this.updateItems();                 
+        this.handleAutoRespawn();  // Tự động respawn, không chờ
+        this.checkRealGameEnd();    // Chỉ end khi thật sự cần
+        this.updateLeaderboard();
+        this.broadcastGameState();
+    }
+}
+handleAutoRespawn() {
+    this.playerStates.forEach(player => {
+        // Tự động respawn sau 3 giây nếu chết và còn mạng
+        if (!player.alive && player.lives > 0 && !player.respawnTimer) {
+            console.log(`⏰ Setting auto-respawn for ${player.playerId}`);
+            
+            player.respawnTimer = setTimeout(() => {
+                // Kiểm tra lại điều kiện trước khi respawn
+                const currentPlayer = this.playerStates.find(p => p.playerId === player.playerId);
+                if (currentPlayer && !currentPlayer.alive && currentPlayer.lives > 0) {
+                    this.executeAutoRespawn(currentPlayer);
+                }
+                currentPlayer.respawnTimer = null;
+            }, 3000); // 3 giây tự động respawn
+        }
+    });
+}
+
+
+executeAutoRespawn(player) {
+    console.log(`🔄 Auto-respawning player: ${player.playerId}`);
+
+    // Tính vị trí spawn
+    const spawnPositions = this.calculatePlayerSpawnPositions();
+    const playerIndex = this.playerStates.findIndex(p => p.playerId === player.playerId);
+    const spawnPos = spawnPositions[playerIndex] || { x: 50, y: this.config.height / 2 };
+
+    // Reset player state
+    player.alive = true;
+    player.x = spawnPos.x;
+    player.y = spawnPos.y;
+    player.velocityY = 0;
+    player.phase = 'outbound'; // Về lại phase đầu
+    player.invulnerable = true; // 3 giây bất tử
+    player.invulnerableTime = 3.0;
+    player.canCollideWithPlayers = false;
+
+    // Broadcast respawn
+    this.broadcast({
+        type: 'playerRespawned',
+        playerId: player.playerId,
+        position: { x: player.x, y: player.y },
+        livesLeft: player.lives
+    });
+
+    this.broadcast({
+        type: 'gameMessage',
+        message: `🔄 ${player.playerId.slice(-4)} đã hồi sinh! 3 giây bất tử!`
+    });
+
+    console.log(`✅ Player ${player.playerId} auto-respawned with ${player.lives} lives`);
+}
+
+checkRealGameEnd() {
+    const playersWithLives = this.playerStates.filter(p => p.lives > 0);
+    const alivePlayers = this.playerStates.filter(p => p.alive);
+    
+    // CHỈ kết thúc game khi TẤT CẢ người chơi đều hết mạng
+    if (playersWithLives.length === 0) {
+        console.log('💀 All players eliminated - ending game');
+        this.triggerGameEnd(null);
+        return;
+    }
+
+    // Kiểm tra winner nếu chỉ còn 1 người có thể thắng
+    const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
+    if (finishedPlayers.length > 0) {
+        // Sắp xếp theo rank để tìm winner
+        const winner = finishedPlayers.reduce((best, current) => 
+            current.rank < best.rank ? current : best
+        );
+        if (winner && winner.rank === 1) {
+            console.log('🏆 Winner found:', winner.playerId);
+            this.triggerGameEnd(winner.playerId);
+        }
+    }
+}
+
+
+handleRespawning() {
+    this.playerStates.forEach(player => {
+        // Nếu player chết và còn mạng, tự động respawn sau 3 giây
+        if (!player.alive && player.lives > 0 && !player.respawnTimer) {
+            player.respawnTimer = setTimeout(() => {
+                this.respawnPlayer(player.playerId);
+                player.respawnTimer = null;
+            }, 3000); // 3 giây respawn tự động
+        }
+    });
+}
+
+
     shouldContinueGame() {
         const alivePlayers = this.playerStates.filter(p => p.alive);
         const playersWithLives = this.playerStates.filter(p => p.lives > 0);
@@ -441,46 +521,33 @@ class FlappyRaceGame extends BaseGame {
         return alivePlayers.length > 0 || playersWithLives.length > 0;
     }
     respawnPlayer(playerId) {
-        const player = this.playerStates.find(p => p.playerId === playerId);
-        if (!player) {
-            console.log(`❌ Cannot respawn - player ${playerId} not found`);
-            return;
+    const player = this.playerStates.find(p => p.playerId === playerId);
+    if (!player || player.alive || player.lives <= 0) return;
+
+    console.log(`🔄 Respawning player: ${playerId}`);
+
+    // Reset player state
+    player.alive = true;
+    player.x = Math.random() * (this.gameWidth - 100) + 50; // Random spawn position
+    player.y = this.gameHeight / 2;
+    player.velocityY = 0;
+    player.invulnerable = true; // 3 giây bất tử
+    player.lastUpdate = Date.now();
+
+    // Broadcast respawn message
+    this.broadcast({
+        type: 'gameMessage',
+        message: `🔄 ${playerId.slice(-4)} đã hồi sinh! 3 giây bất tử!`
+    });
+
+    // Tắt bất tử sau 3 giây
+    setTimeout(() => {
+        if (player.alive) {
+            player.invulnerable = false;
+            console.log(`🛡️ Invulnerability ended for ${playerId}`);
         }
-
-        if (player.lives <= 0) {
-            console.log(`❌ Cannot respawn - player ${playerId} has no lives left`);
-            return;
-        }
-
-        console.log(`🔄 Respawning player ${playerId}, lives: ${player.lives}`);
-
-        // ===== RESPAWN TẠI VỊ TRÍ XUẤT PHÁT =====
-        const spawnPositions = this.calculatePlayerSpawnPositions();
-        const playerIndex = this.playerStates.findIndex(p => p.playerId === playerId);
-        const spawnPos = spawnPositions[playerIndex] || { x: 50, y: this.config.height / 2 };
-
-        // ===== RESET PLAYER STATE =====
-        player.x = spawnPos.x;
-        player.y = spawnPos.y;
-        player.velocityY = 0;
-        player.alive = true;
-        player.phase = 'outbound'; // Về lại phase đầu
-
-        // ===== BẤT TỬ 1 GIÂY SAU KHI RESPAWN =====
-        player.invulnerable = true;
-        player.invulnerableTime = 1.0; // 1 giây bất tử
-        player.canCollideWithPlayers = false;
-
-        // ===== BROADCAST RESPAWN =====
-        this.broadcast({
-            type: 'playerRespawned',
-            playerId: playerId,
-            position: { x: player.x, y: player.y },
-            livesLeft: player.lives
-        });
-
-        console.log(`✅ Player ${playerId} respawned at (${player.x}, ${player.y}) with ${player.lives} lives left`);
-    }
+    }, 3000);
+}
 
 
 
@@ -526,61 +593,63 @@ class FlappyRaceGame extends BaseGame {
         });
     }
     updatePlayers(deltaTime) {
-        this.playerStates.forEach(player => {
-            if (!player.alive) return;
-
-            // CHỈ APPLY PHYSICS KHI GAME ĐANG PLAYING
-            if (this.gamePhase === 'playing') {
-                // ===== CẬP NHẬT THỜI GIAN BẤT TỬ =====
-                if (player.invulnerable && player.invulnerableTime > 0) {
-                    player.invulnerableTime -= deltaTime;
-                    if (player.invulnerableTime <= 0) {
-                        player.invulnerable = false;
-                        player.canCollideWithPlayers = true;
-                        console.log(`Player ${player.playerId} is no longer invulnerable`);
-                    }
-                }
-
-                // ===== QUAN TRỌNG: PHYSICS - GRAVITY =====
-                player.velocityY += this.config.gravity;
-
-                // Apply velocity to Y position
-                player.y += player.velocityY;
-
-                // Apply effects
-                this.updatePlayerEffects(player, deltaTime);
-
-                // ===== QUAN TRỌNG: MOVEMENT BASED ON PHASE =====
-                let speed = 100; // base speed
-                if (player.effects.speed && player.effects.speed.timeLeft > 0) {
-                    speed *= 1.5;
-                }
-
-                if (player.phase === 'outbound') {
-                    // OUTBOUND: Bay về phía trước (tăng x)
-                    player.x += speed * deltaTime;
-                } else if (player.phase === 'return') {
-                    // RETURN: Bay về phía sau (giảm x)
-                    player.x -= speed * deltaTime;
-                }
-                // FINISHED: Không di chuyển nữa
-
-                // ===== CHECK BOUNDS =====
-                this.checkPlayerBounds(player);
-
-                // Check phase transition
-                this.checkPhaseTransition(player);
-
-                // ===== COLLISION DETECTION =====
-                this.checkCollisions(player);
-
-                // ===== KIỂM TRA VA CHẠM GIỮA CÁC CHIM =====
-                if (player.canCollideWithPlayers) {
-                    this.checkPlayerCollisions(player);
-                }
+    this.playerStates.forEach(player => {
+        // ===== LUÔN CẬP NHẬT THỜI GIAN BẤT TỬ (cho cả sống và chết) =====
+        if (player.invulnerable && player.invulnerableTime > 0) {
+            player.invulnerableTime -= deltaTime;
+            if (player.invulnerableTime <= 0) {
+                player.invulnerable = false;
+                player.canCollideWithPlayers = true;
+                console.log(`Player ${player.playerId} is no longer invulnerable`);
             }
-        });
-    }
+        }
+
+        // ===== CHỈ XỬ LÝ PHYSICS CHO NGƯỜI SỐNG =====
+        if (!player.alive) return; // ✅ CHUYỂN DÒNG NÀY XUỐNG ĐÂY
+
+        // CHỈ APPLY PHYSICS KHI GAME ĐANG PLAYING
+        if (this.gamePhase === 'playing') {
+            // ===== QUAN TRỌNG: PHYSICS - GRAVITY =====
+            player.velocityY += this.config.gravity;
+
+            // Apply velocity to Y position
+            player.y += player.velocityY;
+
+            // Apply effects
+            this.updatePlayerEffects(player, deltaTime);
+
+            // ===== QUAN TRỌNG: MOVEMENT BASED ON PHASE =====
+            let speed = 100; // base speed
+            if (player.effects.speed && player.effects.speed.timeLeft > 0) {
+                speed *= 1.5;
+            }
+
+            if (player.phase === 'outbound') {
+                // OUTBOUND: Bay về phía trước (tăng x)
+                player.x += speed * deltaTime;
+            } else if (player.phase === 'return') {
+                // RETURN: Bay về phía sau (giảm x)
+                player.x -= speed * deltaTime;
+            }
+            // FINISHED: Không di chuyển nữa
+
+            // ===== CHECK BOUNDS =====
+            this.checkPlayerBounds(player);
+
+            // Check phase transition
+            this.checkPhaseTransition(player);
+
+            // ===== COLLISION DETECTION =====
+            this.checkCollisions(player);
+
+            // ===== KIỂM TRA VA CHẠM GIỮA CÁC CHIM =====
+            if (player.canCollideWithPlayers) {
+                this.checkPlayerCollisions(player);
+            }
+        }
+    });
+}
+
     checkPlayerCollisions(currentPlayer) {
         if (!currentPlayer.alive || currentPlayer.invulnerable) return;
 
@@ -783,67 +852,55 @@ class FlappyRaceGame extends BaseGame {
     }
 
 
-
-
-
-    killPlayer(player, reason = 'pipe') {
-        if (player.invulnerable && reason === 'player_collision') {
-            return;
-        }
-
-        if (!player.alive) {
-            console.log(`⚠️ Player ${player.playerId} already dead, skipping kill`);
-            return;
-        }
-
-        console.log(`💀 Killing player ${player.playerId}, reason: ${reason}, lives before: ${player.lives}`);
-
-        // Set player as dead
-        player.alive = false;
-        player.velocityY = 0;
-        player.invulnerable = false;
-        player.canCollideWithPlayers = false;
-
-        // Decrease lives
-        player.lives = Math.max(0, player.lives - 1);
-
-        console.log(`💀 Player ${player.playerId} died, lives left: ${player.lives}`);
-
-        // Broadcast death immediately
-        this.broadcast({
-            type: 'playerDied',
-            playerId: player.playerId,
-            reason: reason,
-            livesLeft: player.lives,
-            position: { x: player.x, y: player.y }
-        });
-
-        // Schedule respawn or elimination
-        if (player.lives > 0) {
-            console.log(`⏰ Scheduling respawn for ${player.playerId} in 1000ms`);
-
-            // Set a flag to track respawn
-            player.respawnTimer = setTimeout(() => {
-                console.log(`🔄 Executing respawn for ${player.playerId}`);
-
-                // Double-check player still exists and is dead
-                const currentPlayer = this.playerStates.find(p => p.playerId === player.playerId);
-                if (currentPlayer && !currentPlayer.alive && currentPlayer.lives > 0) {
-                    this.executeRespawn(currentPlayer);
-                } else {
-                    console.log(`⚠️ Respawn cancelled for ${player.playerId} - conditions not met`);
-                }
-            }, 1000);
-
-        } else {
-            console.log(`💀 Player ${player.playerId} eliminated - no lives left`);
-            this.broadcast({
-                type: 'playerEliminated',
-                playerId: player.playerId,
-                message: `💀 ${player.playerId.slice(-4)} đã bị loại!`
-            });
-        }
+killPlayer(player, reason = 'pipe') {
+    if (player.invulnerable && reason === 'player_collision') {
+        return;
     }
+
+    if (!player.alive) {
+        console.log(`⚠️ Player ${player.playerId} already dead, skipping kill`);
+        return;
+    }
+
+    console.log(`💀 Killing player ${player.playerId}, reason: ${reason}, lives before: ${player.lives}`);
+
+    // Set player as dead
+    player.alive = false;
+    player.velocityY = 0;
+    player.invulnerable = false;
+    player.canCollideWithPlayers = false;
+    player.deathTime = Date.now();
+
+    // Decrease lives
+    player.lives = Math.max(0, player.lives - 1);
+
+    console.log(`💀 Player ${player.playerId} died, lives left: ${player.lives}`);
+
+    // Broadcast death
+    this.broadcast({
+        type: 'playerDied',
+        playerId: player.playerId,
+        reason: reason,
+        livesLeft: player.lives,
+        position: { x: player.x, y: player.y }
+    });
+
+    // Broadcast messages
+    this.broadcast({
+        type: 'gameMessage',
+        message: `💀 ${player.playerId.slice(-4)} đã chết! Còn ${player.lives} mạng`
+    });
+
+    if (player.lives <= 0) {
+        this.broadcast({
+            type: 'gameMessage', 
+            message: `💀 ${player.playerId.slice(-4)} đã bị loại khỏi game!`
+        });
+    }
+
+    // ❌ QUAN TRỌNG: KHÔNG gọi checkGameEnd() hoặc dừng game ở đây!
+    this.updateLeaderboard();
+}
     executeRespawn(player) {
         console.log(`🔄 Executing respawn for ${player.playerId}`);
 
@@ -929,27 +986,9 @@ class FlappyRaceGame extends BaseGame {
             }));
     }
 
-    checkRespawnCondition() {
-        // Check if we need to show respawn option
-        if (this.gamePhase === 'playing' || this.gamePhase === 'finished') {
-            const alivePlayers = this.playerStates.filter(p => p.alive);
-            const deadPlayers = this.playerStates.filter(p => !p.alive);
+checkRespawnCondition() {
 
-            // If there are dead players, allow them to trigger respawn
-            if (deadPlayers.length > 0) {
-                // Check if all players are ready for restart
-                const allPlayersReady = this.players.every(player =>
-                    this.playersReady[player.playerId] === true
-                );
-
-                // Auto-start if no players in room or all ready
-                if (this.players.length === 0 || allPlayersReady) {
-                    this.respawnGame();
-                }
-            }
-        }
-    }
-
+}
 
     calculatePlayerSpawnPositions() {
         const totalPlayers = this.playerStates.length;
@@ -971,61 +1010,33 @@ class FlappyRaceGame extends BaseGame {
         }));
     }
 
+checkGameEnd() {
+    const alivePlayers = this.playerStates.filter(p => p.alive);
+    const playersWithLives = this.playerStates.filter(p => p.lives > 0);
+    const deadPlayersWithLives = this.playerStates.filter(p => !p.alive && p.lives > 0);
 
-    checkGameEnd() {
-        const alivePlayers = this.playerStates.filter(p => p.alive);
-        const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
-        const playersWithLives = this.playerStates.filter(p => p.lives > 0);
-        const deadPlayersWithLives = this.playerStates.filter(p => !p.alive && p.lives > 0);
+    console.log(`🔍 Game End Check:`, {
+        total: this.playerStates.length,
+        alive: alivePlayers.length,
+        withLives: playersWithLives.length,
+        deadWithLives: deadPlayersWithLives.length,
+        currentPhase: this.gamePhase
+    });
 
-        console.log(`🔍 Game End Check:`, {
-            total: this.playerStates.length,
-            alive: alivePlayers.length,
-            finished: finishedPlayers.length,
-            withLives: playersWithLives.length,
-            deadWithLives: deadPlayersWithLives.length,
-            currentPhase: this.gamePhase
-        });
-
-        // ===== QUAN TRỌNG: CHỈ LOG, KHÔNG BAO GIỜ RETURN! =====
-        if (deadPlayersWithLives.length > 0) {
-            console.log(`⏳ ${deadPlayersWithLives.length} players waiting to respawn - GAME CONTINUES FOR ALIVE PLAYERS!`);
-            // ❌ XÓA DÒNG return; - GAME PHẢI TIẾP TỤC!
-        }
-
-        // ===== CHỈ END GAME KHI TẤT CẢ PLAYERS HẾT MẠNG =====
-        if (playersWithLives.length === 0) {
-            console.log('💀 All players eliminated - ending game');
-            this.triggerGameEnd(null);
-            return; // CHỈ return ở đây thôi!
-        }
-
-        // Note: Winner được handle trong checkPhaseTransition
+    // ❌ QUAN TRỌNG: CHỈ LOG, KHÔNG BAO GIỜ RETURN! Game phải tiếp tục!
+    if (deadPlayersWithLives.length > 0) {
+        console.log(`⏳ ${deadPlayersWithLives.length} players waiting to respawn - GAME CONTINUES!`);
+        // ❌ XÓA: return; - Game PHẢI tiếp tục!
     }
 
+    // Logic end game thật sự được xử lý trong checkRealGameEnd()
+    // Hàm này chỉ để log và tương thích với code cũ
+}
 
 
 
-    checkRespawnCondition() {
-        // Chỉ kiểm tra điều kiện respawn, KHÔNG ảnh hưởng đến game loop chính
-        if (this.gamePhase === 'playing' || this.gamePhase === 'finished') {
-            const alivePlayers = this.playerStates.filter(p => p.alive);
-            const deadPlayers = this.playerStates.filter(p => !p.alive);
 
-            // Nếu có người chết, cho phép họ trigger respawn
-            if (deadPlayers.length > 0) {
-                // Kiểm tra nếu tất cả người chơi đã sẵn sàng restart
-                const allPlayersReady = this.players.every(player =>
-                    this.playersReady[player.playerId] === true
-                );
-
-                // Auto-start nếu không có người chơi hoặc tất cả đã sẵn sàng
-                if (this.players.length === 0 || allPlayersReady) {
-                    this.respawnGame();
-                }
-            }
-        }
-    }
+    
     triggerGameEnd(winnerId) {
         console.log('🏆 Triggering game end with winner:', winnerId);
 
