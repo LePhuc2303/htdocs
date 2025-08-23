@@ -18,286 +18,90 @@ include $_SERVER['DOCUMENT_ROOT'].'../db.php';
 include $_SERVER['DOCUMENT_ROOT'].'./include/header.php';
 ?>
 
-<div class="container my-4 game-container">
-    <h1 class="text-center mb-4">🐦 Flappy Race Online</h1>
-
-    <!-- Trạng thái kết nối -->
-    <div id="connectionStatus" class="connection-status disconnected alert alert-secondary text-center">
-        🔌 Đang kết nối...
-    </div>
-
-    <!-- Menu chính -->
-    <div id="mainMenu" class="game-controls card p-4 mb-4">
+<div class="game-container">
         <!-- Header -->
-      
+        <div class="game-header">
+            <h1 class="game-title">🚁 FLAPPY RACE 🏁</h1>
+            <div id="connectionStatus" class="connection-status disconnected">🔴 Đang kết nối...</div>
+        </div>
 
-
-        <!-- Room Creation -->
-        <div class="row">
-            <!-- Create Room -->
-            <div class="col-lg-6">
-                <div class="card bg-primary text-white">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">🆕 Tạo phòng mới</h5>
-                        
-                        <!-- Room Settings -->
-                        <div class="room-settings mb-3">
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <label class="form-label small">Số người chơi</label>
-                                    <select id="maxPlayers" class="form-select form-select-sm">
-                                        <option value="2">2 người</option>
-                                        <option value="4" selected>4 người</option>
-                                        <option value="6">6 người</option>
-                                        <option value="8">8 người</option>
-                                    </select>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label small">Độ khó</label>
-                                    <select id="difficulty" class="form-select form-select-sm">
-                                        <option value="easy">Dễ</option>
-                                        <option value="normal" selected>Bình thường</option>
-                                        <option value="hard">Khó</option>
-                                        <option value="extreme">Cực khó</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <div class="row g-2 mt-2">
-                                <div class="col-6">
-                                    <label class="form-label small">Map</label>
-                                    <select id="mapType" class="form-select form-select-sm">
-                                        <option value="classic">Classic</option>
-                                        <option value="jungle">Jungle</option>
-                                        <option value="city">City</option>
-                                        <option value="space">Space</option>
-                                    </select>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label small">Items</label>
-                                    <select id="itemsEnabled" class="form-select form-select-sm">
-                                        <option value="true" selected>Có items</option>
-                                        <option value="false">Không items</option>
-                                        <option value="chaos">Chaos mode</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <button class="btn btn-light btn-lg w-100" onclick="createGame()">
-                            🚀 Tạo phòng ngay
-                        </button>
-                    </div>
-                </div>
+        <!-- Main Menu -->
+        <div id="mainMenu">
+            <div class="instructions">
+                <h4>🎮 Cách chơi</h4>
+                <p>
+                    🚁 Điều khiển chim bay qua chướng ngại vật<br>
+                    🏁 Chạy đến vạch đích và quay lại điểm bắt đầu để thắng<br>
+                    ❤️ Mỗi người có 3 mạng, chết thì hồi sinh sau 3 giây<br>
+                    🎯 Nhấn SPACE, click chuột, hoặc nút JUMP để nhảy
+                </p>
             </div>
 
-            <!-- Join Room -->
-            <div class="col-lg-6">
-                <div class="card bg-success text-white">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">🚪 Vào phòng có sẵn</h5>
-                        
-                        <div class="mb-3">
-                            <label class="form-label">Mã phòng</label>
-                            <input type="text" id="gameIdInput" class="form-control form-control-lg text-center" 
-                                   placeholder="Nhập mã phòng..." maxlength="20" 
-                                   style="font-family: 'Courier New', monospace; font-weight: bold;">
-                        </div>
+            <div class="menu-section">
+                <h3>🆕 Tạo phòng mới</h3>
+                <button class="game-btn btn-success" onclick="createGame()">Tạo Game</button>
+            </div>
 
-                        <button class="btn btn-light btn-lg w-100 mb-3" onclick="joinGame()">
-                            ✨ Vào phòng
-                        </button>
+            <div class="menu-section">
+                <h3>🚪 Vào phòng</h3>
+                <input 
+                    type="text" 
+                    id="gameIdInput" 
+                    class="game-input" 
+                    placeholder="Nhập mã phòng..."
+                    maxlength="10"
+                >
+                <button class="game-btn btn-primary" onclick="joinGame()">Vào Game</button>
+            </div>
 
-                        <div class="text-center">
-                            <small class="opacity-75">Hoặc</small>
-                        </div>
-
-                        <button class="btn btn-outline-light mt-2" onclick="showQuickJoin()">
-                            🎲 Tham gia ngẫu nhiên
-                        </button>
-                    </div>
-                </div>
+            <div class="menu-section">
+                <h3>🎲 Vào phòng ngẫu nhiên</h3>
+                <button class="game-btn btn-warning" onclick="joinRandomGame()">Tìm Game</button>
             </div>
         </div>
 
-        <!-- Quick Tips -->
-        <div class="mt-4">
-            <button class="btn btn-outline-info w-100" type="button" data-bs-toggle="collapse" data-bs-target="#gameGuide">
-                📖 Hướng dẫn chơi & Tips
-            </button>
-            <div class="collapse mt-3" id="gameGuide">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6>🎮 Điều khiển cơ bản:</h6>
-                                <ul class="list-unstyled">
-                                    <li>• <kbd>SPACE</kbd> hoặc <kbd>Click</kbd> - Đập cánh bay lên</li>
-                                    <li>• <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> - Sử dụng items</li>
-                                    <li>• <kbd>ESC</kbd> - Tạm dừng game</li>
-                                </ul>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>🛠️ Items & Power-ups:</h6>
-                                <ul class="list-unstyled">
-                                    <li>• <span style="color:#FFD700">⚡ Tăng tốc</span> - Bay nhanh hơn</li>
-                                    <li>• <span style="color:#4169E1">🛡 Khiên</span> - Miễn nhiễm va chạm</li>
-                                    <li>• <span style="color:#FF4500">💣 Bom</span> - Ném vào đối thủ</li>
-                                    <li>• <span style="color:#8B4513">🕳 Bẫy</span> - Đặt bẫy trên đường bay</li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div class="row mt-3">
-                            <div class="col-md-6">
-                                <h6>🏆 Chiến thuật thắng:</h6>
-                                <ul class="list-unstyled small">
-                                    <li>• Thu thập items sớm</li>
-                                    <li>• Sử dụng bom để làm chậm đối thủ</li>
-                                    <li>• Giữ khiên cho những đoạn khó</li>
-                                    <li>• Bay sát mặt đất để tránh projectiles</li>
-                                </ul>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>🎯 Mục tiêu các chế độ:</h6>
-                                <ul class="list-unstyled small">
-                                    <li>• <strong>Classic:</strong> Về đích đầu tiên</li>
-                                    <li>• <strong>Battle:</strong> Sống sót cuối cùng</li>
-                                    <li>• <strong>Time Trial:</strong> Thời gian nhanh nhất</li>
-                                    <li>• <strong>Endless:</strong> Bay xa nhất</li>
-                                </ul>
-                            </div>
-                        </div>
+        <!-- Game Section -->
+        <div id="gameSection">
+            <!-- Game Info -->
+            <div class="game-info">
+                <div class="game-stats">
+                    <div class="stat-item">
+                        🎮 Phòng: <strong id="currentGameId">-</strong>
+                        <button class="game-btn btn-warning" onclick="copyGameId()" style="padding: 4px 12px; font-size: 12px; margin-left: 8px;">Copy</button>
+                    </div>
+                    <div class="stat-item">
+                        <span id="playerCount">👥 0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span id="gamePhase">⏳ Đang chờ...</span>
                     </div>
                 </div>
             </div>
+
+            <!-- Game Controls -->
+            <div class="game-controls">
+                <div class="control-group">
+                    <button id="jumpBtn" class="game-btn btn-primary">🚁 JUMP</button>
+                    <button id="resetBtn" class="game-btn btn-warning" onclick="resetGame()" style="display: none;">🔄 Chơi lại</button>
+                    <button class="game-btn btn-danger" onclick="leaveGame()">🚪 Rời phòng</button>
+                </div>
+            </div>
+
+            <!-- Game Canvas -->
+            <div class="canvas-container">
+                <canvas id="gameCanvas" width="1200" height="600"></canvas>
+            </div>
+
+            <!-- Messages -->
+            <div class="messages-container">
+                <h4>📢 Tin nhắn</h4>
+                <div id="gameMessages"></div>
+            </div>
         </div>
+
+        <!-- Countdown Overlay -->
+        <div id="countdown" style="display: none;"></div>
     </div>
-
-    <!-- Game Setup Section -->
-    <div id="gameSetup" class="hidden">
-        <div class="card">
-            <div class="card-header text-center bg-primary text-white">
-                <h4 class="mb-0">🎮 Lobby Game</h4>
-            </div>
-            <div class="card-body">
-                <!-- Game Info -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="game-info-card">
-                            <h6>📋 Thông tin phòng</h6>
-                            <p><strong>Mã phòng:</strong> <span id="setupGameId" class="text-primary fw-bold">-</span> 
-                               <button class="btn btn-outline-primary btn-sm ms-2" onclick="copyGameId()">📋</button></p>
-                            <p><strong>Chế độ:</strong> <span id="currentGameMode">Classic Race</span></p>
-                            <p><strong>Map:</strong> <span id="currentMap">Classic</span></p>
-                            <p><strong>Độ khó:</strong> <span id="currentDifficulty">Bình thường</span></p>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="players-waiting">
-                            <h6>👥 Người chơi đang chờ</h6>
-                            <div id="playersList" class="players-list">
-                                <!-- Players will be populated here -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Ready Section -->
-                <div class="text-center">
-                    <button id="readyBtn" class="btn btn-success btn-lg px-5" onclick="playerReady()">
-                        ✅ Sẵn sàng chiến đấu!
-                    </button>
-                    <div id="readyStatus" class="mt-3">
-                        <span class="not-ready-status">Chưa sẵn sàng</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Game Section -->
-    <div id="gameSection" class="hidden">
-        <!-- Game Header (only shown in non-fullscreen) -->
-        <div class="game-header mb-3">
-            <div class="row align-items-center">
-                <div class="col-md-4">
-                    <div class="game-id-display">
-                        <strong>Phòng: <span id="currentGameId">-</span></strong>
-                        <button class="btn btn-outline-secondary btn-sm ms-2" onclick="copyGameId()">📋</button>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div id="gameStatus" class="game-status-center text-center">
-                        Đang chờ...
-                    </div>
-                </div>
-                <div class="col-md-4 text-end">
-                    <div class="game-timer">
-                        <span id="gameTimer">00:00</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Canvas game -->
-        <div class="flappy-canvas-container">
-            <canvas id="flappyCanvas" class="flappy-canvas"></canvas>
-        </div>
-
-        <!-- Game HUD (only shown in non-fullscreen) -->
-        <div class="game-hud mt-3">
-            <div class="row g-3">
-                <div class="col-lg-3">
-                    <div class="card">
-                        <div class="card-body">
-                            <h6 class="card-title">📊 Bảng xếp hạng</h6>
-                            <div id="leaderboard" class="leaderboard-mini">
-                                <!-- Leaderboard content -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-6">
-                    <div class="card">
-                        <div class="card-body">
-                            <h6 class="card-title">🎯 Điều khiển & Trạng thái</h6>
-                            <div class="row">
-                                <div class="col-6">
-                                    <div class="controls-display">
-                                        <div><kbd>SPACE</kbd> Đập cánh</div>
-                                        <div><kbd>1-4</kbd> Dùng items</div>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div id="playerStatus" class="player-status">
-                                        <div>❤️ <span id="playerLives">3</span></div>
-                                        <div>⭐ <span id="playerScore">0</span></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-3">
-                    <div class="card">
-                        <div class="card-body">
-                            <h6 class="card-title">🎒 Items</h6>
-                            <div id="playerInventory" class="inventory-display">
-                                <!-- Player inventory -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Game Controls (only shown in non-fullscreen) -->
-        <div class="game-controls-bottom text-center mt-4">
-            
-            <button class="btn btn-danger" onclick="leaveGame()">🚪 Rời phòng</button>
-        </div>
-    </div>
-</div>
 
 <script src="../assets/js/flappy-race.js"></script>
 

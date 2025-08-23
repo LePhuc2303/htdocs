@@ -1,20 +1,28 @@
-// src/BaseGame.js - Base class cho tất cả games
-const WebSocket = require('ws');
-
+// src/BaseGame.js - Base class for all games
 class BaseGame {
   constructor(gameId, gameType, maxPlayers = 2) {
     this.gameId = gameId;
     this.gameType = gameType;
     this.maxPlayers = maxPlayers;
     this.players = [];
-    this.status = 'waiting'; // waiting | setup | playing | finished
+    this.status = 'waiting'; // waiting | playing | finished
     this.createdAt = new Date();
-    this.playersReady = {}; // playerId -> readyStatus
-    this.gameSettings = {}; // Lưu cài đặt game
+    this.onGameDestroyed = null;
+    
+    console.log(`🎮 BaseGame ${gameType} ${gameId} initialized`);
   }
 
+  // ===== PLAYER MANAGEMENT =====
   addPlayer(playerId, ws) {
-    if (this.players.length >= this.maxPlayers) return false;
+    if (this.players.length >= this.maxPlayers) {
+      console.log(`❌ Game ${this.gameId} is full`);
+      return null;
+    }
+
+    if (this.players.find(p => p.playerId === playerId)) {
+      console.log(`⚠️ Player ${playerId} already in game ${this.gameId}`);
+      return null;
+    }
 
     const playerInfo = {
       playerId,
@@ -23,124 +31,113 @@ class BaseGame {
     };
 
     this.players.push(playerInfo);
+    console.log(`➕ Player ${playerId} joined game ${this.gameId}`);
 
-    // Chuyển sang setup mode khi có đủ người chơi cho xiangqi
-    if (this.gameType === 'xiangqi' && this.players.length === 2) {
-      this.status = 'setup';
-    }
-
-    return this.onPlayerJoined(playerInfo);
+    // Call game-specific join handler
+    const result = this.onPlayerJoined(playerInfo);
+    
+    return result || { success: true };
   }
 
   removePlayer(playerId) {
-    this.players = this.players.filter(p => p.playerId !== playerId);
-    delete this.playersReady[playerId];
+    const playerIndex = this.players.findIndex(p => p.playerId === playerId);
+    if (playerIndex === -1) {
+      console.log(`⚠️ Player ${playerId} not found in game ${this.gameId}`);
+      return;
+    }
 
+    this.players.splice(playerIndex, 1);
+    console.log(`➖ Player ${playerId} left game ${this.gameId}`);
+
+    // Call game-specific leave handler
+    this.onPlayerLeft(playerId);
+
+    // Auto-destroy if empty
     if (this.players.length === 0) {
-      this.onGameDestroyed();
-    } else {
-      this.onPlayerLeft(playerId);
-    }
-  }
-
-  handlePlayerReady(playerId, settings) {
-    this.playersReady[playerId] = true;
-
-    // Lưu settings của player
-    if (!this.gameSettings[playerId]) {
-      this.gameSettings[playerId] = settings;
-    }
-
-    // Broadcast ready update
-    this.broadcast({
-      type: 'readyUpdate',
-      playersReady: this.playersReady
-    });
-
-    console.log(`Ready check: ${Object.keys(this.playersReady).length}/${this.players.length} players`);
-
-    // AUTO-START: Nếu chỉ có 1 người HOẶC tất cả đã ready
-    const readyCount = Object.keys(this.playersReady).length;
-    const totalPlayers = this.players.length;
-
-    if (totalPlayers === 1 || readyCount === totalPlayers) {
-      console.log(`🚀 Starting game - ${readyCount}/${totalPlayers} players ready`);
       setTimeout(() => {
-        this.startGame();
-      }, 1000);
+        if (this.players.length === 0) {
+          this.destroy();
+        }
+      }, 30000); // 30 seconds grace period
     }
-
-    return { success: true };
   }
 
-  startGame() {
-    // Áp dụng game settings
-    this.applyGameSettings();
-
-    this.status = 'playing';
-    this.broadcastGameState();
-  }
-
-  applyGameSettings() {
-    // Override trong subclass nếu cần
-  }
-
+  // ===== BROADCASTING =====
   broadcast(message) {
-    this.players.forEach(p => {
-      if (p.ws.readyState === WebSocket.OPEN) {
-        p.ws.send(JSON.stringify(message));
+    this.players.forEach(player => {
+      try {
+        if (player.ws && player.ws.readyState === 1) { // WebSocket.OPEN
+          player.ws.send(JSON.stringify(message));
+        }
+      } catch (error) {
+        console.error(`❌ Broadcast error to ${player.playerId}:`, error);
       }
     });
   }
 
-  sendToPlayer(playerId, message) {
-    const player = this.players.find(p => p.playerId === playerId);
-    if (player && player.ws.readyState === WebSocket.OPEN) {
-      player.ws.send(JSON.stringify(message));
-    }
-  }
-
-  resetGame() {
-    // Reset ready status
-    this.playersReady = {};
-    if (this.gameType === 'xiangqi') {
-      this.status = 'setup';
-    } else {
-      this.status = 'waiting';
-    }
-    this.gameSettings = {};
-  }
-
+  // ===== GAME STATE =====
   getGameState() {
     return {
       type: 'gameState',
       gameId: this.gameId,
       gameType: this.gameType,
       status: this.status,
-      players: this.players.map(p => ({ playerId: p.playerId })),
-      playersReady: this.playersReady
+      playerCount: this.players.length,
+      maxPlayers: this.maxPlayers,
+      createdAt: this.createdAt
     };
   }
 
-  // Abstract methods - phải implement trong subclass
+  // ===== ABSTRACT METHODS - TO BE IMPLEMENTED BY SUBCLASSES =====
   onPlayerJoined(playerInfo) {
-    throw new Error('onPlayerJoined must be implemented');
+    // Override in subclasses
+    return { success: true };
   }
 
   onPlayerLeft(playerId) {
-    // Optional override
-  }
-
-  onGameDestroyed() {
-    // Optional override
+    // Override in subclasses
   }
 
   handleGameAction(playerId, action, data) {
-    throw new Error('handleGameAction must be implemented');
+    // Override in subclasses
+    return { error: 'Action not implemented' };
   }
 
-  broadcastGameState() {
-    throw new Error('broadcastGameState must be implemented');
+  handlePlayerReady(playerId, settings = {}) {
+    // Override in subclasses
+    return { success: true };
+  }
+
+  resetGame() {
+    this.status = 'waiting';
+    console.log(`🔄 BaseGame ${this.gameId} reset`);
+  }
+
+  // ===== SETTINGS =====
+  broadcastSettings(settings) {
+    this.broadcast({
+      type: 'gameSettings',
+      settings: settings
+    });
+  }
+
+  // ===== DESTRUCTION =====
+  destroy() {
+    console.log(`🗑️ BaseGame ${this.gameId} destroyed`);
+    
+    // Notify all players
+    this.broadcast({
+      type: 'gameDestroyed',
+      message: 'Game đã kết thúc'
+    });
+
+    // Clear all players
+    this.players = [];
+
+    // Call destruction callback
+    if (this.onGameDestroyed) {
+      this.onGameDestroyed();
+    }
   }
 }
 
