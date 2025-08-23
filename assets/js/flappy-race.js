@@ -56,8 +56,6 @@ class FlappyRaceClient {
         }, 100);
     
     // Thêm styles vào document head
-
-    
     
     }
 
@@ -254,7 +252,63 @@ class FlappyRaceClient {
             gameType: 'flappy-race'
         }));
     }
-
+showGameMessage(message, duration = 4000) {
+    console.log('🎮 Game message:', message);
+    
+    // Tạo game message overlay ở vị trí trung tâm phía trên
+    const gameMsg = document.createElement('div');
+    gameMsg.className = 'game-message-overlay';
+    gameMsg.style.cssText = `
+        position: fixed;
+        top: 15%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 25px;
+        border-radius: 25px;
+        font-size: 18px;
+        font-weight: bold;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        z-index: 9999;
+        text-align: center;
+        border: 2px solid rgba(255,255,255,0.3);
+        animation: gameMessageSlide 0.5s ease-out;
+        max-width: 80%;
+        backdrop-filter: blur(10px);
+    `;
+    
+    // Icon dựa trên nội dung message
+    let icon = '🎮';
+    if (message.includes('bắt đầu') || message.includes('Game bắt đầu')) icon = '🚀';
+    else if (message.includes('mất mạng') || message.includes('tiêu diệt')) icon = '💀';
+    else if (message.includes('hoàn thành') || message.includes('về đích')) icon = '🏁';
+    else if (message.includes('chiến thắng') || message.includes('thắng')) icon = '🏆';
+    else if (message.includes('va chạm')) icon = '💥';
+    else if (message.includes('quay về')) icon = '🔄';
+    else if (message.includes('kết thúc')) icon = '🏁';
+    
+    gameMsg.innerHTML = `${icon} ${message}`;
+    
+    document.body.appendChild(gameMsg);
+    
+    // Tự động xóa sau duration
+    setTimeout(() => {
+        if (gameMsg.parentNode) {
+            gameMsg.style.animation = 'gameMessageSlideOut 0.3s ease-in';
+            setTimeout(() => {
+                if (gameMsg.parentNode) {
+                    gameMsg.remove();
+                }
+            }, 300);
+        }
+    }, duration);
+    
+    // Click để đóng sớm
+    gameMsg.addEventListener('click', () => {
+        gameMsg.remove();
+    });
+}
 
     debugListGames() {
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -831,11 +885,12 @@ case 'gameStarted':
                 this.updateReadyStatus(data.playersReady);
                 this.updatePlayersList();
                 break;
+case 'gameMessage':
+    console.log('💬 Game message:', data.message);
+    // THAY ĐỔI: Dùng showGameMessage thay vì showSuccess
+    this.showGameMessage(data.message);
+    break;
 
-            case 'gameMessage':
-                console.log('💬 Game message:', data.message);
-                this.showSuccess(data.message);
-                break;
 
             default:
                 console.log('❓ Unknown message type:', data.type);
@@ -1133,19 +1188,19 @@ returnToLobby() {
         this.renderUI();
     }
 }
-    showInfo(message) {
-        const statusEl = document.getElementById('gameStatus');
-        if (statusEl) {
-            statusEl.innerHTML = `<div class="info-message">ℹ️ ${message}</div>`;
-            setTimeout(() => {
-                if (statusEl.innerHTML.includes(message)) {
-                    statusEl.innerHTML = 'Đang chờ...';
-                }
-            }, 5000);
-        } else {
-            console.log('Info:', message);
-        }
+showInfo(message, duration = 3000) {
+    console.log('ℹ️ INFO:', message);
+    
+    // Nếu là thông báo game, dùng showGameMessage
+    if (message.includes('bắt đầu') || message.includes('kết thúc') || 
+        message.includes('tất cả') || message.includes('chơi lại')) {
+        this.showGameMessage(message, duration);
+        return;
     }
+    
+    // Thông báo info thường
+    this.createToastNotification(message, 'info');
+}
 
 
     renderFullscreenUI() {
@@ -1342,57 +1397,6 @@ returnToLobby() {
 
 
 
-    showRankings(rankings) {
-    console.log('📊 Displaying final rankings...');
-    
-    if (!rankings || rankings.length === 0) {
-        this.showInfo('📊 Không có bảng xếp hạng');
-        return;
-    }
-    
-    // ===== TẠO HTML CHO BẢNG XẾP HẠNG =====
-    let rankingHTML = '<div class="final-rankings">';
-    rankingHTML += '<h3>🏆 BXH CUỐI GAME 🏆</h3>';
-    
-    rankings.forEach((player, index) => {
-        const rank = index + 1;
-        let rankIcon = '';
-        let rankClass = '';
-        
-        // Icon và class cho từng hạng
-        if (rank === 1) {
-            rankIcon = '🥇';
-            rankClass = 'gold';
-        } else if (rank === 2) {
-            rankIcon = '🥈';
-            rankClass = 'silver';
-        } else if (rank === 3) {
-            rankIcon = '🥉';
-            rankClass = 'bronze';
-        } else {
-            rankIcon = `#${rank}`;
-            rankClass = 'normal';
-        }
-        
-        // Highlight current player
-        const isCurrentPlayer = player.playerId === this.playerId;
-        const playerClass = isCurrentPlayer ? 'current-player' : '';
-        
-        rankingHTML += `
-            <div class="ranking-item ${rankClass} ${playerClass}">
-                <span class="rank">${rankIcon}</span>
-                <span class="player-name">${player.playerId.slice(-4)}</span>
-                <span class="score">${player.score || 0} điểm</span>
-                <span class="phase">${this.getPhaseText(player.phase)}</span>
-            </div>
-        `;
-    });
-    
-    rankingHTML += '</div>';
-    
-    // ===== HIỂN THỊ BẢNG XẾP HẠNG =====
-    this.showCustomMessage(rankingHTML, 'rankings', 8000);
-}
 
 
 
@@ -3546,54 +3550,343 @@ resizeCanvasToLobby() {
         }
     }
 
-    showError(message) {
-        const statusEl = document.getElementById('gameStatus');
-        if (statusEl) {
-            statusEl.innerHTML = `<div class="error-message">❌ ${message}</div>`;
-            setTimeout(() => {
-                statusEl.innerHTML = 'Đang chờ...';
-            }, 3000);
-        } else {
-            alert(message);
-        }
-    }
 
+showError(message, duration = 3000) {
+    console.log('❌ ERROR:', message);
+    
+    // Nếu là thông báo game, dùng showGameMessage với màu đỏ
+    if (message.includes('mất mạng') || message.includes('tiêu diệt') || 
+        message.includes('va chạm') || message.includes('loại')) {
+        
+        // Tạo game message với màu đỏ
+        const gameMsg = document.createElement('div');
+        gameMsg.className = 'game-message-overlay error';
+        gameMsg.style.cssText = `
+            position: fixed;
+            top: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 8px 25px rgba(239,68,68,0.4);
+            z-index: 9999;
+            text-align: center;
+            border: 2px solid rgba(255,255,255,0.3);
+            animation: gameMessageSlide 0.5s ease-out;
+            max-width: 80%;
+            backdrop-filter: blur(10px);
+        `;
+        
+        gameMsg.innerHTML = `💀 ${message}`;
+        document.body.appendChild(gameMsg);
+        
+        setTimeout(() => {
+            if (gameMsg.parentNode) {
+                gameMsg.remove();
+            }
+        }, duration);
+        
+        gameMsg.addEventListener('click', () => {
+            gameMsg.remove();
+        });
+        
+        return;
+    }
+    
+    // Thông báo error thường
+    this.createToastNotification(message, 'error');
+}
 showSuccess(message, duration = 3000) {
+    console.log('✅ SUCCESS:', message);
+    
+    // Nếu là thông báo chiến thắng, dùng hiệu ứng đặc biệt
+    if (message.includes('CHIẾN THẮNG') || message.includes('VICTORY') || message.includes('🏆')) {
+        this.showVictoryMessage(message);
+        return;
+    }
+    
+    // Nếu là thông báo game events, dùng showGameMessage
+    if (message.includes('bắt đầu') || message.includes('mất mạng') || 
+        message.includes('hoàn thành') || message.includes('về đích') || 
+        message.includes('kết thúc') || message.includes('quay về') ||
+        message.includes('va chạm') || message.includes('tiêu diệt')) {
+        this.showGameMessage(message, duration);
+        return;
+    }
+    
+    // Nếu là thông báo quan trọng khác, hiển thị ở giữa màn hình
+    if (message.includes('Game kết thúc') || message.includes('chiến thắng')) {
+        this.createToastNotification(message, 'success');
+        return;
+    }
+    
+    // Thông báo thường - hiển thị trong gameStatus (nếu có)
     const statusEl = document.getElementById('gameStatus');
     if (statusEl) {
         statusEl.innerHTML = `<div class="success-message" style="animation: pulse 2s infinite;">✅ ${message}</div>`;
         
-        // Only auto-clear if not a winner message
-        if (!message.includes('chiến thắng') && !message.includes('VICTORY')) {
-            setTimeout(() => {
-                if (statusEl.innerHTML.includes(message)) {
-                    statusEl.innerHTML = 'Đang chờ...';
-                }
-            }, duration);
-        }
+        // Auto-clear sau duration
+        setTimeout(() => {
+            if (statusEl.innerHTML.includes(message)) {
+                statusEl.innerHTML = 'Đang chờ...';
+            }
+        }, duration);
     } else {
-        console.log('SUCCESS:', message);
+        // Fallback: dùng toast notification nếu không có gameStatus element
+        this.createToastNotification(message, 'success');
     }
 }
 
-        showRankings(rankings) {
-        console.log('📊 Showing rankings...');
-        
-        let rankingText = '📊 Bảng xếp hạng cuối game:\n\n';
-        
-        rankings.forEach((player, index) => {
-            const isMe = player.playerId === this.playerId;
-            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
-            const playerName = isMe ? 'BẠN' : player.playerId.slice(-4);
-            const phaseIcon = player.phase === 'finished' ? '🏁' : 
-                             player.phase === 'return' ? '🔄' : '➡️';
-            
-            rankingText += `${medal} ${playerName} ${phaseIcon} - ${player.score} điểm\n`;
-        });
-        
-        // Show in a nice overlay
-        this.showInfo(rankingText);
+
+createToastNotification(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    
+    let bgColor = '#4CAF50'; // success
+    if (type === 'error') bgColor = '#f44336';
+    if (type === 'info') bgColor = '#2196F3';
+    if (type === 'warning') bgColor = '#ff9800';
+    
+    toast.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: ${bgColor};
+        color: white;
+        padding: 20px 30px;
+        border-radius: 15px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        z-index: 99998;
+        font-weight: bold;
+        font-size: 18px;
+        max-width: 80%;
+        text-align: center;
+        animation: toastSlideIn 0.5s ease, toastSlideOut 0.5s ease 4s;
+        border: 2px solid rgba(255,255,255,0.3);
+    `;
+    
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    // Click để đóng
+    toast.addEventListener('click', () => {
+        toast.remove();
+    });
+    
+    // Tự động xóa sau 5 giây
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.remove();
+        }
+    }, 5000);
+}
+
+showRankingsModal(rankingHTML) {
+    // Tạo overlay modal
+    const modal = document.createElement('div');
+    modal.className = 'rankings-modal-overlay';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 99997;
+        animation: fadeIn 0.3s ease;
+    `;
+    
+    // Tạo content modal
+    const modalContent = document.createElement('div');
+    modalContent.className = 'rankings-modal-content';
+    modalContent.style.cssText = `
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 30px;
+        max-width: 600px;
+        max-height: 80%;
+        overflow-y: auto;
+        position: relative;
+        animation: slideIn 0.3s ease;
+        color: white;
+        border: 3px solid rgba(255,215,0,0.6);
+        box-shadow: 0 0 30px rgba(255,215,0,0.4);
+        margin: 20px;
+    `;
+    
+    modalContent.innerHTML = rankingHTML + `
+        <div style="text-align: center; margin-top: 25px;">
+            <button onclick="this.closest('.rankings-modal-overlay').remove()" 
+                    style="background: linear-gradient(45deg, #ff6b6b, #ee5a24); 
+                           color: white; border: none; 
+                           padding: 12px 25px; border-radius: 25px; cursor: pointer;
+                           font-weight: bold; font-size: 16px;
+                           box-shadow: 0 4px 15px rgba(255,107,107,0.3);
+                           transition: all 0.3s ease;">
+                ✕ Đóng bảng xếp hạng
+            </button>
+        </div>
+    `;
+    
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+    
+    // Tự động đóng sau 20 giây
+    setTimeout(() => {
+        if (modal.parentNode) {
+            modal.style.opacity = '0';
+            modal.style.transition = 'opacity 0.5s ease';
+            setTimeout(() => {
+                if (modal.parentNode) {
+                    modal.remove();
+                }
+            }, 500);
+        }
+    }, 20000);
+    
+    // Đóng khi click bên ngoài
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    console.log('📊 Rankings modal displayed');
+}
+showVictoryMessage(message) {
+    // Tạo victory overlay
+    const victoryOverlay = document.createElement('div');
+    victoryOverlay.className = 'victory-overlay';
+    victoryOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(45deg, #ff6b6b, #ffa726, #66bb6a, #42a5f5);
+        background-size: 400% 400%;
+        animation: victoryGradient 2s ease infinite;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 99999;
+        color: white;
+        text-align: center;
+    `;
+    
+    victoryOverlay.innerHTML = `
+        <div class="victory-content" style="
+            animation: victoryBounce 1s ease infinite;
+            background: rgba(0,0,0,0.7);
+            padding: 40px;
+            border-radius: 20px;
+            border: 3px solid gold;
+            box-shadow: 0 0 50px rgba(255,215,0,0.8);
+        ">
+            <div style="font-size: 4em; margin-bottom: 20px;">🏆🎉</div>
+            <div style="font-size: 2.5em; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); margin-bottom: 10px; color: #FFD700;">
+                ${message}
+            </div>
+            <div style="font-size: 1.5em; opacity: 0.9; color: #FFF;">
+                🎊 VICTORY ROYALE! 🎊
+            </div>
+            <div style="margin-top: 20px; font-size: 1em; opacity: 0.8;">
+                Nhấn bất kỳ đâu để đóng
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(victoryOverlay);
+    
+    // Click để đóng
+    victoryOverlay.addEventListener('click', () => {
+        victoryOverlay.remove();
+    });
+    
+    // Tự động ẩn sau 8 giây
+    setTimeout(() => {
+        if (victoryOverlay.parentNode) {
+            victoryOverlay.style.opacity = '0';
+            victoryOverlay.style.transition = 'opacity 1s ease';
+            setTimeout(() => {
+                if (victoryOverlay.parentNode) {
+                    victoryOverlay.remove();
+                }
+            }, 1000);
+        }
+    }, 8000);
+    
+    console.log('🏆 Victory message displayed');
+}
+
+
+
+ showRankings(rankings) {
+    console.log('📊 Displaying final rankings...', rankings);
+    
+    if (!rankings || rankings.length === 0) {
+        this.showInfo('📊 Không có bảng xếp hạng');
+        return;
     }
+    
+    // ===== TẠO HTML CHO BẢNG XẾP HẠNG =====
+    let rankingHTML = '<div class="final-rankings">';
+    rankingHTML += '<h3>🏆 BXH CUỐI GAME 🏆</h3>';
+    
+    rankings.forEach((player, index) => {
+        const rank = index + 1;
+        let rankIcon = '';
+        let rankClass = '';
+        
+        // Icon và class cho từng hạng
+        if (rank === 1) {
+            rankIcon = '🥇';
+            rankClass = 'gold';
+        } else if (rank === 2) {
+            rankIcon = '🥈';
+            rankClass = 'silver';
+        } else if (rank === 3) {
+            rankIcon = '🥉';
+            rankClass = 'bronze';
+        } else {
+            rankIcon = `#${rank}`;
+            rankClass = 'normal';
+        }
+        
+        // Highlight current player
+        const isCurrentPlayer = player.playerId === this.playerId;
+        const playerClass = isCurrentPlayer ? 'current-player' : '';
+        
+        // Thông tin player
+        const playerName = isCurrentPlayer ? 'BẠN' : player.playerId.slice(-4);
+        const playerScore = player.score || 0;
+        const playerPhase = player.phase === 'finished' ? '🏁' : 
+                           player.phase === 'return' ? '🔄' : '➡️';
+        
+        // Tạo HTML cho từng item
+        rankingHTML += `
+            <div class="ranking-item ${rankClass} ${playerClass}">
+                <span class="rank">${rankIcon}</span>
+                <span class="player-name">${playerName}</span>
+                <span class="score">${playerScore} điểm</span>
+                <span class="phase">${playerPhase}</span>
+            </div>
+        `;
+    });
+    
+    rankingHTML += '</div>';
+    
+    // ===== HIỂN THỊ BẢNG XẾP HẠNG BẰNG MODAL/OVERLAY =====
+    this.showRankingsModal(rankingHTML);
+}
 }
 
 // Global functions for HTML onclick events

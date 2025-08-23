@@ -643,3 +643,268 @@
     opacity: 0.8;
     margin-left: 10px;
 }
+
+/* ===== NOTIFICATION ANIMATIONS CSS ===== */
+/* Thêm vào file CSS chung của bạn (style.css hoặc flappy-race.css) */
+
+/* Victory message animations */
+@keyframes victoryGradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes victoryBounce {
+    0%, 20%, 60%, 100% { 
+        transform: translateY(0) scale(1); 
+    }
+    40% { 
+        transform: translateY(-20px) scale(1.05); 
+    }
+    80% { 
+        transform: translateY(-10px) scale(1.02); 
+    }
+}
+
+/* Toast notification animations */
+@keyframes toastSlideIn {
+    from { 
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+    }
+    to { 
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+@keyframes toastSlideOut {
+    from { 
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    to { 
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+    }
+}
+
+/* Modal animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { 
+        opacity: 0;
+        transform: translateY(-50px) scale(0.8);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Pulse animation */
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { 
+        transform: scale(1); 
+        opacity: 1; 
+    }
+    50% { 
+        transform: scale(1.05); 
+        opacity: 0.8; 
+    }
+    100% { 
+        transform: scale(1); 
+        opacity: 1; 
+    }
+}
+
+/* Button hover effects */
+.rankings-modal-content button:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 6px 20px rgba(255, 107, 107, 0.5) !important;
+    transition: all 0.3s ease !important;
+}
+
+.victory-content:hover {
+    transform: scale(1.02) !important;
+    transition: all 0.3s ease !important;
+}
+
+/* Toast notification base styles */
+.toast-notification {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-select: none;
+    cursor: pointer;
+}
+
+.toast-notification:hover {
+    transform: translate(-50%, -50%) scale(1.05) !important;
+    transition: all 0.2s ease !important;
+}
+
+/* Victory overlay base styles */
+.victory-overlay {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-select: none;
+    cursor: pointer;
+}
+
+/* Rankings modal base styles */
+.rankings-modal-overlay {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.rankings-modal-content {
+    user-select: none;
+}
+
+/* Responsive design cho mobile */
+@media (max-width: 768px) {
+    .victory-content {
+        padding: 20px !important;
+        margin: 20px !important;
+    }
+    
+    .victory-content > div:nth-child(1) {
+        font-size: 3em !important;
+    }
+    
+    .victory-content > div:nth-child(2) {
+        font-size: 1.8em !important;
+    }
+    
+    .victory-content > div:nth-child(3) {
+        font-size: 1.2em !important;
+    }
+    
+    .toast-notification {
+        max-width: 90% !important;
+        font-size: 16px !important;
+        padding: 15px 20px !important;
+    }
+    
+    .rankings-modal-content {
+        margin: 10px !important;
+        padding: 20px !important;
+        max-width: 95% !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .victory-content {
+        padding: 15px !important;
+        margin: 15px !important;
+    }
+    
+    .victory-content > div:nth-child(1) {
+        font-size: 2.5em !important;
+    }
+    
+    .victory-content > div:nth-child(2) {
+        font-size: 1.5em !important;
+    }
+    
+    .victory-content > div:nth-child(3) {
+        font-size: 1em !important;
+    }
+    
+    .toast-notification {
+        font-size: 14px !important;
+        padding: 12px 15px !important;
+    }
+    
+    .rankings-modal-content {
+        padding: 15px !important;
+    }
+}
+/* ===== GAME MESSAGE ANIMATIONS CSS ===== */
+/* Thêm vào file CSS chung của bạn (style.css hoặc flappy-race.css) */
+
+/* Game message slide animations */
+@keyframes gameMessageSlide {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-30px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@keyframes gameMessageSlideOut {
+    0% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+    }
+}
+
+/* Game message overlay base styles */
+.game-message-overlay {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-select: none;
+    cursor: pointer;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.game-message-overlay:hover {
+    transform: translateX(-50%) scale(1.05) !important;
+    transition: all 0.2s ease !important;
+}
+
+/* Error variant for game messages */
+.game-message-overlay.error {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Success variant for game messages */
+.game-message-overlay.success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4) !important;
+}
+
+/* Warning variant for game messages */
+.game-message-overlay.warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4) !important;
+}
+
+/* Mobile responsive design */
+@media (max-width: 768px) {
+    .game-message-overlay {
+        font-size: 16px !important;
+        padding: 12px 20px !important;
+        max-width: 90% !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .game-message-overlay {
+        font-size: 14px !important;
+        padding: 10px 15px !important;
+        top: 10% !important;
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 320px) {
+    .game-message-overlay {
+        font-size: 12px !important;
+        padding: 8px 12px !important;
+        top: 8% !important;
+        border-radius: 15px !important;
+    }
+}
