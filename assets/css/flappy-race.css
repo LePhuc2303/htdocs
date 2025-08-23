@@ -575,3 +575,71 @@
 .flappy-race-page .collapse.show {
     height: auto;
 }
+
+.final-rankings {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.final-rankings h3 {
+    text-align: center;
+    color: #FFD700;
+    margin-bottom: 15px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.ranking-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-left: 4px solid #666;
+}
+
+.ranking-item.gold {
+    border-left-color: #FFD700;
+    background: rgba(255, 215, 0, 0.2);
+}
+
+.ranking-item.silver {
+    border-left-color: #C0C0C0;
+    background: rgba(192, 192, 192, 0.2);
+}
+
+.ranking-item.bronze {
+    border-left-color: #CD7F32;
+    background: rgba(205, 127, 50, 0.2);
+}
+
+.ranking-item.current-player {
+    border: 2px solid #4CAF50;
+    background: rgba(76, 175, 80, 0.3);
+    font-weight: bold;
+    transform: scale(1.05);
+}
+
+.ranking-item .rank {
+    font-size: 18px;
+    min-width: 40px;
+    text-align: center;
+}
+
+.ranking-item .player-name {
+    flex: 1;
+    font-weight: bold;
+    margin: 0 10px;
+}
+
+.ranking-item .score {
+    color: #FFD700;
+    font-weight: bold;
+}
+
+.ranking-item .phase {
+    font-size: 12px;
+    opacity: 0.8;
+    margin-left: 10px;
+}

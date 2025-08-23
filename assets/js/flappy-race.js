@@ -1,3 +1,4 @@
+
 // DEBUG: Test WebSocket connection
 window.testConnection = function () {
     const ws = new WebSocket('ws://127.0.0.1:8080');
@@ -53,6 +54,11 @@ class FlappyRaceClient {
         setTimeout(() => {
             this.initializeUI();
         }, 100);
+    
+    // Thêm styles vào document head
+
+    
+    
     }
 
     init() {
@@ -682,44 +688,78 @@ class FlappyRaceClient {
                 }, 3000);
                 break;
 case 'gameEnded':
-    console.log('🏁 Game ended:', data);
+    console.log('🏁 Game ended received:', data);
     
-    // Exit fullscreen ngay lập tức
+    // ===== FORCE EXIT FULLSCREEN NGAY LẬP TỨC =====
     this.forceExitFullscreen();
     
-    // Reset game state
+    // ===== RESET GAME STATE =====
     this.isRespawning = false;
     this.deathTime = null;
     this.shouldStayInFullscreen = false;
     
-    // ===== SHOW WINNER MESSAGE =====
+    // ===== HIỂN THỊ THÔNG BÁO CHIẾN THẮNG DỰA TRÊN WINNER =====
     if (data.winner) {
         if (data.winner === this.playerId) {
-            this.showSuccess('🏆 Chúc mừng! Bạn đã chiến thắng!');
+            // ===== NGƯỜI CHƠI HIỆN TẠI THẮNG =====
+            console.log('🏆 Current player WON!');
             
-            // Special winner effect
+            this.showSuccess('🏆🎉 CHÚC MỪNG! BẠN ĐÃ CHIẾN THẮNG! 🎉🏆');
+            
+            // Hiệu ứng đặc biệt cho winner
             setTimeout(() => {
-                this.showSuccess('🎉🎉🎉 VICTORY! Bạn là người chiến thắng! 🎉🎉🎉');
-            }, 1000);
+                this.showSuccess('🎊🎊🎊 VICTORY ROYALE! BẠN LÀ NGƯỜI CHIẾN THẮNG! 🎊🎊🎊');
+            }, 1500);
+            
+            // Thêm hiệu ứng âm thanh nếu có
+            setTimeout(() => {
+                this.showInfo('🏆 Bạn đã hoàn thành cuộc đua đầu tiên và giành chiến thắng!');
+            }, 3000);
+            
         } else {
-            this.showInfo(`🏁 Game kết thúc! 🏆 Người chiến thắng: ${data.winner.slice(-4)}`);
+            // ===== NGƯỜI KHÁC THẮNG =====
+            console.log(`🏆 Player ${data.winner.slice(-4)} won!`);
+            
+            this.showInfo(`🏁 Game kết thúc!`);
+            
+            setTimeout(() => {
+                this.showError(`🏆 Người chiến thắng: ${data.winner.slice(-4)}`);
+            }, 1000);
+            
+            setTimeout(() => {
+                this.showInfo('🔄 Thử lại lần sau nhé!');
+            }, 2500);
         }
     } else {
-        this.showInfo('🏁 Game kết thúc! Tất cả người chơi đã bị loại.');
+        // ===== KHÔNG CÓ WINNER - TẤT CẢ ĐỀU CHẾT =====
+        console.log('💀 Game ended - no winner');
+        
+        this.showError('🏁 Game kết thúc!');
+        
+        setTimeout(() => {
+            this.showInfo('💀 Tất cả người chơi đều đã bị loại!');
+        }, 1000);
+        
+        setTimeout(() => {
+            this.showInfo('🔄 Chơi lại lần sau nhé!');
+        }, 2500);
     }
     
-    // Show rankings if available
+    // ===== HIỂN THỊ BẢNG XẾP HẠNG NẾU CÓ =====
     if (data.rankings && data.rankings.length > 0) {
         console.log('📊 Final Rankings:', data.rankings);
+        
         setTimeout(() => {
             this.showRankings(data.rankings);
-        }, 2000);
+        }, 4000); // Delay lâu hơn để user thấy thông báo winner
     }
     
-    // Return to lobby after delay
+    // ===== TỰ ĐỘNG QUAY VỀ LOBBY SAU DELAY =====
     setTimeout(() => {
+        console.log('🔄 Returning to lobby after game end...');
         this.returnToLobby();
-    }, 8000); // Tăng delay để user có thời gian thấy thông báo
+    }, 10000); // Tăng delay lên 10 giây để user có đủ thời gian xem kết quả
+    
     break;
 
 
@@ -1299,6 +1339,115 @@ returnToLobby() {
 
         this.ctx.setLineDash([]);
     }
+
+
+
+    showRankings(rankings) {
+    console.log('📊 Displaying final rankings...');
+    
+    if (!rankings || rankings.length === 0) {
+        this.showInfo('📊 Không có bảng xếp hạng');
+        return;
+    }
+    
+    // ===== TẠO HTML CHO BẢNG XẾP HẠNG =====
+    let rankingHTML = '<div class="final-rankings">';
+    rankingHTML += '<h3>🏆 BXH CUỐI GAME 🏆</h3>';
+    
+    rankings.forEach((player, index) => {
+        const rank = index + 1;
+        let rankIcon = '';
+        let rankClass = '';
+        
+        // Icon và class cho từng hạng
+        if (rank === 1) {
+            rankIcon = '🥇';
+            rankClass = 'gold';
+        } else if (rank === 2) {
+            rankIcon = '🥈';
+            rankClass = 'silver';
+        } else if (rank === 3) {
+            rankIcon = '🥉';
+            rankClass = 'bronze';
+        } else {
+            rankIcon = `#${rank}`;
+            rankClass = 'normal';
+        }
+        
+        // Highlight current player
+        const isCurrentPlayer = player.playerId === this.playerId;
+        const playerClass = isCurrentPlayer ? 'current-player' : '';
+        
+        rankingHTML += `
+            <div class="ranking-item ${rankClass} ${playerClass}">
+                <span class="rank">${rankIcon}</span>
+                <span class="player-name">${player.playerId.slice(-4)}</span>
+                <span class="score">${player.score || 0} điểm</span>
+                <span class="phase">${this.getPhaseText(player.phase)}</span>
+            </div>
+        `;
+    });
+    
+    rankingHTML += '</div>';
+    
+    // ===== HIỂN THỊ BẢNG XẾP HẠNG =====
+    this.showCustomMessage(rankingHTML, 'rankings', 8000);
+}
+
+
+
+
+getPhaseText(phase) {
+    const phaseMap = {
+        'finished': '✅ Hoàn thành',
+        'return': '🔄 Đang về',
+        'outbound': '➡️ Đang đi',
+        'dead': '💀 Đã chết'
+    };
+    return phaseMap[phase] || '❓ Không rõ';
+}
+
+showCustomMessage(htmlContent, className = 'custom-message', duration = 5000) {
+    // Xóa message cũ nếu có
+    const oldMessage = document.querySelector(`.${className}`);
+    if (oldMessage) {
+        oldMessage.remove();
+    }
+    
+    // Tạo message mới
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `game-overlay ${className}`;
+    messageDiv.innerHTML = htmlContent;
+    
+    // Style cho message
+    messageDiv.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 20px;
+        border-radius: 15px;
+        border: 2px solid #FFD700;
+        box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        z-index: 10000;
+        max-width: 400px;
+        text-align: center;
+        font-family: Arial, sans-serif;
+    `;
+    
+    document.body.appendChild(messageDiv);
+    
+    // Tự động xóa sau duration
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.remove();
+        }
+    }, duration);
+}
+
+
     showRoundResult(data) {
         console.log('📊 Showing round result');
 
@@ -1741,40 +1890,40 @@ returnToLobby() {
     // Reset text align
     this.ctx.textAlign = 'left';
 }
-triggerGameEnd(winnerId) {
-    console.log('🏆 Triggering game end with winner:', winnerId);
+// triggerGameEnd(winnerId) {
+//     console.log('🏆 Triggering game end with winner:', winnerId);
     
-    this.gamePhase = 'finished';
-    this.status = 'finished';
-    this.stopGameLoop();
+//     this.gamePhase = 'finished';
+//     this.status = 'finished';
+//     this.stopGameLoop();
     
-    // Calculate final rankings
-    this.calculateFinalRankings();
+//     // Calculate final rankings
+//     this.calculateFinalRankings();
     
-    // Clear all respawn timers
-    this.playerStates.forEach(player => {
-        if (player.respawnTimer) {
-            clearTimeout(player.respawnTimer);
-            player.respawnTimer = null;
-        }
-    });
+//     // Clear all respawn timers
+//     this.playerStates.forEach(player => {
+//         if (player.respawnTimer) {
+//             clearTimeout(player.respawnTimer);
+//             player.respawnTimer = null;
+//         }
+//     });
     
-    // Broadcast game ended với winner
-    this.broadcast({
-        type: 'gameEnded',
-        winner: winnerId,
-        rankings: this.leaderboard,
-        message: `🏆 ${winnerId.slice(-4)} chiến thắng!`
-    });
+//     // Broadcast game ended với winner
+//     this.broadcast({
+//         type: 'gameEnded',
+//         winner: winnerId,
+//         rankings: this.leaderboard,
+//         message: `🏆 ${winnerId.slice(-4)} chiến thắng!`
+//     });
     
-    this.broadcastGameState();
+//     this.broadcastGameState();
     
-    // Auto reset after 10 seconds
-    setTimeout(() => {
-        console.log('🔄 Auto resetting game after 10 seconds');
-        this.resetGame();
-    }, 10000);
-}
+//     // Auto reset after 10 seconds
+//     setTimeout(() => {
+//         console.log('🔄 Auto resetting game after 10 seconds');
+//         this.resetGame();
+//     }, 10000);
+// }
 
 
 

@@ -607,7 +607,6 @@ calculateFinalRankings() {
             }
         });
     }
-
 checkPhaseTransition(player) {
     const oldPhase = player.phase;
     
@@ -628,13 +627,13 @@ checkPhaseTransition(player) {
         player.phase = 'finished';
         player.score += 2000; // Bonus for finishing
         
-        // Assign rank
-        const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
-        player.rank = finishedPlayers.length;
+        // ===== FIX: ASSIGN RANK PROPERLY =====
+        const finishedPlayersCount = this.playerStates.filter(p => p.phase === 'finished').length;
+        player.rank = finishedPlayersCount; // Người hoàn thành thứ mấy
         
         console.log(`🏁 ${player.playerId} FINISHED! Rank: ${player.rank} (x: ${player.x})`);
         
-        // ===== THÔNG BÁO CHIẾN THẮNG NGAY KHI CÓ NGƯỜI FINISH =====
+        // ===== BROADCAST MESSAGE THEO RANK =====
         if (player.rank === 1) {
             // Người đầu tiên về đích = Winner!
             console.log(`🏆 WINNER: ${player.playerId} finished first!`);
@@ -646,8 +645,10 @@ checkPhaseTransition(player) {
             
             // ===== TRIGGER END GAME NGAY LẬP TỨC =====
             setTimeout(() => {
+                console.log(`🎯 Triggering game end for winner: ${player.playerId}`);
                 this.triggerGameEnd(player.playerId);
             }, 2000); // Delay 2s để mọi người thấy thông báo
+            
         } else {
             // Người về đích thứ 2, 3, ...
             this.broadcast({
@@ -655,6 +656,10 @@ checkPhaseTransition(player) {
                 message: `🏁 ${player.playerId.slice(-4)} về đích hạng ${player.rank}!`
             });
         }
+        
+        // ===== CẬP NHẬT LEADERBOARD =====
+        this.updateLeaderboard();
+        this.broadcastGameState();
     }
     
     // Log phase changes
@@ -991,7 +996,45 @@ checkPlayerBounds(player) {
     // Note: Khi có người finish → đã được handle trong checkPhaseTransition → triggerGameEnd
     // Không cần check finishedPlayers ở đây nữa
 }
-
+triggerGameEnd(winnerId) {
+    console.log('🏆 Triggering game end with winner:', winnerId);
+    
+    // ===== ĐÁNH DẤU GAME ĐÃ KẾT THÚC =====
+    this.gamePhase = 'finished';
+    this.status = 'finished';
+    this.stopGameLoop();
+    
+    // Calculate final rankings
+    this.calculateFinalRankings();
+    
+    // Clear all respawn timers
+    this.playerStates.forEach(player => {
+        if (player.respawnTimer) {
+            clearTimeout(player.respawnTimer);
+            player.respawnTimer = null;
+            console.log(`🧹 Cleared respawn timer for ${player.playerId}`);
+        }
+    });
+    
+    // ===== BROADCAST GAME ENDED VỚI THÔNG TIN CHI TIẾT =====
+    this.broadcast({
+        type: 'gameEnded',
+        winner: winnerId,
+        rankings: this.leaderboard,
+        message: winnerId ? 
+            `🏆 ${winnerId.slice(-4)} chiến thắng toàn game!` : 
+            '🏁 Game kết thúc - không có người chiến thắng!'
+    });
+    
+    // ===== BROADCAST GAME STATE MỚI =====
+    this.broadcastGameState();
+    
+    // ===== AUTO RESET GAME SAU 10 GIÂY =====
+    setTimeout(() => {
+        console.log('🔄 Auto resetting game after 10 seconds');
+        this.resetGame();
+    }, 10000);
+}
     endRound() {
         console.log('🏁 Round finished, preparing for next round...');
 
@@ -1026,7 +1069,7 @@ checkPlayerBounds(player) {
     }
 
 endGame() {
-    console.log('🏁 Ending game...');
+    console.log('🏁 Ending game completely...');
     
     // ===== CLEAR TẤT CẢ RESPAWN TIMERS =====
     this.playerStates.forEach(player => {
@@ -1044,33 +1087,41 @@ endGame() {
     // Calculate final rankings
     this.calculateFinalRankings();
     
-    // Determine final winner
+    // ===== TÌM WINNER DỰA TRÊN RANK =====
     const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
     let gameWinner = null;
     
     if (finishedPlayers.length > 0) {
-        // Winner is the first to finish (lowest rank)
-        gameWinner = finishedPlayers.reduce((best, current) => 
-            current.rank < best.rank ? current : best
-        );
+        // Winner is the player with rank = 1
+        gameWinner = finishedPlayers.find(p => p.rank === 1);
+        
+        if (!gameWinner) {
+            // Fallback: first to finish (lowest rank)
+            gameWinner = finishedPlayers.reduce((best, current) => 
+                current.rank < best.rank ? current : best
+            );
+        }
     }
     
+    console.log(`🎯 Final winner determined: ${gameWinner?.playerId || 'None'}`);
+    
+    // ===== BROADCAST FINAL RESULTS =====
     this.broadcast({
         type: 'gameEnded',
         winner: gameWinner ? gameWinner.playerId : null,
         rankings: this.leaderboard,
         message: gameWinner ? 
-            `🏆 ${gameWinner.playerId.slice(-4)} chiến thắng!` : 
-            '🏁 Game kết thúc!'
+            `🏆 ${gameWinner.playerId.slice(-4)} chiến thắng toàn game!` : 
+            '🏁 Game kết thúc - tất cả người chơi đã bị loại!'
     });
     
     this.broadcastGameState();
     
-    // ===== AUTO RESET AFTER 10 SECONDS =====
+    // Auto reset sau 8 giây
     setTimeout(() => {
-        console.log('🔄 Auto resetting game after 10 seconds');
+        console.log('🔄 Auto resetting after game end');
         this.resetGame();
-    }, 10000);
+    }, 8000);
 }
     handleGameAction(playerId, action, data) {
         const player = this.playerStates.find(p => p.playerId === playerId);
