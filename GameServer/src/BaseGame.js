@@ -15,15 +15,15 @@ class BaseGame {
 
   addPlayer(playerId, ws) {
     if (this.players.length >= this.maxPlayers) return false;
-    
+
     const playerInfo = {
       playerId,
       ws,
       joinedAt: new Date()
     };
-    
+
     this.players.push(playerInfo);
-    
+
     // Chuyển sang setup mode khi có đủ người chơi cho xiangqi
     if (this.gameType === 'xiangqi' && this.players.length === 2) {
       this.status = 'setup';
@@ -43,18 +43,18 @@ class BaseGame {
     }
   }
 
-handlePlayerReady(playerId, settings) {
+  handlePlayerReady(playerId, settings) {
     this.playersReady[playerId] = true;
-    
+
     // Lưu settings của player
     if (!this.gameSettings[playerId]) {
-        this.gameSettings[playerId] = settings;
+      this.gameSettings[playerId] = settings;
     }
 
     // Broadcast ready update
     this.broadcast({
-        type: 'readyUpdate',
-        playersReady: this.playersReady
+      type: 'readyUpdate',
+      playersReady: this.playersReady
     });
 
     console.log(`Ready check: ${Object.keys(this.playersReady).length}/${this.players.length} players`);
@@ -62,21 +62,21 @@ handlePlayerReady(playerId, settings) {
     // AUTO-START: Nếu chỉ có 1 người HOẶC tất cả đã ready
     const readyCount = Object.keys(this.playersReady).length;
     const totalPlayers = this.players.length;
-    
+
     if (totalPlayers === 1 || readyCount === totalPlayers) {
-        console.log(`🚀 Starting game - ${readyCount}/${totalPlayers} players ready`);
-        setTimeout(() => {
-            this.startGame();
-        }, 1000);
+      console.log(`🚀 Starting game - ${readyCount}/${totalPlayers} players ready`);
+      setTimeout(() => {
+        this.startGame();
+      }, 1000);
     }
 
     return { success: true };
-}
+  }
 
   startGame() {
     // Áp dụng game settings
     this.applyGameSettings();
-    
+
     this.status = 'playing';
     this.broadcastGameState();
   }

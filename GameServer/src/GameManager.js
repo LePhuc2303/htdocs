@@ -8,9 +8,9 @@ class GameManager {
   }
 
   addPlayer(playerId, ws) {
-    this.players.set(playerId, { 
-      ws, 
-      currentGameId: null, 
+    this.players.set(playerId, {
+      ws,
+      currentGameId: null,
       gameType: null,
       connectedAt: new Date()
     });
@@ -32,20 +32,20 @@ class GameManager {
 
   createGame(gameType) {
     console.log(`🎮 Creating game of type: ${gameType}`);
-    
+
     if (!GameFactory.getSupportedGames().includes(gameType)) {
       const supportedGames = GameFactory.getSupportedGames();
       console.log(`❌ Game type '${gameType}' not supported. Supported: ${supportedGames.join(', ')}`);
       throw new Error(`Game type '${gameType}' not supported. Supported: ${supportedGames.join(', ')}`);
     }
 
-   const gameId = Math.floor(Math.random() * 9000 + 1000).toString();
+    const gameId = Math.floor(Math.random() * 9000 + 1000).toString();
     console.log(`🆕 Generated gameId: ${gameId}`);
-    
+
     try {
       const game = GameFactory.createGame(gameType, gameId);
       console.log(`✅ Game created successfully: ${gameId}`);
-      
+
       // Setup game callbacks
       game.onGameDestroyed = () => {
         console.log(`🗑️ Game ${gameId} destroyed`);
@@ -54,7 +54,7 @@ class GameManager {
 
       this.games.set(gameId, game);
       console.log(`📊 Total games: ${this.games.size}`);
-      
+
       return game;
     } catch (error) {
       console.error(`❌ Failed to create game ${gameId}:`, error);
@@ -89,11 +89,11 @@ class GameManager {
       totalPlayers: this.players.size,
       gamesByType: {}
     };
-    
+
     this.games.forEach(game => {
       stats.gamesByType[game.gameType] = (stats.gamesByType[game.gameType] || 0) + 1;
     });
-    
+
     return stats;
   }
 
@@ -112,21 +112,21 @@ class GameManager {
         try {
           const gameType = data.gameType || 'caro';
           console.log(`🆕 Creating game - Type: ${gameType}, Player: ${playerId}`);
-          
+
           const game = this.createGame(gameType);
-          
+
           const joinResult = game.addPlayer(playerId, ws);
           console.log(`✅ Player ${playerId} joined game ${game.gameId}`, joinResult);
-          
+
           // Update player data
           playerData.currentGameId = game.gameId;
           playerData.gameType = gameType;
-          
-          ws.send(JSON.stringify({ 
-            type: 'gameCreated', 
-            gameId: game.gameId, 
+
+          ws.send(JSON.stringify({
+            type: 'gameCreated',
+            gameId: game.gameId,
             gameType,
-            playerInfo: joinResult 
+            playerInfo: joinResult
           }));
         } catch (error) {
           console.error(`❌ Error creating game:`, error);
@@ -138,32 +138,32 @@ class GameManager {
       case 'joinGame': {
         const gameId = data.gameId;
         console.log(`🚪 Player ${playerId} trying to join game: ${gameId}`);
-        
+
         const game = this.getGame(gameId);
         if (!game) {
           console.log(`❌ Game ${gameId} not found for player ${playerId}`);
-          return ws.send(JSON.stringify({ 
-            type: 'error', 
-            message: `Game không tồn tại. Available games: ${Array.from(this.games.keys()).join(', ')}` 
+          return ws.send(JSON.stringify({
+            type: 'error',
+            message: `Game không tồn tại. Available games: ${Array.from(this.games.keys()).join(', ')}`
           }));
         }
-        
+
         const joinResult = game.addPlayer(playerId, ws);
         if (!joinResult) {
           console.log(`❌ Failed to join game ${gameId} - game full`);
           return ws.send(JSON.stringify({ type: 'error', message: 'Game đã đầy' }));
         }
-        
+
         // Update player data
         playerData.currentGameId = gameId;
         playerData.gameType = game.gameType;
-        
+
         console.log(`✅ Player ${playerId} successfully joined game ${gameId}`);
-        ws.send(JSON.stringify({ 
-          type: 'gameJoined', 
+        ws.send(JSON.stringify({
+          type: 'gameJoined',
           gameId: gameId,
           gameType: game.gameType,
-          playerInfo: joinResult 
+          playerInfo: joinResult
         }));
         break;
       }
@@ -171,12 +171,12 @@ class GameManager {
       case 'ready': {
         const gameId = data.gameId;
         console.log(`✅ Player ${playerId} ready in game: ${gameId}`);
-        
+
         const game = this.getGame(gameId);
         if (!game) {
           return ws.send(JSON.stringify({ type: 'error', message: 'Game không tồn tại' }));
         }
-        
+
         const result = game.handlePlayerReady(playerId, data.settings || {});
         if (result && result.error) {
           console.log(`❌ Ready error:`, result.error);
@@ -188,15 +188,15 @@ class GameManager {
       case 'broadcastSettings': {
         const gameId = data.gameId;
         console.log(`⚙️ Broadcasting settings for game: ${gameId}`);
-        
+
         const game = this.getGame(gameId);
         if (!game) {
           return ws.send(JSON.stringify({ type: 'error', message: 'Game không tồn tại' }));
         }
-        
+
         // Store settings in game
         game.currentSettings = data.settings;
-        
+
         // Broadcast settings to all players and spectators
         if (game.broadcastSettings) {
           game.broadcastSettings(data.settings);
@@ -207,12 +207,12 @@ class GameManager {
       case 'gameAction': {
         const gameId = data.gameId;
         console.log(`🎮 Game action: ${data.action} in game: ${gameId}`);
-        
+
         const game = this.getGame(gameId);
         if (!game) {
           return ws.send(JSON.stringify({ type: 'error', message: 'Game không tồn tại' }));
         }
-        
+
         const result = game.handleGameAction(playerId, data.action, data.data);
         if (result && result.error) {
           console.log(`❌ Game action error:`, result.error);
@@ -224,41 +224,41 @@ class GameManager {
       case 'resetGame': {
         const gameId = data.gameId;
         console.log(`🔄 Resetting game: ${gameId}`);
-        
+
         const game = this.getGame(gameId);
         if (game) {
           game.resetGame();
         }
         break;
       }
-case 'leaveGame': {
-    const gameId = data.gameId;
-    console.log(`👋 Player ${playerId} leaving game: ${gameId}`);
-    
-    const game = this.getGame(gameId);
-    if (game) {
-        // QUAN TRỌNG: Broadcast player left trước khi remove
-        game.broadcast({
+      case 'leaveGame': {
+        const gameId = data.gameId;
+        console.log(`👋 Player ${playerId} leaving game: ${gameId}`);
+
+        const game = this.getGame(gameId);
+        if (game) {
+          // QUAN TRỌNG: Broadcast player left trước khi remove
+          game.broadcast({
             type: 'playerLeft',
             playerId: playerId,
             message: `Player ${playerId.slice(-4)} đã rời phòng`
-        });
-        
-        // Sau đó mới remove player
-        game.removePlayer(playerId);
-    }
-    
-    // Clear player data
-    playerData.currentGameId = null;
-    playerData.gameType = null;
-    
-    // Confirm leave thành công
-    ws.send(JSON.stringify({ 
-        type: 'leaveSuccess',
-        message: 'Đã rời phòng thành công'
-    }));
-    break;
-}
+          });
+
+          // Sau đó mới remove player
+          game.removePlayer(playerId);
+        }
+
+        // Clear player data
+        playerData.currentGameId = null;
+        playerData.gameType = null;
+
+        // Confirm leave thành công
+        ws.send(JSON.stringify({
+          type: 'leaveSuccess',
+          message: 'Đã rời phòng thành công'
+        }));
+        break;
+      }
 
       case 'listGames': {
         console.log(`📋 Listing games for player: ${playerId}`);
@@ -271,15 +271,15 @@ case 'leaveGame': {
       case 'makeMove': {
         const gameId = data.gameId;
         console.log(`♟️ Make move in game: ${gameId}`);
-        
+
         const game = this.getGame(gameId);
         if (!game) {
           return ws.send(JSON.stringify({ type: 'error', message: 'Game không tồn tại' }));
         }
-        
-        const result = game.handleGameAction(playerId, 'makeMove', { 
-          row: Number(data.row), 
-          col: Number(data.col) 
+
+        const result = game.handleGameAction(playerId, 'makeMove', {
+          row: Number(data.row),
+          col: Number(data.col)
         });
         if (result && result.error) {
           console.log(`❌ Move error:`, result.error);
