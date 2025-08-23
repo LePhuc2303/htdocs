@@ -54,9 +54,9 @@ class FlappyRaceClient {
         setTimeout(() => {
             this.initializeUI();
         }, 100);
-    
-    // Thêm styles vào document head
-    
+
+        // Thêm styles vào document head
+
     }
 
     init() {
@@ -252,13 +252,13 @@ class FlappyRaceClient {
             gameType: 'flappy-race'
         }));
     }
-showGameMessage(message, duration = 4000) {
-    console.log('🎮 Game message:', message);
-    
-    // Tạo game message overlay ở vị trí trung tâm phía trên
-    const gameMsg = document.createElement('div');
-    gameMsg.className = 'game-message-overlay';
-    gameMsg.style.cssText = `
+    showGameMessage(message, duration = 4000) {
+        console.log('🎮 Game message:', message);
+
+        // Tạo game message overlay ở vị trí trung tâm phía trên
+        const gameMsg = document.createElement('div');
+        gameMsg.className = 'game-message-overlay';
+        gameMsg.style.cssText = `
         position: fixed;
         top: 15%;
         left: 50%;
@@ -277,38 +277,38 @@ showGameMessage(message, duration = 4000) {
         max-width: 80%;
         backdrop-filter: blur(10px);
     `;
-    
-    // Icon dựa trên nội dung message
-    let icon = '🎮';
-    if (message.includes('bắt đầu') || message.includes('Game bắt đầu')) icon = '🚀';
-    else if (message.includes('mất mạng') || message.includes('tiêu diệt')) icon = '💀';
-    else if (message.includes('hoàn thành') || message.includes('về đích')) icon = '🏁';
-    else if (message.includes('chiến thắng') || message.includes('thắng')) icon = '🏆';
-    else if (message.includes('va chạm')) icon = '💥';
-    else if (message.includes('quay về')) icon = '🔄';
-    else if (message.includes('kết thúc')) icon = '🏁';
-    
-    gameMsg.innerHTML = `${icon} ${message}`;
-    
-    document.body.appendChild(gameMsg);
-    
-    // Tự động xóa sau duration
-    setTimeout(() => {
-        if (gameMsg.parentNode) {
-            gameMsg.style.animation = 'gameMessageSlideOut 0.3s ease-in';
-            setTimeout(() => {
-                if (gameMsg.parentNode) {
-                    gameMsg.remove();
-                }
-            }, 300);
-        }
-    }, duration);
-    
-    // Click để đóng sớm
-    gameMsg.addEventListener('click', () => {
-        gameMsg.remove();
-    });
-}
+
+        // Icon dựa trên nội dung message
+        let icon = '🎮';
+        if (message.includes('bắt đầu') || message.includes('Game bắt đầu')) icon = '🚀';
+        else if (message.includes('mất mạng') || message.includes('tiêu diệt')) icon = '💀';
+        else if (message.includes('hoàn thành') || message.includes('về đích')) icon = '🏁';
+        else if (message.includes('chiến thắng') || message.includes('thắng')) icon = '🏆';
+        else if (message.includes('va chạm')) icon = '💥';
+        else if (message.includes('quay về')) icon = '🔄';
+        else if (message.includes('kết thúc')) icon = '🏁';
+
+        gameMsg.innerHTML = `${icon} ${message}`;
+
+        document.body.appendChild(gameMsg);
+
+        // Tự động xóa sau duration
+        setTimeout(() => {
+            if (gameMsg.parentNode) {
+                gameMsg.style.animation = 'gameMessageSlideOut 0.3s ease-in';
+                setTimeout(() => {
+                    if (gameMsg.parentNode) {
+                        gameMsg.remove();
+                    }
+                }, 300);
+            }
+        }, duration);
+
+        // Click để đóng sớm
+        gameMsg.addEventListener('click', () => {
+            gameMsg.remove();
+        });
+    }
 
     debugListGames() {
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
@@ -394,48 +394,48 @@ showGameMessage(message, duration = 4000) {
         this.showInfo('🎲 Đã tạo phòng ngẫu nhiên cho bạn!');
     }
     resizeCanvasFullscreenImmediate() {
-    if (!this.canvas || !this.ctx) return;
-    
-    console.log('📏 Resizing canvas for fullscreen immediately');
-    
-    const fullscreenWidth = window.innerWidth;
-    const fullscreenHeight = window.innerHeight;
-    
-    // Set canvas size
-    this.canvas.width = fullscreenWidth;
-    this.canvas.height = fullscreenHeight;
-    
-    // Set canvas styles
-    this.canvas.style.position = 'fixed';
-    this.canvas.style.top = '0';
-    this.canvas.style.left = '0';
-    this.canvas.style.width = fullscreenWidth + 'px';
-    this.canvas.style.height = fullscreenHeight + 'px';
-    this.canvas.style.zIndex = '1000';
-    this.canvas.style.backgroundColor = '#87CEEB';
-    
-    // Calculate scale factor
-    this.scale = Math.min(
-        fullscreenWidth / this.config.width,
-        fullscreenHeight / this.config.height
-    );
-    
-    // Center the game viewport
-    const gameWidth = this.config.width * this.scale;
-    const gameHeight = this.config.height * this.scale;
-    const offsetX = (fullscreenWidth - gameWidth) / 2;
-    const offsetY = (fullscreenHeight - gameHeight) / 2;
-    
-    // Store offset for rendering
-    this.fullscreenOffset = { x: offsetX, y: offsetY };
-    
-    console.log(`✅ Canvas resized immediately: ${fullscreenWidth}x${fullscreenHeight}, scale: ${this.scale}`);
-    
-    // Force immediate render if we have game state
-    if (this.gameState) {
-        this.render();
+        if (!this.canvas || !this.ctx) return;
+
+        console.log('📏 Resizing canvas for fullscreen immediately');
+
+        const fullscreenWidth = window.innerWidth;
+        const fullscreenHeight = window.innerHeight;
+
+        // Set canvas size
+        this.canvas.width = fullscreenWidth;
+        this.canvas.height = fullscreenHeight;
+
+        // Set canvas styles
+        this.canvas.style.position = 'fixed';
+        this.canvas.style.top = '0';
+        this.canvas.style.left = '0';
+        this.canvas.style.width = fullscreenWidth + 'px';
+        this.canvas.style.height = fullscreenHeight + 'px';
+        this.canvas.style.zIndex = '1000';
+        this.canvas.style.backgroundColor = '#87CEEB';
+
+        // Calculate scale factor
+        this.scale = Math.min(
+            fullscreenWidth / this.config.width,
+            fullscreenHeight / this.config.height
+        );
+
+        // Center the game viewport
+        const gameWidth = this.config.width * this.scale;
+        const gameHeight = this.config.height * this.scale;
+        const offsetX = (fullscreenWidth - gameWidth) / 2;
+        const offsetY = (fullscreenHeight - gameHeight) / 2;
+
+        // Store offset for rendering
+        this.fullscreenOffset = { x: offsetX, y: offsetY };
+
+        console.log(`✅ Canvas resized immediately: ${fullscreenWidth}x${fullscreenHeight}, scale: ${this.scale}`);
+
+        // Force immediate render if we have game state
+        if (this.gameState) {
+            this.render();
+        }
     }
-}
 
     connectWebSocket() {
         console.log('🔌 Connecting to WebSocket server...');
@@ -741,95 +741,95 @@ showGameMessage(message, duration = 4000) {
                     this.showSuccess('🏁 Round kết thúc! Sẵn sàng cho round tiếp theo?');
                 }, 3000);
                 break;
-case 'gameEnded':
-    console.log('🏁 Game ended received:', data);
-    
-    // ===== FORCE EXIT FULLSCREEN NGAY LẬP TỨC =====
-    this.forceExitFullscreen();
-    
-    // ===== RESET GAME STATE =====
-    this.isRespawning = false;
-    this.deathTime = null;
-    this.shouldStayInFullscreen = false;
-    
-    // ===== HIỂN THỊ THÔNG BÁO CHIẾN THẮNG DỰA TRÊN WINNER =====
-    if (data.winner) {
-        if (data.winner === this.playerId) {
-            // ===== NGƯỜI CHƠI HIỆN TẠI THẮNG =====
-            console.log('🏆 Current player WON!');
-            
-            this.showSuccess('🏆🎉 CHÚC MỪNG! BẠN ĐÃ CHIẾN THẮNG! 🎉🏆');
-            
-            // Hiệu ứng đặc biệt cho winner
-            setTimeout(() => {
-                this.showSuccess('🎊🎊🎊 VICTORY ROYALE! BẠN LÀ NGƯỜI CHIẾN THẮNG! 🎊🎊🎊');
-            }, 1500);
-            
-            // Thêm hiệu ứng âm thanh nếu có
-            setTimeout(() => {
-                this.showInfo('🏆 Bạn đã hoàn thành cuộc đua đầu tiên và giành chiến thắng!');
-            }, 3000);
-            
-        } else {
-            // ===== NGƯỜI KHÁC THẮNG =====
-            console.log(`🏆 Player ${data.winner.slice(-4)} won!`);
-            
-            this.showInfo(`🏁 Game kết thúc!`);
-            
-            setTimeout(() => {
-                this.showError(`🏆 Người chiến thắng: ${data.winner.slice(-4)}`);
-            }, 1000);
-            
-            setTimeout(() => {
-                this.showInfo('🔄 Thử lại lần sau nhé!');
-            }, 2500);
-        }
-    } else {
-        // ===== KHÔNG CÓ WINNER - TẤT CẢ ĐỀU CHẾT =====
-        console.log('💀 Game ended - no winner');
-        
-        this.showError('🏁 Game kết thúc!');
-        
-        setTimeout(() => {
-            this.showInfo('💀 Tất cả người chơi đều đã bị loại!');
-        }, 1000);
-        
-        setTimeout(() => {
-            this.showInfo('🔄 Chơi lại lần sau nhé!');
-        }, 2500);
-    }
-    
-    // ===== HIỂN THỊ BẢNG XẾP HẠNG NẾU CÓ =====
-    if (data.rankings && data.rankings.length > 0) {
-        console.log('📊 Final Rankings:', data.rankings);
-        
-        setTimeout(() => {
-            this.showRankings(data.rankings);
-        }, 4000); // Delay lâu hơn để user thấy thông báo winner
-    }
-    
-    // ===== TỰ ĐỘNG QUAY VỀ LOBBY SAU DELAY =====
-    setTimeout(() => {
-        console.log('🔄 Returning to lobby after game end...');
-        this.returnToLobby();
-    }, 10000); // Tăng delay lên 10 giây để user có đủ thời gian xem kết quả
-    
-    break;
+            case 'gameEnded':
+                console.log('🏁 Game ended received:', data);
+
+                // ===== FORCE EXIT FULLSCREEN NGAY LẬP TỨC =====
+                this.forceExitFullscreen();
+
+                // ===== RESET GAME STATE =====
+                this.isRespawning = false;
+                this.deathTime = null;
+                this.shouldStayInFullscreen = false;
+
+                // ===== HIỂN THỊ THÔNG BÁO CHIẾN THẮNG DỰA TRÊN WINNER =====
+                if (data.winner) {
+                    if (data.winner === this.playerId) {
+                        // ===== NGƯỜI CHƠI HIỆN TẠI THẮNG =====
+                        console.log('🏆 Current player WON!');
+
+                        this.showSuccess('🏆🎉 CHÚC MỪNG! BẠN ĐÃ CHIẾN THẮNG! 🎉🏆');
+
+                        // Hiệu ứng đặc biệt cho winner
+                        setTimeout(() => {
+                            this.showSuccess('🎊🎊🎊 VICTORY ROYALE! BẠN LÀ NGƯỜI CHIẾN THẮNG! 🎊🎊🎊');
+                        }, 1500);
+
+                        // Thêm hiệu ứng âm thanh nếu có
+                        setTimeout(() => {
+                            this.showInfo('🏆 Bạn đã hoàn thành cuộc đua đầu tiên và giành chiến thắng!');
+                        }, 3000);
+
+                    } else {
+                        // ===== NGƯỜI KHÁC THẮNG =====
+                        console.log(`🏆 Player ${data.winner.slice(-4)} won!`);
+
+                        this.showInfo(`🏁 Game kết thúc!`);
+
+                        setTimeout(() => {
+                            this.showError(`🏆 Người chiến thắng: ${data.winner.slice(-4)}`);
+                        }, 1000);
+
+                        setTimeout(() => {
+                            this.showInfo('🔄 Thử lại lần sau nhé!');
+                        }, 2500);
+                    }
+                } else {
+                    // ===== KHÔNG CÓ WINNER - TẤT CẢ ĐỀU CHẾT =====
+                    console.log('💀 Game ended - no winner');
+
+                    this.showError('🏁 Game kết thúc!');
+
+                    setTimeout(() => {
+                        this.showInfo('💀 Tất cả người chơi đều đã bị loại!');
+                    }, 1000);
+
+                    setTimeout(() => {
+                        this.showInfo('🔄 Chơi lại lần sau nhé!');
+                    }, 2500);
+                }
+
+                // ===== HIỂN THỊ BẢNG XẾP HẠNG NẾU CÓ =====
+                if (data.rankings && data.rankings.length > 0) {
+                    console.log('📊 Final Rankings:', data.rankings);
+
+                    setTimeout(() => {
+                        this.showRankings(data.rankings);
+                    }, 4000); // Delay lâu hơn để user thấy thông báo winner
+                }
+
+                // ===== TỰ ĐỘNG QUAY VỀ LOBBY SAU DELAY =====
+                setTimeout(() => {
+                    console.log('🔄 Returning to lobby after game end...');
+                    this.returnToLobby();
+                }, 10000); // Tăng delay lên 10 giây để user có đủ thời gian xem kết quả
+
+                break;
 
 
-      case 'newRoundStarted':
-    console.log('🔄 New round started - entering game mode');
-    
-    // ===== QUAN TRỌNG: Setup event listeners cho round mới =====
-    if (!this.eventListenersActive) {
-        console.log('🔧 Setting up event listeners for new round...');
-        this.setupEventListeners();
-    }
-    
-    // Reset UI và vào fullscreen
-    this.resetReadyButton();
-    this.showGamePlaying();
-    break;
+            case 'newRoundStarted':
+                console.log('🔄 New round started - entering game mode');
+
+                // ===== QUAN TRỌNG: Setup event listeners cho round mới =====
+                if (!this.eventListenersActive) {
+                    console.log('🔧 Setting up event listeners for new round...');
+                    this.setupEventListeners();
+                }
+
+                // Reset UI và vào fullscreen
+                this.resetReadyButton();
+                this.showGamePlaying();
+                break;
 
             case 'readyUpdate':
                 console.log('✅ Ready status update:', data.playersReady);
@@ -841,17 +841,17 @@ case 'gameEnded':
                 this.updateReadyStatus(data.playersReady);
                 this.updatePlayersList();
                 break;
-case 'gameStarted':
-    console.log('🎮 Game started - entering fullscreen');
-    
-    // ===== QUAN TRỌNG: Setup event listeners cho round mới =====
-    if (!this.eventListenersActive) {
-        console.log('🔧 Setting up event listeners for new game...');
-        this.setupEventListeners();
-    }
-    
-    this.showGamePlaying();
-    break;
+            case 'gameStarted':
+                console.log('🎮 Game started - entering fullscreen');
+
+                // ===== QUAN TRỌNG: Setup event listeners cho round mới =====
+                if (!this.eventListenersActive) {
+                    console.log('🔧 Setting up event listeners for new game...');
+                    this.setupEventListeners();
+                }
+
+                this.showGamePlaying();
+                break;
 
             case 'gameState':
                 console.log('📊 Game state update:', data);
@@ -885,11 +885,11 @@ case 'gameStarted':
                 this.updateReadyStatus(data.playersReady);
                 this.updatePlayersList();
                 break;
-case 'gameMessage':
-    console.log('💬 Game message:', data.message);
-    // THAY ĐỔI: Dùng showGameMessage thay vì showSuccess
-    this.showGameMessage(data.message);
-    break;
+            case 'gameMessage':
+                console.log('💬 Game message:', data.message);
+                // THAY ĐỔI: Dùng showGameMessage thay vì showSuccess
+                this.showGameMessage(data.message);
+                break;
 
 
             default:
@@ -899,135 +899,135 @@ case 'gameMessage':
 
     // THAY THẾ FUNCTION setupEventListeners CŨ BẰNG CÁI NÀY:
     forceExitFullscreen() {
-    console.log('🚨 Force exiting fullscreen...');
-    
-    // Force exit browser fullscreen
-    if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-    } else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-    } else if (document.mozCancelFullScreen) {
-        document.mozCancelFullScreen();
-    } else if (document.msExitFullscreen) {
-        document.msExitFullscreen();
+        console.log('🚨 Force exiting fullscreen...');
+
+        // Force exit browser fullscreen
+        if (document.exitFullscreen) {
+            document.exitFullscreen().catch(() => { });
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+
+        // Force cleanup CSS immediately
+        this.cleanupFullscreenCSS();
+
+        console.log('✅ Force exit fullscreen completed');
     }
-    
-    // Force cleanup CSS immediately
-    this.cleanupFullscreenCSS();
-    
-    console.log('✅ Force exit fullscreen completed');
-}
-toggleFullscreen() {
-    if (this.isInFullscreenMode()) {
-        this.exitFullscreenMode();
-    } else {
-        this.enterFullscreenModeImmediate();
+    toggleFullscreen() {
+        if (this.isInFullscreenMode()) {
+            this.exitFullscreenMode();
+        } else {
+            this.enterFullscreenModeImmediate();
+        }
     }
-}
-isInFullscreenMode() {
-    const browserFullscreen = !!(
-        document.fullscreenElement ||
-        document.webkitFullscreenElement ||
-        document.mozFullScreenElement ||
-        document.msFullscreenElement
-    );
-    
-    const cssFullscreen = document.body.classList.contains('game-playing');
-    
-    return browserFullscreen || cssFullscreen;
-}
-setupEventListeners() {
-    console.log('🔧 Setting up event listeners...');
-    
-    // Kiểm tra nếu đã setup rồi
-    if (this.eventListenersActive) {
-        console.log('⚠️ Event listeners already active, skipping setup');
-        return;
+    isInFullscreenMode() {
+        const browserFullscreen = !!(
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement
+        );
+
+        const cssFullscreen = document.body.classList.contains('game-playing');
+
+        return browserFullscreen || cssFullscreen;
     }
-    
-    // Clear existing listeners
-    if (this.keyDownHandler) {
-        document.removeEventListener('keydown', this.keyDownHandler);
-        console.log('🧹 Removed old keydown listener');
-    }
-    if (this.keyUpHandler) {
-        document.removeEventListener('keyup', this.keyUpHandler);
-        console.log('🧹 Removed old keyup listener');
-    }
-    
-    // Key event handlers
-    this.keyDownHandler = (e) => {
-        console.log('🔧 Key pressed:', e.key, e.code, 'Game phase:', this.gameState?.gamePhase);
-        
-        // ===== ESC KEY - LUÔN LUÔN THOÁT =====
-        if (e.key === 'Escape' || e.code === 'Escape') {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('🚪 ESC pressed - FORCE EXIT');
-            this.forceExitGame();
+    setupEventListeners() {
+        console.log('🔧 Setting up event listeners...');
+
+        // Kiểm tra nếu đã setup rồi
+        if (this.eventListenersActive) {
+            console.log('⚠️ Event listeners already active, skipping setup');
             return;
         }
-        
-        // ===== SPACE KEY - FLAP =====
-        if (e.code === 'Space') {
-            e.preventDefault();
-            console.log('🐦 Space pressed - attempting flap');
-            
-            // Kiểm tra điều kiện game
-            if (this.gameState?.gamePhase === 'playing' && this.gameState?.status === 'playing') {
-                console.log('✅ Flap conditions met - sending flap');
-                this.flap();
-            } else {
-                console.log('❌ Flap conditions not met:', {
-                    gamePhase: this.gameState?.gamePhase,
-                    gameStatus: this.gameState?.status
-                });
-            }
-            return;
+
+        // Clear existing listeners
+        if (this.keyDownHandler) {
+            document.removeEventListener('keydown', this.keyDownHandler);
+            console.log('🧹 Removed old keydown listener');
         }
-        
-        // Game controls chỉ khi đang playing
-        if (this.gameState?.gamePhase === 'playing' && this.gameState?.status === 'playing') {
-            if (e.key >= '1' && e.key <= '4') {
+        if (this.keyUpHandler) {
+            document.removeEventListener('keyup', this.keyUpHandler);
+            console.log('🧹 Removed old keyup listener');
+        }
+
+        // Key event handlers
+        this.keyDownHandler = (e) => {
+            console.log('🔧 Key pressed:', e.key, e.code, 'Game phase:', this.gameState?.gamePhase);
+
+            // ===== ESC KEY - LUÔN LUÔN THOÁT =====
+            if (e.key === 'Escape' || e.code === 'Escape') {
                 e.preventDefault();
-                this.useItem(parseInt(e.key));
+                e.stopPropagation();
+                console.log('🚪 ESC pressed - FORCE EXIT');
+                this.forceExitGame();
+                return;
             }
-        }
-        
-        this.keys[e.code] = true;
-    };
-    
-    this.keyUpHandler = (e) => {
-        this.keys[e.code] = false;
-    };
-    
-    // Add listeners
-    document.addEventListener('keydown', this.keyDownHandler);
-    document.addEventListener('keyup', this.keyUpHandler);
-    console.log('✅ Added new event listeners');
-    
-    // Canvas click handler
-    if (this.canvas) {
-        this.canvas.onclick = (e) => {
-            console.log('🖱️ Canvas clicked - attempting flap');
+
+            // ===== SPACE KEY - FLAP =====
+            if (e.code === 'Space') {
+                e.preventDefault();
+                console.log('🐦 Space pressed - attempting flap');
+
+                // Kiểm tra điều kiện game
+                if (this.gameState?.gamePhase === 'playing' && this.gameState?.status === 'playing') {
+                    console.log('✅ Flap conditions met - sending flap');
+                    this.flap();
+                } else {
+                    console.log('❌ Flap conditions not met:', {
+                        gamePhase: this.gameState?.gamePhase,
+                        gameStatus: this.gameState?.status
+                    });
+                }
+                return;
+            }
+
+            // Game controls chỉ khi đang playing
             if (this.gameState?.gamePhase === 'playing' && this.gameState?.status === 'playing') {
-                console.log('✅ Click flap conditions met');
-                this.flap();
-            } else {
-                console.log('❌ Click flap conditions not met:', {
-                    gamePhase: this.gameState?.gamePhase,
-                    gameStatus: this.gameState?.status
-                });
+                if (e.key >= '1' && e.key <= '4') {
+                    e.preventDefault();
+                    this.useItem(parseInt(e.key));
+                }
             }
+
+            this.keys[e.code] = true;
         };
-        console.log('✅ Added canvas click listener');
+
+        this.keyUpHandler = (e) => {
+            this.keys[e.code] = false;
+        };
+
+        // Add listeners
+        document.addEventListener('keydown', this.keyDownHandler);
+        document.addEventListener('keyup', this.keyUpHandler);
+        console.log('✅ Added new event listeners');
+
+        // Canvas click handler
+        if (this.canvas) {
+            this.canvas.onclick = (e) => {
+                console.log('🖱️ Canvas clicked - attempting flap');
+                if (this.gameState?.gamePhase === 'playing' && this.gameState?.status === 'playing') {
+                    console.log('✅ Click flap conditions met');
+                    this.flap();
+                } else {
+                    console.log('❌ Click flap conditions not met:', {
+                        gamePhase: this.gameState?.gamePhase,
+                        gameStatus: this.gameState?.status
+                    });
+                }
+            };
+            console.log('✅ Added canvas click listener');
+        }
+
+        this.eventListenersActive = true;
+        console.log('✅ Event listeners setup completed - eventListenersActive = true');
     }
-    
-    this.eventListenersActive = true;
-    console.log('✅ Event listeners setup completed - eventListenersActive = true');
-}
-    
-    
+
+
 
 
 
@@ -1058,23 +1058,23 @@ setupEventListeners() {
             }, 100);
         }
     }
-returnToLobby() {
-    console.log('🏠 Returning to lobby...');
-    
-    // Reset game state nhưng GIỮ kết nối phòng
-    this.gameState = null;
-    
-    // ===== RESET EVENT LISTENERS FLAG =====
-    this.eventListenersActive = false;
-    
-    // Hiển thị lobby
-    this.showGameSetupSection();
-    
-    // Reset ready button để có thể ready lại
-    this.resetReadyButton();
-    
-    console.log('✅ Returned to lobby successfully');
-}
+    returnToLobby() {
+        console.log('🏠 Returning to lobby...');
+
+        // Reset game state nhưng GIỮ kết nối phòng
+        this.gameState = null;
+
+        // ===== RESET EVENT LISTENERS FLAG =====
+        this.eventListenersActive = false;
+
+        // Hiển thị lobby
+        this.showGameSetupSection();
+
+        // Reset ready button để có thể ready lại
+        this.resetReadyButton();
+
+        console.log('✅ Returned to lobby successfully');
+    }
     startRenderLoop() {
         if (this.renderingStarted) return;
         this.renderingStarted = true;
@@ -1132,206 +1132,206 @@ returnToLobby() {
             document.webkitFullscreenElement !== null;
     }
     render() {
-    if (!this.ctx || !this.canvas) {
-        console.warn('Canvas or context not available for rendering');
-        return;
-    }
-    
-    this.ctx.save();
-    
-    // Clear canvas with sky blue background
-    this.ctx.fillStyle = '#87CEEB';
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    
-    // Apply fullscreen offset if in fullscreen mode
-    if (this.fullscreenOffset) {
-        this.ctx.translate(this.fullscreenOffset.x, this.fullscreenOffset.y);
-    }
-    
-    // Check if we have game state to render
-    if (!this.gameState) {
-        // Show waiting message
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = 'bold 24px Arial';
-        this.ctx.textAlign = 'center';
-        
-        const centerX = this.fullscreenOffset ? this.config.width * this.scale / 2 : this.canvas.width / 2;
-        const centerY = this.fullscreenOffset ? this.config.height * this.scale / 2 : this.canvas.height / 2;
-        
-        this.ctx.fillText('Đang chờ game...', centerX, centerY);
+        if (!this.ctx || !this.canvas) {
+            console.warn('Canvas or context not available for rendering');
+            return;
+        }
+
+        this.ctx.save();
+
+        // Clear canvas with sky blue background
+        this.ctx.fillStyle = '#87CEEB';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Apply fullscreen offset if in fullscreen mode
+        if (this.fullscreenOffset) {
+            this.ctx.translate(this.fullscreenOffset.x, this.fullscreenOffset.y);
+        }
+
+        // Check if we have game state to render
+        if (!this.gameState) {
+            // Show waiting message
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.font = 'bold 24px Arial';
+            this.ctx.textAlign = 'center';
+
+            const centerX = this.fullscreenOffset ? this.config.width * this.scale / 2 : this.canvas.width / 2;
+            const centerY = this.fullscreenOffset ? this.config.height * this.scale / 2 : this.canvas.height / 2;
+
+            this.ctx.fillText('Đang chờ game...', centerX, centerY);
+            this.ctx.restore();
+            return;
+        }
+
+        // Scale for game rendering
+        this.ctx.scale(this.scale || 1, this.scale || 1);
+
+        // Apply camera transform
+        this.ctx.translate(-this.camera.x, -this.camera.y);
+
+        // Render game content
+        this.renderBackground();
+        this.renderRaceTrack();
+        this.renderPipes();
+        this.renderItems();
+        this.renderProjectiles();
+        this.renderPlayers();
+        this.renderParticles();
+
+        // Reset transform for UI
         this.ctx.restore();
-        return;
+
+        // Render UI overlays (not affected by camera/scale)
+        if (document.body.classList.contains('game-playing')) {
+            this.renderFullscreenUI();
+        } else {
+            this.renderUI();
+        }
     }
-    
-    // Scale for game rendering
-    this.ctx.scale(this.scale || 1, this.scale || 1);
-    
-    // Apply camera transform
-    this.ctx.translate(-this.camera.x, -this.camera.y);
-    
-    // Render game content
-    this.renderBackground();
-    this.renderRaceTrack();
-    this.renderPipes();
-    this.renderItems();
-    this.renderProjectiles();
-    this.renderPlayers();
-    this.renderParticles();
-    
-    // Reset transform for UI
-    this.ctx.restore();
-    
-    // Render UI overlays (not affected by camera/scale)
-    if (document.body.classList.contains('game-playing')) {
-        this.renderFullscreenUI();
-    } else {
-        this.renderUI();
+    showInfo(message, duration = 3000) {
+        console.log('ℹ️ INFO:', message);
+
+        // Nếu là thông báo game, dùng showGameMessage
+        if (message.includes('bắt đầu') || message.includes('kết thúc') ||
+            message.includes('tất cả') || message.includes('chơi lại')) {
+            this.showGameMessage(message, duration);
+            return;
+        }
+
+        // Thông báo info thường
+        this.createToastNotification(message, 'info');
     }
-}
-showInfo(message, duration = 3000) {
-    console.log('ℹ️ INFO:', message);
-    
-    // Nếu là thông báo game, dùng showGameMessage
-    if (message.includes('bắt đầu') || message.includes('kết thúc') || 
-        message.includes('tất cả') || message.includes('chơi lại')) {
-        this.showGameMessage(message, duration);
-        return;
-    }
-    
-    // Thông báo info thường
-    this.createToastNotification(message, 'info');
-}
 
 
     renderFullscreenUI() {
-    if (!this.gameState) return;
-    
-    this.ctx.save();
-    
-    // Game phase indicator
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-    this.ctx.fillRect(this.canvas.width / 2 - 200, 15, 400, 60);
-    this.ctx.strokeStyle = '#FFD700';
-    this.ctx.lineWidth = 3;
-    this.ctx.strokeRect(this.canvas.width / 2 - 200, 15, 400, 60);
-    
-    this.ctx.fillStyle = '#FFFFFF';
-    this.ctx.font = 'bold 24px Arial';
-    this.ctx.textAlign = 'center';
-    
-    if (this.gameState.gamePhase === 'countdown') {
-        this.ctx.fillStyle = '#FFD700';
-        this.ctx.font = 'bold 28px Arial';
-        this.ctx.fillText(`🚀 BẮT ĐẦU SAU: ${Math.ceil(this.gameState.gameTimer)}`, this.canvas.width / 2, 50);
-    } else {
-        this.ctx.fillText(`🎮 Phase: ${this.gameState.gamePhase?.toUpperCase() || 'PLAYING'}`, this.canvas.width / 2, 50);
-    }
-    
-    // Player stats with better phase indication
-    const myPlayer = this.getMyPlayer();
-    if (myPlayer) {
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-        this.ctx.fillRect(20, 20, 280, 220);
-        this.ctx.strokeStyle = '#4ECDC4';
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(20, 20, 280, 220);
-        
+        if (!this.gameState) return;
+
+        this.ctx.save();
+
+        // Game phase indicator
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        this.ctx.fillRect(this.canvas.width / 2 - 200, 15, 400, 60);
+        this.ctx.strokeStyle = '#FFD700';
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeRect(this.canvas.width / 2 - 200, 15, 400, 60);
+
         this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = 'bold 16px Arial';
-        this.ctx.textAlign = 'left';
-        this.ctx.fillText('📊 Your Stats:', 30, 45);
-        this.ctx.font = '14px Arial';
-        this.ctx.fillText(`💰 Score: ${myPlayer.score || 0}`, 30, 65);
-        
-        // Phase with icons
-        const phaseIcon = myPlayer.phase === 'finished' ? '🏁 HOÀN THÀNH!' :
-                         myPlayer.phase === 'return' ? '🔄 ĐANG TRỞ VỀ' : '➡️ ĐANG ĐI';
-        this.ctx.fillText(`🏃 Phase: ${phaseIcon}`, 30, 85);
-        
-        // Lives display
-        this.ctx.fillText(`❤️ Mạng:`, 30, 105);
-        const lives = myPlayer.lives || 0;
-        for (let i = 0; i < 3; i++) {
-            if (i < lives) {
-                this.ctx.fillStyle = '#FF0000';
-                this.ctx.fillText('❤️', 90 + i * 25, 105);
-            } else {
-                this.ctx.fillStyle = '#666666';
-                this.ctx.fillText('🖤', 90 + i * 25, 105);
-            }
-        }
-        
-        // Progress bar with phase indication
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = '12px Arial';
-        this.ctx.fillText('Tiến độ:', 30, 135);
-        
-        const barWidth = 200;
-        const barHeight = 20;
-        const barX = 30;
-        const barY = 145;
-        
-        // Background
-        this.ctx.fillStyle = '#333';
-        this.ctx.fillRect(barX, barY, barWidth, barHeight);
-        
-        // Progress fill
-        let progress = 0;
-        let progressColor = '#4ECDC4';
-        
-        if (myPlayer.phase === 'finished') {
-            progress = 1;
-            progressColor = '#FFD700'; // Gold for finished
-        } else if (myPlayer.phase === 'return') {
-            progress = 0.5 + (0.5 * (this.config.raceDistance - myPlayer.x) / this.config.raceDistance);
-            progressColor = '#FF6B6B'; // Red for return
-        } else {
-            progress = Math.min(0.5, myPlayer.x / this.config.raceDistance);
-            progressColor = '#4ECDC4'; // Blue for outbound
-        }
-        
-        this.ctx.fillStyle = progressColor;
-        this.ctx.fillRect(barX, barY, barWidth * progress, barHeight);
-        
-        // Progress text
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = 'bold 10px Arial';
+        this.ctx.font = 'bold 24px Arial';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText(`${Math.round(progress * 100)}%`, barX + barWidth / 2, barY + 14);
-        
-        // Status display
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.font = '14px Arial';
-        this.ctx.textAlign = 'left';
-        
-        if (!myPlayer.alive) {
-            if (this.isRespawning && myPlayer.lives > 0) {
-                const elapsed = this.deathTime ? (Date.now() - this.deathTime) / 1000 : 0;
-                const remaining = Math.max(0, 1 - elapsed);
-                this.ctx.fillStyle = '#FFD700';
-                this.ctx.fillText(`🔄 Hồi sinh sau: ${remaining.toFixed(1)}s`, 30, 185);
-            } else {
-                this.ctx.fillStyle = '#FF6B6B';
-                this.ctx.fillText('💀 Đã chết', 30, 185);
-            }
-        } else if (myPlayer.invulnerable) {
-            this.ctx.fillStyle = '#4ECDC4';
-            this.ctx.fillText('🛡️ Bất tử', 30, 185);
-        } else {
-            this.ctx.fillStyle = '#4ECDC4';
-            this.ctx.fillText('✅ Sống', 30, 185);
-        }
-        
-        // Rank display if finished
-        if (myPlayer.rank > 0) {
+
+        if (this.gameState.gamePhase === 'countdown') {
             this.ctx.fillStyle = '#FFD700';
-            this.ctx.font = 'bold 16px Arial';
-            this.ctx.fillText(`🏆 Hạng: ${myPlayer.rank}`, 30, 210);
+            this.ctx.font = 'bold 28px Arial';
+            this.ctx.fillText(`🚀 BẮT ĐẦU SAU: ${Math.ceil(this.gameState.gameTimer)}`, this.canvas.width / 2, 50);
+        } else {
+            this.ctx.fillText(`🎮 Phase: ${this.gameState.gamePhase?.toUpperCase() || 'PLAYING'}`, this.canvas.width / 2, 50);
         }
+
+        // Player stats with better phase indication
+        const myPlayer = this.getMyPlayer();
+        if (myPlayer) {
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            this.ctx.fillRect(20, 20, 280, 220);
+            this.ctx.strokeStyle = '#4ECDC4';
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeRect(20, 20, 280, 220);
+
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.font = 'bold 16px Arial';
+            this.ctx.textAlign = 'left';
+            this.ctx.fillText('📊 Your Stats:', 30, 45);
+            this.ctx.font = '14px Arial';
+            this.ctx.fillText(`💰 Score: ${myPlayer.score || 0}`, 30, 65);
+
+            // Phase with icons
+            const phaseIcon = myPlayer.phase === 'finished' ? '🏁 HOÀN THÀNH!' :
+                myPlayer.phase === 'return' ? '🔄 ĐANG TRỞ VỀ' : '➡️ ĐANG ĐI';
+            this.ctx.fillText(`🏃 Phase: ${phaseIcon}`, 30, 85);
+
+            // Lives display
+            this.ctx.fillText(`❤️ Mạng:`, 30, 105);
+            const lives = myPlayer.lives || 0;
+            for (let i = 0; i < 3; i++) {
+                if (i < lives) {
+                    this.ctx.fillStyle = '#FF0000';
+                    this.ctx.fillText('❤️', 90 + i * 25, 105);
+                } else {
+                    this.ctx.fillStyle = '#666666';
+                    this.ctx.fillText('🖤', 90 + i * 25, 105);
+                }
+            }
+
+            // Progress bar with phase indication
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.font = '12px Arial';
+            this.ctx.fillText('Tiến độ:', 30, 135);
+
+            const barWidth = 200;
+            const barHeight = 20;
+            const barX = 30;
+            const barY = 145;
+
+            // Background
+            this.ctx.fillStyle = '#333';
+            this.ctx.fillRect(barX, barY, barWidth, barHeight);
+
+            // Progress fill
+            let progress = 0;
+            let progressColor = '#4ECDC4';
+
+            if (myPlayer.phase === 'finished') {
+                progress = 1;
+                progressColor = '#FFD700'; // Gold for finished
+            } else if (myPlayer.phase === 'return') {
+                progress = 0.5 + (0.5 * (this.config.raceDistance - myPlayer.x) / this.config.raceDistance);
+                progressColor = '#FF6B6B'; // Red for return
+            } else {
+                progress = Math.min(0.5, myPlayer.x / this.config.raceDistance);
+                progressColor = '#4ECDC4'; // Blue for outbound
+            }
+
+            this.ctx.fillStyle = progressColor;
+            this.ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+
+            // Progress text
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.font = 'bold 10px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(`${Math.round(progress * 100)}%`, barX + barWidth / 2, barY + 14);
+
+            // Status display
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.font = '14px Arial';
+            this.ctx.textAlign = 'left';
+
+            if (!myPlayer.alive) {
+                if (this.isRespawning && myPlayer.lives > 0) {
+                    const elapsed = this.deathTime ? (Date.now() - this.deathTime) / 1000 : 0;
+                    const remaining = Math.max(0, 1 - elapsed);
+                    this.ctx.fillStyle = '#FFD700';
+                    this.ctx.fillText(`🔄 Hồi sinh sau: ${remaining.toFixed(1)}s`, 30, 185);
+                } else {
+                    this.ctx.fillStyle = '#FF6B6B';
+                    this.ctx.fillText('💀 Đã chết', 30, 185);
+                }
+            } else if (myPlayer.invulnerable) {
+                this.ctx.fillStyle = '#4ECDC4';
+                this.ctx.fillText('🛡️ Bất tử', 30, 185);
+            } else {
+                this.ctx.fillStyle = '#4ECDC4';
+                this.ctx.fillText('✅ Sống', 30, 185);
+            }
+
+            // Rank display if finished
+            if (myPlayer.rank > 0) {
+                this.ctx.fillStyle = '#FFD700';
+                this.ctx.font = 'bold 16px Arial';
+                this.ctx.fillText(`🏆 Hạng: ${myPlayer.rank}`, 30, 210);
+            }
+        }
+
+        this.ctx.restore();
     }
-    
-    this.ctx.restore();
-}
 
     renderBackground() {
         // Render clouds and background elements
@@ -1401,30 +1401,30 @@ showInfo(message, duration = 3000) {
 
 
 
-getPhaseText(phase) {
-    const phaseMap = {
-        'finished': '✅ Hoàn thành',
-        'return': '🔄 Đang về',
-        'outbound': '➡️ Đang đi',
-        'dead': '💀 Đã chết'
-    };
-    return phaseMap[phase] || '❓ Không rõ';
-}
-
-showCustomMessage(htmlContent, className = 'custom-message', duration = 5000) {
-    // Xóa message cũ nếu có
-    const oldMessage = document.querySelector(`.${className}`);
-    if (oldMessage) {
-        oldMessage.remove();
+    getPhaseText(phase) {
+        const phaseMap = {
+            'finished': '✅ Hoàn thành',
+            'return': '🔄 Đang về',
+            'outbound': '➡️ Đang đi',
+            'dead': '💀 Đã chết'
+        };
+        return phaseMap[phase] || '❓ Không rõ';
     }
-    
-    // Tạo message mới
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `game-overlay ${className}`;
-    messageDiv.innerHTML = htmlContent;
-    
-    // Style cho message
-    messageDiv.style.cssText = `
+
+    showCustomMessage(htmlContent, className = 'custom-message', duration = 5000) {
+        // Xóa message cũ nếu có
+        const oldMessage = document.querySelector(`.${className}`);
+        if (oldMessage) {
+            oldMessage.remove();
+        }
+
+        // Tạo message mới
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `game-overlay ${className}`;
+        messageDiv.innerHTML = htmlContent;
+
+        // Style cho message
+        messageDiv.style.cssText = `
         position: fixed;
         top: 50%;
         left: 50%;
@@ -1440,16 +1440,16 @@ showCustomMessage(htmlContent, className = 'custom-message', duration = 5000) {
         text-align: center;
         font-family: Arial, sans-serif;
     `;
-    
-    document.body.appendChild(messageDiv);
-    
-    // Tự động xóa sau duration
-    setTimeout(() => {
-        if (messageDiv.parentNode) {
-            messageDiv.remove();
-        }
-    }, duration);
-}
+
+        document.body.appendChild(messageDiv);
+
+        // Tự động xóa sau duration
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.remove();
+            }
+        }, duration);
+    }
 
 
     showRoundResult(data) {
@@ -1821,179 +1821,179 @@ showCustomMessage(htmlContent, className = 'custom-message', duration = 5000) {
     }
 
     renderPlayerStats(player) {
-    const startY = 60;
-    
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    this.ctx.fillRect(10, startY, 250, 140);
-    
-    this.ctx.fillStyle = '#FFFFFF';
-    this.ctx.font = 'bold 14px Arial';
-    this.ctx.textAlign = 'left';
-    this.ctx.fillText('Your Stats:', 20, startY + 20);
-    
-    this.ctx.font = '12px Arial';
-    this.ctx.fillText(`Score: ${player.score || 0}`, 20, startY + 40);
-    
-    // ===== HIỂN THỊ PHASE VỚI ICON =====
-    const phaseInfo = {
-        'outbound': { text: '➡️ ĐANG ĐI', color: '#4ECDC4' },
-        'return': { text: '⬅️ ĐANG VỀ', color: '#FF6B6B' },
-        'finished': { text: '🏁 HOÀN THÀNH', color: '#FFD700' }
-    };
-    
-    const currentPhaseInfo = phaseInfo[player.phase] || { text: '❓ UNKNOWN', color: '#FFFFFF' };
-    this.ctx.fillStyle = currentPhaseInfo.color;
-    this.ctx.fillText(`Phase: ${currentPhaseInfo.text}`, 20, startY + 60);
-    
-    this.ctx.fillStyle = '#FFFFFF';
-    this.ctx.fillText(`Lives: ${player.lives || 3}`, 20, startY + 80);
-    
-    if (player.rank > 0) {
-        this.ctx.fillStyle = '#FFD700';
-        this.ctx.fillText(`Final Rank: ${player.rank}`, 20, startY + 100);
+        const startY = 60;
+
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        this.ctx.fillRect(10, startY, 250, 140);
+
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = 'bold 14px Arial';
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText('Your Stats:', 20, startY + 20);
+
+        this.ctx.font = '12px Arial';
+        this.ctx.fillText(`Score: ${player.score || 0}`, 20, startY + 40);
+
+        // ===== HIỂN THỊ PHASE VỚI ICON =====
+        const phaseInfo = {
+            'outbound': { text: '➡️ ĐANG ĐI', color: '#4ECDC4' },
+            'return': { text: '⬅️ ĐANG VỀ', color: '#FF6B6B' },
+            'finished': { text: '🏁 HOÀN THÀNH', color: '#FFD700' }
+        };
+
+        const currentPhaseInfo = phaseInfo[player.phase] || { text: '❓ UNKNOWN', color: '#FFFFFF' };
+        this.ctx.fillStyle = currentPhaseInfo.color;
+        this.ctx.fillText(`Phase: ${currentPhaseInfo.text}`, 20, startY + 60);
+
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.fillText(`Lives: ${player.lives || 3}`, 20, startY + 80);
+
+        if (player.rank > 0) {
+            this.ctx.fillStyle = '#FFD700';
+            this.ctx.fillText(`Final Rank: ${player.rank}`, 20, startY + 100);
+        }
+
+        // ===== PROGRESS BAR WITH PHASE INDICATION =====
+        const barWidth = 200;
+        const barHeight = 15;
+        const barX = 20;
+        const barY = startY + 110;
+
+        // Background
+        this.ctx.fillStyle = '#333';
+        this.ctx.fillRect(barX, barY, barWidth, barHeight);
+
+        // Progress calculation
+        let progress = 0;
+        let progressColor = '#4ECDC4';
+
+        if (player.phase === 'finished') {
+            progress = 1;
+            progressColor = '#FFD700'; // Gold for finished
+        } else if (player.phase === 'return') {
+            // Return phase: 50% + progress back to start
+            const returnProgress = Math.max(0, (this.config.raceDistance - player.x) / this.config.raceDistance);
+            progress = 0.5 + (0.5 * returnProgress);
+            progressColor = '#FF6B6B'; // Red for return
+        } else {
+            // Outbound phase: 0-50%
+            progress = Math.min(0.5, player.x / this.config.raceDistance);
+            progressColor = '#4ECDC4'; // Blue for outbound
+        }
+
+        // Progress fill
+        this.ctx.fillStyle = progressColor;
+        this.ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+
+        // Progress text
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = 'bold 10px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(`${Math.round(progress * 100)}%`, barX + barWidth / 2, barY + 11);
+
+        // Reset text align
+        this.ctx.textAlign = 'left';
     }
-    
-    // ===== PROGRESS BAR WITH PHASE INDICATION =====
-    const barWidth = 200;
-    const barHeight = 15;
-    const barX = 20;
-    const barY = startY + 110;
-    
-    // Background
-    this.ctx.fillStyle = '#333';
-    this.ctx.fillRect(barX, barY, barWidth, barHeight);
-    
-    // Progress calculation
-    let progress = 0;
-    let progressColor = '#4ECDC4';
-    
-    if (player.phase === 'finished') {
-        progress = 1;
-        progressColor = '#FFD700'; // Gold for finished
-    } else if (player.phase === 'return') {
-        // Return phase: 50% + progress back to start
-        const returnProgress = Math.max(0, (this.config.raceDistance - player.x) / this.config.raceDistance);
-        progress = 0.5 + (0.5 * returnProgress);
-        progressColor = '#FF6B6B'; // Red for return
-    } else {
-        // Outbound phase: 0-50%
-        progress = Math.min(0.5, player.x / this.config.raceDistance);
-        progressColor = '#4ECDC4'; // Blue for outbound
+    // triggerGameEnd(winnerId) {
+    //     console.log('🏆 Triggering game end with winner:', winnerId);
+
+    //     this.gamePhase = 'finished';
+    //     this.status = 'finished';
+    //     this.stopGameLoop();
+
+    //     // Calculate final rankings
+    //     this.calculateFinalRankings();
+
+    //     // Clear all respawn timers
+    //     this.playerStates.forEach(player => {
+    //         if (player.respawnTimer) {
+    //             clearTimeout(player.respawnTimer);
+    //             player.respawnTimer = null;
+    //         }
+    //     });
+
+    //     // Broadcast game ended với winner
+    //     this.broadcast({
+    //         type: 'gameEnded',
+    //         winner: winnerId,
+    //         rankings: this.leaderboard,
+    //         message: `🏆 ${winnerId.slice(-4)} chiến thắng!`
+    //     });
+
+    //     this.broadcastGameState();
+
+    //     // Auto reset after 10 seconds
+    //     setTimeout(() => {
+    //         console.log('🔄 Auto resetting game after 10 seconds');
+    //         this.resetGame();
+    //     }, 10000);
+    // }
+
+
+
+
+    calculateFinalRankings() {
+        console.log('📊 Calculating final rankings...');
+
+        // Sắp xếp players theo priority:
+        // 1. Finished players (theo rank - người về trước rank thấp hơn)
+        // 2. Return phase players (theo tiến độ gần về đích)
+        // 3. Outbound phase players (theo tiến độ xa nhất)
+        // 4. Dead players (theo tiến độ trước khi chết)
+
+        const rankedPlayers = this.playerStates
+            .map(p => {
+                let progress = 0;
+                let priority = 4; // Default: lowest priority
+
+                if (p.phase === 'finished') {
+                    progress = 2 * this.config.raceDistance; // Full trip
+                    priority = 1; // Highest priority
+                } else if (p.phase === 'return') {
+                    progress = this.config.raceDistance + (this.config.raceDistance - p.x);
+                    priority = 2;
+                } else if (p.phase === 'outbound') {
+                    progress = p.x;
+                    priority = p.alive ? 3 : 4;
+                }
+
+                return {
+                    playerId: p.playerId,
+                    score: p.score,
+                    rank: p.rank || 0,
+                    phase: p.phase,
+                    finalProgress: progress,
+                    priority: priority,
+                    alive: p.alive
+                };
+            })
+            .sort((a, b) => {
+                // Sort by priority first
+                if (a.priority !== b.priority) {
+                    return a.priority - b.priority;
+                }
+
+                // Within same priority, sort by criteria
+                if (a.priority === 1) {
+                    // Finished players: by rank (lower rank = better)
+                    return a.rank - b.rank;
+                } else {
+                    // Others: by progress (higher progress = better)
+                    return b.finalProgress - a.finalProgress;
+                }
+            });
+
+        // Update leaderboard with final rankings
+        this.leaderboard = rankedPlayers.map((p, index) => ({
+            playerId: p.playerId,
+            score: p.score,
+            rank: index + 1,
+            phase: p.phase,
+            progress: p.finalProgress
+        }));
+
+        console.log('📊 Final rankings:', this.leaderboard);
     }
-    
-    // Progress fill
-    this.ctx.fillStyle = progressColor;
-    this.ctx.fillRect(barX, barY, barWidth * progress, barHeight);
-    
-    // Progress text
-    this.ctx.fillStyle = '#FFFFFF';
-    this.ctx.font = 'bold 10px Arial';
-    this.ctx.textAlign = 'center';
-    this.ctx.fillText(`${Math.round(progress * 100)}%`, barX + barWidth / 2, barY + 11);
-    
-    // Reset text align
-    this.ctx.textAlign = 'left';
-}
-// triggerGameEnd(winnerId) {
-//     console.log('🏆 Triggering game end with winner:', winnerId);
-    
-//     this.gamePhase = 'finished';
-//     this.status = 'finished';
-//     this.stopGameLoop();
-    
-//     // Calculate final rankings
-//     this.calculateFinalRankings();
-    
-//     // Clear all respawn timers
-//     this.playerStates.forEach(player => {
-//         if (player.respawnTimer) {
-//             clearTimeout(player.respawnTimer);
-//             player.respawnTimer = null;
-//         }
-//     });
-    
-//     // Broadcast game ended với winner
-//     this.broadcast({
-//         type: 'gameEnded',
-//         winner: winnerId,
-//         rankings: this.leaderboard,
-//         message: `🏆 ${winnerId.slice(-4)} chiến thắng!`
-//     });
-    
-//     this.broadcastGameState();
-    
-//     // Auto reset after 10 seconds
-//     setTimeout(() => {
-//         console.log('🔄 Auto resetting game after 10 seconds');
-//         this.resetGame();
-//     }, 10000);
-// }
-
-
-
-
-calculateFinalRankings() {
-    console.log('📊 Calculating final rankings...');
-    
-    // Sắp xếp players theo priority:
-    // 1. Finished players (theo rank - người về trước rank thấp hơn)
-    // 2. Return phase players (theo tiến độ gần về đích)
-    // 3. Outbound phase players (theo tiến độ xa nhất)
-    // 4. Dead players (theo tiến độ trước khi chết)
-    
-    const rankedPlayers = this.playerStates
-        .map(p => {
-            let progress = 0;
-            let priority = 4; // Default: lowest priority
-            
-            if (p.phase === 'finished') {
-                progress = 2 * this.config.raceDistance; // Full trip
-                priority = 1; // Highest priority
-            } else if (p.phase === 'return') {
-                progress = this.config.raceDistance + (this.config.raceDistance - p.x);
-                priority = 2;
-            } else if (p.phase === 'outbound') {
-                progress = p.x;
-                priority = p.alive ? 3 : 4;
-            }
-            
-            return {
-                playerId: p.playerId,
-                score: p.score,
-                rank: p.rank || 0,
-                phase: p.phase,
-                finalProgress: progress,
-                priority: priority,
-                alive: p.alive
-            };
-        })
-        .sort((a, b) => {
-            // Sort by priority first
-            if (a.priority !== b.priority) {
-                return a.priority - b.priority;
-            }
-            
-            // Within same priority, sort by criteria
-            if (a.priority === 1) {
-                // Finished players: by rank (lower rank = better)
-                return a.rank - b.rank;
-            } else {
-                // Others: by progress (higher progress = better)
-                return b.finalProgress - a.finalProgress;
-            }
-        });
-    
-    // Update leaderboard with final rankings
-    this.leaderboard = rankedPlayers.map((p, index) => ({
-        playerId: p.playerId,
-        score: p.score,
-        rank: index + 1,
-        phase: p.phase,
-        progress: p.finalProgress
-    }));
-    
-    console.log('📊 Final rankings:', this.leaderboard);
-}
     updateParticles() {
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const particle = this.particles[i];
@@ -2064,43 +2064,43 @@ calculateFinalRankings() {
     }
 
     // Game actions
- flap() {
-    console.log('🐦 Flap function called');
-    
-    if (!this.gameId) {
-        console.log('❌ No gameId for flap');
-        return;
+    flap() {
+        console.log('🐦 Flap function called');
+
+        if (!this.gameId) {
+            console.log('❌ No gameId for flap');
+            return;
+        }
+
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            console.log('❌ WebSocket not ready for flap');
+            return;
+        }
+
+        console.log('📤 Sending flap action to server');
+        this.ws.send(JSON.stringify({
+            type: 'gameAction',
+            gameId: this.gameId,
+            action: 'flap'
+        }));
     }
-    
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        console.log('❌ WebSocket not ready for flap');
-        return;
+    forceSetupEventListeners() {
+        console.log('🔧 Force setting up event listeners...');
+        this.eventListenersActive = false;
+        this.setupEventListeners();
+        console.log('✅ Force setup completed');
     }
-    
-    console.log('📤 Sending flap action to server');
-    this.ws.send(JSON.stringify({
-        type: 'gameAction',
-        gameId: this.gameId,
-        action: 'flap'
-    }));
-}
-forceSetupEventListeners() {
-    console.log('🔧 Force setting up event listeners...');
-    this.eventListenersActive = false;
-    this.setupEventListeners();
-    console.log('✅ Force setup completed');
-}
-debugEventListeners() {
-    console.log('=== EVENT LISTENERS DEBUG ===');
-    console.log('eventListenersActive:', this.eventListenersActive);
-    console.log('keyDownHandler exists:', !!this.keyDownHandler);
-    console.log('keyUpHandler exists:', !!this.keyUpHandler);
-    console.log('Canvas onclick exists:', !!this.canvas?.onclick);
-    console.log('Game phase:', this.gameState?.gamePhase);
-    console.log('Game status:', this.gameState?.status);
-    console.log('Game ID:', this.gameId);
-    console.log('WebSocket ready:', this.ws?.readyState === WebSocket.OPEN);
-}
+    debugEventListeners() {
+        console.log('=== EVENT LISTENERS DEBUG ===');
+        console.log('eventListenersActive:', this.eventListenersActive);
+        console.log('keyDownHandler exists:', !!this.keyDownHandler);
+        console.log('keyUpHandler exists:', !!this.keyUpHandler);
+        console.log('Canvas onclick exists:', !!this.canvas?.onclick);
+        console.log('Game phase:', this.gameState?.gamePhase);
+        console.log('Game status:', this.gameState?.status);
+        console.log('Game ID:', this.gameId);
+        console.log('WebSocket ready:', this.ws?.readyState === WebSocket.OPEN);
+    }
     useItem(itemType) {
         if (!this.gameId || this.gameState?.status !== 'playing') return;
 
@@ -2891,290 +2891,290 @@ debugEventListeners() {
     }
 
     // THAY THẾ FUNCTION showGamePlaying BẰNG CÁI NÀY:
-showGamePlaying() {
-    console.log('🎮 Showing game playing mode - new round');
-    
-    const mainMenu = document.getElementById('mainMenu');
-    const gameSetup = document.getElementById('gameSetup');
-    const gameSection = document.getElementById('gameSection');
-    
-    // Hide/show UI ngay lập tức
-    if (mainMenu) mainMenu.classList.add('hidden');
-    if (gameSetup) gameSetup.classList.add('hidden');
-    if (gameSection) gameSection.classList.remove('hidden');
-    
-    // Đảm bảo event listeners hoạt động
-    if (!this.eventListenersActive) {
-        console.log('🔧 Event listeners not active, setting up...');
-        this.setupEventListeners();
+    showGamePlaying() {
+        console.log('🎮 Showing game playing mode - new round');
+
+        const mainMenu = document.getElementById('mainMenu');
+        const gameSetup = document.getElementById('gameSetup');
+        const gameSection = document.getElementById('gameSection');
+
+        // Hide/show UI ngay lập tức
+        if (mainMenu) mainMenu.classList.add('hidden');
+        if (gameSetup) gameSetup.classList.add('hidden');
+        if (gameSection) gameSection.classList.remove('hidden');
+
+        // Đảm bảo event listeners hoạt động
+        if (!this.eventListenersActive) {
+            console.log('🔧 Event listeners not active, setting up...');
+            this.setupEventListeners();
+        }
+
+        // Vào REAL fullscreen ngay lập tức
+        this.enterFullscreenModeImmediate();
     }
-    
-    // Vào REAL fullscreen ngay lập tức
-    this.enterFullscreenModeImmediate();
-}
 
     enterFullscreenModeImmediate() {
-    console.log('🚀 Entering fullscreen mode immediately');
-    
-    // Add fullscreen class to body NGAY LẬP TỨC
-    document.body.classList.add('game-playing');
-    document.documentElement.classList.add('game-playing');
-    
-    // Hide header/navbar
-    const header = document.querySelector('nav, .navbar');
-    if (header) {
-        header.style.display = 'none';
+        console.log('🚀 Entering fullscreen mode immediately');
+
+        // Add fullscreen class to body NGAY LẬP TỨC
+        document.body.classList.add('game-playing');
+        document.documentElement.classList.add('game-playing');
+
+        // Hide header/navbar
+        const header = document.querySelector('nav, .navbar');
+        if (header) {
+            header.style.display = 'none';
+        }
+
+        // Prevent scrolling
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+
+        // Add exit fullscreen button
+        this.addExitFullscreenButton();
+
+        // Force canvas visibility NGAY LẬP TỨC
+        if (this.canvas) {
+            this.canvas.style.display = 'block';
+            this.canvas.style.visibility = 'visible';
+        }
+
+        // ===== KHÔNG CÓ DELAY - RESIZE NGAY =====
+        this.resizeCanvasFullscreenImmediate();
+        this.requestBrowserFullscreen().then(() => {
+            console.log('✅ Browser fullscreen activated');
+            this.setupFullscreenCSS();
+        }).catch((error) => {
+            console.log('⚠️ Browser fullscreen failed, using CSS fallback:', error);
+            this.setupFullscreenCSS();
+        });
+        console.log('✅ Fullscreen mode entered immediately');
     }
-    
-    // Prevent scrolling
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
-    
-    // Add exit fullscreen button
-    this.addExitFullscreenButton();
-    
-    // Force canvas visibility NGAY LẬP TỨC
-    if (this.canvas) {
+    requestBrowserFullscreen() {
+        return new Promise((resolve, reject) => {
+            const element = document.documentElement; // Fullscreen cả trang
+
+            if (element.requestFullscreen) {
+                element.requestFullscreen().then(resolve).catch(reject);
+            } else if (element.webkitRequestFullscreen) {
+                element.webkitRequestFullscreen();
+                resolve();
+            } else if (element.mozRequestFullScreen) {
+                element.mozRequestFullScreen();
+                resolve();
+            } else if (element.msRequestFullscreen) {
+                element.msRequestFullscreen();
+                resolve();
+            } else {
+                reject(new Error('Fullscreen not supported'));
+            }
+        });
+    }
+    setupFullscreenCSS() {
+        console.log('🎨 Setting up fullscreen CSS');
+
+        // Add fullscreen class to body
+        document.body.classList.add('game-playing');
+        document.documentElement.classList.add('game-playing');
+
+        // Hide header/navbar
+        const header = document.querySelector('nav, .navbar');
+        if (header) {
+            header.style.display = 'none';
+        }
+
+        // Prevent scrolling
+        document.body.style.overflow = 'hidden';
+        document.documentElement.style.overflow = 'hidden';
+
+        // Add exit fullscreen button
+        this.addExitFullscreenButton();
+
+        // Setup canvas for fullscreen
+        this.setupCanvasFullscreen();
+    }
+    // CŨNG THAY THẾ FUNCTION exitFullscreenMode BẰNG CÁI NÀY:
+    setupCanvasFullscreen() {
+        if (!this.canvas) return;
+
+        console.log('🖼️ Setting up canvas for fullscreen');
+
+        // Force canvas visibility
         this.canvas.style.display = 'block';
         this.canvas.style.visibility = 'visible';
-    }
-    
-    // ===== KHÔNG CÓ DELAY - RESIZE NGAY =====
-    this.resizeCanvasFullscreenImmediate();
-        this.requestBrowserFullscreen().then(() => {
-        console.log('✅ Browser fullscreen activated');
-        this.setupFullscreenCSS();
-    }).catch((error) => {
-        console.log('⚠️ Browser fullscreen failed, using CSS fallback:', error);
-        this.setupFullscreenCSS();
-    });
-    console.log('✅ Fullscreen mode entered immediately');
-}
-requestBrowserFullscreen() {
-    return new Promise((resolve, reject) => {
-        const element = document.documentElement; // Fullscreen cả trang
-        
-        if (element.requestFullscreen) {
-            element.requestFullscreen().then(resolve).catch(reject);
-        } else if (element.webkitRequestFullscreen) {
-            element.webkitRequestFullscreen();
-            resolve();
-        } else if (element.mozRequestFullScreen) {
-            element.mozRequestFullScreen();
-            resolve();
-        } else if (element.msRequestFullscreen) {
-            element.msRequestFullscreen();
-            resolve();
+
+        // Set canvas to fullscreen
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+
+        // Fullscreen canvas styles
+        this.canvas.style.position = 'fixed';
+        this.canvas.style.top = '0';
+        this.canvas.style.left = '0';
+        this.canvas.style.width = '100vw';
+        this.canvas.style.height = '100vh';
+        this.canvas.style.zIndex = '9998';
+        this.canvas.style.backgroundColor = '#87CEEB';
+
+        // Calculate scale factor
+        const gameAspectRatio = this.config.width / this.config.height;
+        const screenAspectRatio = window.innerWidth / window.innerHeight;
+
+        if (screenAspectRatio > gameAspectRatio) {
+            // Screen is wider than game - fit to height
+            this.scale = window.innerHeight / this.config.height;
         } else {
-            reject(new Error('Fullscreen not supported'));
+            // Screen is taller than game - fit to width
+            this.scale = window.innerWidth / this.config.width;
         }
-    });
-}
-setupFullscreenCSS() {
-    console.log('🎨 Setting up fullscreen CSS');
-    
-    // Add fullscreen class to body
-    document.body.classList.add('game-playing');
-    document.documentElement.classList.add('game-playing');
-    
-    // Hide header/navbar
-    const header = document.querySelector('nav, .navbar');
-    if (header) {
-        header.style.display = 'none';
+
+        // Center game viewport
+        const gameWidth = this.config.width * this.scale;
+        const gameHeight = this.config.height * this.scale;
+        this.fullscreenOffset = {
+            x: (window.innerWidth - gameWidth) / 2,
+            y: (window.innerHeight - gameHeight) / 2
+        };
+
+        console.log(`✅ Canvas fullscreen setup: ${window.innerWidth}x${window.innerHeight}, scale: ${this.scale}`);
+
+        // Force immediate render
+        if (this.gameState) {
+            this.render();
+        }
     }
-    
-    // Prevent scrolling
-    document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
-    
-    // Add exit fullscreen button
-    this.addExitFullscreenButton();
-    
-    // Setup canvas for fullscreen
-    this.setupCanvasFullscreen();
-}
-    // CŨNG THAY THẾ FUNCTION exitFullscreenMode BẰNG CÁI NÀY:
-setupCanvasFullscreen() {
-    if (!this.canvas) return;
-    
-    console.log('🖼️ Setting up canvas for fullscreen');
-    
-    // Force canvas visibility
-    this.canvas.style.display = 'block';
-    this.canvas.style.visibility = 'visible';
-    
-    // Set canvas to fullscreen
-    this.canvas.width = window.innerWidth;
-    this.canvas.height = window.innerHeight;
-    
-    // Fullscreen canvas styles
-    this.canvas.style.position = 'fixed';
-    this.canvas.style.top = '0';
-    this.canvas.style.left = '0';
-    this.canvas.style.width = '100vw';
-    this.canvas.style.height = '100vh';
-    this.canvas.style.zIndex = '9998';
-    this.canvas.style.backgroundColor = '#87CEEB';
-    
-    // Calculate scale factor
-    const gameAspectRatio = this.config.width / this.config.height;
-    const screenAspectRatio = window.innerWidth / window.innerHeight;
-    
-    if (screenAspectRatio > gameAspectRatio) {
-        // Screen is wider than game - fit to height
-        this.scale = window.innerHeight / this.config.height;
-    } else {
-        // Screen is taller than game - fit to width
-        this.scale = window.innerWidth / this.config.width;
-    }
-    
-    // Center game viewport
-    const gameWidth = this.config.width * this.scale;
-    const gameHeight = this.config.height * this.scale;
-    this.fullscreenOffset = {
-        x: (window.innerWidth - gameWidth) / 2,
-        y: (window.innerHeight - gameHeight) / 2
-    };
-    
-    console.log(`✅ Canvas fullscreen setup: ${window.innerWidth}x${window.innerHeight}, scale: ${this.scale}`);
-    
-    // Force immediate render
-    if (this.gameState) {
-        this.render();
-    }
-}
-  
 
 
-exitFullscreenMode() {
-    // ===== NGĂN THOÁT NẾU ĐANG RESPAWN =====
-    if (this.shouldStayInFullscreen || this.isRespawning) {
-        console.log('🚫 Blocked exit fullscreen - player respawning');
-        return;
-    }
-    
-    console.log('🚪 Exiting fullscreen mode');
-    
-    // ===== EXIT BROWSER FULLSCREEN =====
-    if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-    } else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-    } else if (document.mozCancelFullScreen) {
-        document.mozCancelFullScreen();
-    } else if (document.msExitFullscreen) {
-        document.msExitFullscreen();
-    }
-    
-    // Cleanup CSS
-    this.cleanupFullscreenCSS();
-}
-cleanupFullscreenCSS() {
-    console.log('🧹 Cleaning up fullscreen CSS');
-    
-    // Remove fullscreen classes
-    document.body.classList.remove('game-playing');
-    document.documentElement.classList.remove('game-playing');
-    
-    // Reset page styles
-    document.body.style.overflow = '';
-    document.documentElement.style.overflow = '';
-    
-    // Show header
-    const header = document.querySelector('nav, .navbar');
-    if (header) {
-        header.style.display = '';
-    }
-    
-    // Remove exit button
-    const exitBtn = document.querySelector('.exit-fullscreen-btn');
-    if (exitBtn) {
-        exitBtn.remove();
-    }
-    
-    // Reset canvas to lobby size
-    this.resizeCanvasToLobby();
-}
-addFullscreenEventListeners() {
-    // Listen for fullscreen changes (user presses ESC)
-    document.addEventListener('fullscreenchange', this.handleFullscreenChange.bind(this));
-    document.addEventListener('webkitfullscreenchange', this.handleFullscreenChange.bind(this));
-    document.addEventListener('mozfullscreenchange', this.handleFullscreenChange.bind(this));
-    document.addEventListener('MSFullscreenChange', this.handleFullscreenChange.bind(this));
-}
-handleFullscreenChange() {
-    const isFullscreen = !!(
-        document.fullscreenElement ||
-        document.webkitFullscreenElement ||
-        document.mozFullScreenElement ||
-        document.msFullscreenElement
-    );
-    
-    console.log('🔄 Fullscreen change detected:', isFullscreen);
-    
-    if (!isFullscreen && document.body.classList.contains('game-playing')) {
-        // User exited fullscreen (probably with ESC key)
-        console.log('🚪 User exited fullscreen - cleaning up');
+
+    exitFullscreenMode() {
+        // ===== NGĂN THOÁT NẾU ĐANG RESPAWN =====
+        if (this.shouldStayInFullscreen || this.isRespawning) {
+            console.log('🚫 Blocked exit fullscreen - player respawning');
+            return;
+        }
+
+        console.log('🚪 Exiting fullscreen mode');
+
+        // ===== EXIT BROWSER FULLSCREEN =====
+        if (document.exitFullscreen) {
+            document.exitFullscreen().catch(() => { });
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.mozCancelFullScreen) {
+            document.mozCancelFullScreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+
+        // Cleanup CSS
         this.cleanupFullscreenCSS();
     }
-}
-resizeCanvasToLobby() {
-    if (!this.canvas || !this.ctx) return;
-    
-    console.log('📏 Resizing canvas back to lobby size');
-    
-    // Get container size
-    const container = this.canvas.parentElement;
-    if (!container) return;
-    
-    const containerWidth = container.clientWidth - 40; // Account for padding
-    const aspectRatio = this.config.width / this.config.height;
-    
-    // Calculate lobby size
-    const lobbyWidth = Math.min(containerWidth, 1200);
-    const lobbyHeight = lobbyWidth / aspectRatio;
-    
-    // Ensure minimum height on mobile
-    const finalWidth = lobbyHeight < 250 ? 250 * aspectRatio : lobbyWidth;
-    const finalHeight = lobbyHeight < 250 ? 250 : lobbyHeight;
-    
-    // Set canvas size
-    this.canvas.width = finalWidth;
-    this.canvas.height = finalHeight;
-    
-    // Reset canvas styles
-    this.canvas.style.position = 'relative';
-    this.canvas.style.top = 'auto';
-    this.canvas.style.left = 'auto';
-    this.canvas.style.width = finalWidth + 'px';
-    this.canvas.style.height = finalHeight + 'px';
-    this.canvas.style.zIndex = 'auto';
-    
-    // Calculate scale factor for lobby
-    this.scale = finalWidth / this.config.width;
-    
-    // Reset fullscreen offset
-    this.fullscreenOffset = { x: 0, y: 0 };
-    
-    console.log(`✅ Canvas resized to lobby: ${finalWidth}x${finalHeight}, scale: ${this.scale}`);
-    
-    // Force immediate render
-    if (this.gameState) {
-        this.render();
+    cleanupFullscreenCSS() {
+        console.log('🧹 Cleaning up fullscreen CSS');
+
+        // Remove fullscreen classes
+        document.body.classList.remove('game-playing');
+        document.documentElement.classList.remove('game-playing');
+
+        // Reset page styles
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
+
+        // Show header
+        const header = document.querySelector('nav, .navbar');
+        if (header) {
+            header.style.display = '';
+        }
+
+        // Remove exit button
+        const exitBtn = document.querySelector('.exit-fullscreen-btn');
+        if (exitBtn) {
+            exitBtn.remove();
+        }
+
+        // Reset canvas to lobby size
+        this.resizeCanvasToLobby();
     }
-}
-   addExitFullscreenButton() {
-    // Remove existing button
-    const existingBtn = document.querySelector('.exit-fullscreen-btn');
-    if (existingBtn) {
-        existingBtn.remove();
+    addFullscreenEventListeners() {
+        // Listen for fullscreen changes (user presses ESC)
+        document.addEventListener('fullscreenchange', this.handleFullscreenChange.bind(this));
+        document.addEventListener('webkitfullscreenchange', this.handleFullscreenChange.bind(this));
+        document.addEventListener('mozfullscreenchange', this.handleFullscreenChange.bind(this));
+        document.addEventListener('MSFullscreenChange', this.handleFullscreenChange.bind(this));
     }
-    
-    // Create exit button với multiple exit methods
-    const exitBtn = document.createElement('button');
-    exitBtn.className = 'exit-fullscreen-btn';
-    exitBtn.innerHTML = '❌ ESC: Thoát';
-    exitBtn.style.cssText = `
+    handleFullscreenChange() {
+        const isFullscreen = !!(
+            document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement
+        );
+
+        console.log('🔄 Fullscreen change detected:', isFullscreen);
+
+        if (!isFullscreen && document.body.classList.contains('game-playing')) {
+            // User exited fullscreen (probably with ESC key)
+            console.log('🚪 User exited fullscreen - cleaning up');
+            this.cleanupFullscreenCSS();
+        }
+    }
+    resizeCanvasToLobby() {
+        if (!this.canvas || !this.ctx) return;
+
+        console.log('📏 Resizing canvas back to lobby size');
+
+        // Get container size
+        const container = this.canvas.parentElement;
+        if (!container) return;
+
+        const containerWidth = container.clientWidth - 40; // Account for padding
+        const aspectRatio = this.config.width / this.config.height;
+
+        // Calculate lobby size
+        const lobbyWidth = Math.min(containerWidth, 1200);
+        const lobbyHeight = lobbyWidth / aspectRatio;
+
+        // Ensure minimum height on mobile
+        const finalWidth = lobbyHeight < 250 ? 250 * aspectRatio : lobbyWidth;
+        const finalHeight = lobbyHeight < 250 ? 250 : lobbyHeight;
+
+        // Set canvas size
+        this.canvas.width = finalWidth;
+        this.canvas.height = finalHeight;
+
+        // Reset canvas styles
+        this.canvas.style.position = 'relative';
+        this.canvas.style.top = 'auto';
+        this.canvas.style.left = 'auto';
+        this.canvas.style.width = finalWidth + 'px';
+        this.canvas.style.height = finalHeight + 'px';
+        this.canvas.style.zIndex = 'auto';
+
+        // Calculate scale factor for lobby
+        this.scale = finalWidth / this.config.width;
+
+        // Reset fullscreen offset
+        this.fullscreenOffset = { x: 0, y: 0 };
+
+        console.log(`✅ Canvas resized to lobby: ${finalWidth}x${finalHeight}, scale: ${this.scale}`);
+
+        // Force immediate render
+        if (this.gameState) {
+            this.render();
+        }
+    }
+    addExitFullscreenButton() {
+        // Remove existing button
+        const existingBtn = document.querySelector('.exit-fullscreen-btn');
+        if (existingBtn) {
+            existingBtn.remove();
+        }
+
+        // Create exit button với multiple exit methods
+        const exitBtn = document.createElement('button');
+        exitBtn.className = 'exit-fullscreen-btn';
+        exitBtn.innerHTML = '❌ ESC: Thoát';
+        exitBtn.style.cssText = `
         position: fixed !important;
         top: 20px !important;
         right: 20px !important;
@@ -3193,31 +3193,31 @@ resizeCanvasToLobby() {
         font-family: Arial, sans-serif !important;
         pointer-events: all !important;
     `;
-    
-    // MULTIPLE EXIT METHODS
-    exitBtn.onclick = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('🖱️ Exit button clicked');
-        this.forceExitGame();
-    };
-    
-    exitBtn.onmouseover = () => {
-        exitBtn.style.background = 'rgba(231, 76, 60, 1) !important';
-        exitBtn.style.transform = 'scale(1.05) !important';
-        exitBtn.innerHTML = '🚨 CLICK: Thoát';
-    };
-    
-    exitBtn.onmouseout = () => {
-        exitBtn.style.background = 'rgba(231, 76, 60, 0.95) !important';
-        exitBtn.style.transform = 'scale(1) !important';
-        exitBtn.innerHTML = '❌ ESC: Thoát';
-    };
-    
-    document.body.appendChild(exitBtn);
-    
-    console.log('✅ Exit button added with real fullscreen support');
-}
+
+        // MULTIPLE EXIT METHODS
+        exitBtn.onclick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🖱️ Exit button clicked');
+            this.forceExitGame();
+        };
+
+        exitBtn.onmouseover = () => {
+            exitBtn.style.background = 'rgba(231, 76, 60, 1) !important';
+            exitBtn.style.transform = 'scale(1.05) !important';
+            exitBtn.innerHTML = '🚨 CLICK: Thoát';
+        };
+
+        exitBtn.onmouseout = () => {
+            exitBtn.style.background = 'rgba(231, 76, 60, 0.95) !important';
+            exitBtn.style.transform = 'scale(1) !important';
+            exitBtn.innerHTML = '❌ ESC: Thoát';
+        };
+
+        document.body.appendChild(exitBtn);
+
+        console.log('✅ Exit button added with real fullscreen support');
+    }
 
     showGameResult() {
         // Don't exit fullscreen immediately for round end
@@ -3551,17 +3551,17 @@ resizeCanvasToLobby() {
     }
 
 
-showError(message, duration = 3000) {
-    console.log('❌ ERROR:', message);
-    
-    // Nếu là thông báo game, dùng showGameMessage với màu đỏ
-    if (message.includes('mất mạng') || message.includes('tiêu diệt') || 
-        message.includes('va chạm') || message.includes('loại')) {
-        
-        // Tạo game message với màu đỏ
-        const gameMsg = document.createElement('div');
-        gameMsg.className = 'game-message-overlay error';
-        gameMsg.style.cssText = `
+    showError(message, duration = 3000) {
+        console.log('❌ ERROR:', message);
+
+        // Nếu là thông báo game, dùng showGameMessage với màu đỏ
+        if (message.includes('mất mạng') || message.includes('tiêu diệt') ||
+            message.includes('va chạm') || message.includes('loại')) {
+
+            // Tạo game message với màu đỏ
+            const gameMsg = document.createElement('div');
+            gameMsg.className = 'game-message-overlay error';
+            gameMsg.style.cssText = `
             position: fixed;
             top: 15%;
             left: 50%;
@@ -3580,78 +3580,78 @@ showError(message, duration = 3000) {
             max-width: 80%;
             backdrop-filter: blur(10px);
         `;
-        
-        gameMsg.innerHTML = `💀 ${message}`;
-        document.body.appendChild(gameMsg);
-        
-        setTimeout(() => {
-            if (gameMsg.parentNode) {
+
+            gameMsg.innerHTML = `💀 ${message}`;
+            document.body.appendChild(gameMsg);
+
+            setTimeout(() => {
+                if (gameMsg.parentNode) {
+                    gameMsg.remove();
+                }
+            }, duration);
+
+            gameMsg.addEventListener('click', () => {
                 gameMsg.remove();
-            }
-        }, duration);
-        
-        gameMsg.addEventListener('click', () => {
-            gameMsg.remove();
-        });
-        
-        return;
+            });
+
+            return;
+        }
+
+        // Thông báo error thường
+        this.createToastNotification(message, 'error');
     }
-    
-    // Thông báo error thường
-    this.createToastNotification(message, 'error');
-}
-showSuccess(message, duration = 3000) {
-    console.log('✅ SUCCESS:', message);
-    
-    // Nếu là thông báo chiến thắng, dùng hiệu ứng đặc biệt
-    if (message.includes('CHIẾN THẮNG') || message.includes('VICTORY') || message.includes('🏆')) {
-        this.showVictoryMessage(message);
-        return;
+    showSuccess(message, duration = 3000) {
+        console.log('✅ SUCCESS:', message);
+
+        // Nếu là thông báo chiến thắng, dùng hiệu ứng đặc biệt
+        if (message.includes('CHIẾN THẮNG') || message.includes('VICTORY') || message.includes('🏆')) {
+            this.showVictoryMessage(message);
+            return;
+        }
+
+        // Nếu là thông báo game events, dùng showGameMessage
+        if (message.includes('bắt đầu') || message.includes('mất mạng') ||
+            message.includes('hoàn thành') || message.includes('về đích') ||
+            message.includes('kết thúc') || message.includes('quay về') ||
+            message.includes('va chạm') || message.includes('tiêu diệt')) {
+            this.showGameMessage(message, duration);
+            return;
+        }
+
+        // Nếu là thông báo quan trọng khác, hiển thị ở giữa màn hình
+        if (message.includes('Game kết thúc') || message.includes('chiến thắng')) {
+            this.createToastNotification(message, 'success');
+            return;
+        }
+
+        // Thông báo thường - hiển thị trong gameStatus (nếu có)
+        const statusEl = document.getElementById('gameStatus');
+        if (statusEl) {
+            statusEl.innerHTML = `<div class="success-message" style="animation: pulse 2s infinite;">✅ ${message}</div>`;
+
+            // Auto-clear sau duration
+            setTimeout(() => {
+                if (statusEl.innerHTML.includes(message)) {
+                    statusEl.innerHTML = 'Đang chờ...';
+                }
+            }, duration);
+        } else {
+            // Fallback: dùng toast notification nếu không có gameStatus element
+            this.createToastNotification(message, 'success');
+        }
     }
-    
-    // Nếu là thông báo game events, dùng showGameMessage
-    if (message.includes('bắt đầu') || message.includes('mất mạng') || 
-        message.includes('hoàn thành') || message.includes('về đích') || 
-        message.includes('kết thúc') || message.includes('quay về') ||
-        message.includes('va chạm') || message.includes('tiêu diệt')) {
-        this.showGameMessage(message, duration);
-        return;
-    }
-    
-    // Nếu là thông báo quan trọng khác, hiển thị ở giữa màn hình
-    if (message.includes('Game kết thúc') || message.includes('chiến thắng')) {
-        this.createToastNotification(message, 'success');
-        return;
-    }
-    
-    // Thông báo thường - hiển thị trong gameStatus (nếu có)
-    const statusEl = document.getElementById('gameStatus');
-    if (statusEl) {
-        statusEl.innerHTML = `<div class="success-message" style="animation: pulse 2s infinite;">✅ ${message}</div>`;
-        
-        // Auto-clear sau duration
-        setTimeout(() => {
-            if (statusEl.innerHTML.includes(message)) {
-                statusEl.innerHTML = 'Đang chờ...';
-            }
-        }, duration);
-    } else {
-        // Fallback: dùng toast notification nếu không có gameStatus element
-        this.createToastNotification(message, 'success');
-    }
-}
 
 
-createToastNotification(message, type = 'info') {
-    const toast = document.createElement('div');
-    toast.className = `toast-notification toast-${type}`;
-    
-    let bgColor = '#4CAF50'; // success
-    if (type === 'error') bgColor = '#f44336';
-    if (type === 'info') bgColor = '#2196F3';
-    if (type === 'warning') bgColor = '#ff9800';
-    
-    toast.style.cssText = `
+    createToastNotification(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast-notification toast-${type}`;
+
+        let bgColor = '#4CAF50'; // success
+        if (type === 'error') bgColor = '#f44336';
+        if (type === 'info') bgColor = '#2196F3';
+        if (type === 'warning') bgColor = '#ff9800';
+
+        toast.style.cssText = `
         position: fixed;
         top: 50%;
         left: 50%;
@@ -3669,28 +3669,28 @@ createToastNotification(message, type = 'info') {
         animation: toastSlideIn 0.5s ease, toastSlideOut 0.5s ease 4s;
         border: 2px solid rgba(255,255,255,0.3);
     `;
-    
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    
-    // Click để đóng
-    toast.addEventListener('click', () => {
-        toast.remove();
-    });
-    
-    // Tự động xóa sau 5 giây
-    setTimeout(() => {
-        if (toast.parentNode) {
-            toast.remove();
-        }
-    }, 5000);
-}
 
-showRankingsModal(rankingHTML) {
-    // Tạo overlay modal
-    const modal = document.createElement('div');
-    modal.className = 'rankings-modal-overlay';
-    modal.style.cssText = `
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        // Click để đóng
+        toast.addEventListener('click', () => {
+            toast.remove();
+        });
+
+        // Tự động xóa sau 5 giây
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 5000);
+    }
+
+    showRankingsModal(rankingHTML) {
+        // Tạo overlay modal
+        const modal = document.createElement('div');
+        modal.className = 'rankings-modal-overlay';
+        modal.style.cssText = `
         position: fixed;
         top: 0;
         left: 0;
@@ -3703,11 +3703,11 @@ showRankingsModal(rankingHTML) {
         z-index: 99997;
         animation: fadeIn 0.3s ease;
     `;
-    
-    // Tạo content modal
-    const modalContent = document.createElement('div');
-    modalContent.className = 'rankings-modal-content';
-    modalContent.style.cssText = `
+
+        // Tạo content modal
+        const modalContent = document.createElement('div');
+        modalContent.className = 'rankings-modal-content';
+        modalContent.style.cssText = `
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-radius: 15px;
         padding: 30px;
@@ -3721,8 +3721,8 @@ showRankingsModal(rankingHTML) {
         box-shadow: 0 0 30px rgba(255,215,0,0.4);
         margin: 20px;
     `;
-    
-    modalContent.innerHTML = rankingHTML + `
+
+        modalContent.innerHTML = rankingHTML + `
         <div style="text-align: center; margin-top: 25px;">
             <button onclick="this.closest('.rankings-modal-overlay').remove()" 
                     style="background: linear-gradient(45deg, #ff6b6b, #ee5a24); 
@@ -3735,37 +3735,37 @@ showRankingsModal(rankingHTML) {
             </button>
         </div>
     `;
-    
-    modal.appendChild(modalContent);
-    document.body.appendChild(modal);
-    
-    // Tự động đóng sau 20 giây
-    setTimeout(() => {
-        if (modal.parentNode) {
-            modal.style.opacity = '0';
-            modal.style.transition = 'opacity 0.5s ease';
-            setTimeout(() => {
-                if (modal.parentNode) {
-                    modal.remove();
-                }
-            }, 500);
-        }
-    }, 20000);
-    
-    // Đóng khi click bên ngoài
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            modal.remove();
-        }
-    });
-    
-    console.log('📊 Rankings modal displayed');
-}
-showVictoryMessage(message) {
-    // Tạo victory overlay
-    const victoryOverlay = document.createElement('div');
-    victoryOverlay.className = 'victory-overlay';
-    victoryOverlay.style.cssText = `
+
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+
+        // Tự động đóng sau 20 giây
+        setTimeout(() => {
+            if (modal.parentNode) {
+                modal.style.opacity = '0';
+                modal.style.transition = 'opacity 0.5s ease';
+                setTimeout(() => {
+                    if (modal.parentNode) {
+                        modal.remove();
+                    }
+                }, 500);
+            }
+        }, 20000);
+
+        // Đóng khi click bên ngoài
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+
+        console.log('📊 Rankings modal displayed');
+    }
+    showVictoryMessage(message) {
+        // Tạo victory overlay
+        const victoryOverlay = document.createElement('div');
+        victoryOverlay.className = 'victory-overlay';
+        victoryOverlay.style.cssText = `
         position: fixed;
         top: 0;
         left: 0;
@@ -3781,8 +3781,8 @@ showVictoryMessage(message) {
         color: white;
         text-align: center;
     `;
-    
-    victoryOverlay.innerHTML = `
+
+        victoryOverlay.innerHTML = `
         <div class="victory-content" style="
             animation: victoryBounce 1s ease infinite;
             background: rgba(0,0,0,0.7);
@@ -3803,76 +3803,76 @@ showVictoryMessage(message) {
             </div>
         </div>
     `;
-    
-    document.body.appendChild(victoryOverlay);
-    
-    // Click để đóng
-    victoryOverlay.addEventListener('click', () => {
-        victoryOverlay.remove();
-    });
-    
-    // Tự động ẩn sau 8 giây
-    setTimeout(() => {
-        if (victoryOverlay.parentNode) {
-            victoryOverlay.style.opacity = '0';
-            victoryOverlay.style.transition = 'opacity 1s ease';
-            setTimeout(() => {
-                if (victoryOverlay.parentNode) {
-                    victoryOverlay.remove();
-                }
-            }, 1000);
-        }
-    }, 8000);
-    
-    console.log('🏆 Victory message displayed');
-}
 
+        document.body.appendChild(victoryOverlay);
 
+        // Click để đóng
+        victoryOverlay.addEventListener('click', () => {
+            victoryOverlay.remove();
+        });
 
- showRankings(rankings) {
-    console.log('📊 Displaying final rankings...', rankings);
-    
-    if (!rankings || rankings.length === 0) {
-        this.showInfo('📊 Không có bảng xếp hạng');
-        return;
+        // Tự động ẩn sau 8 giây
+        setTimeout(() => {
+            if (victoryOverlay.parentNode) {
+                victoryOverlay.style.opacity = '0';
+                victoryOverlay.style.transition = 'opacity 1s ease';
+                setTimeout(() => {
+                    if (victoryOverlay.parentNode) {
+                        victoryOverlay.remove();
+                    }
+                }, 1000);
+            }
+        }, 8000);
+
+        console.log('🏆 Victory message displayed');
     }
-    
-    // ===== TẠO HTML CHO BẢNG XẾP HẠNG =====
-    let rankingHTML = '<div class="final-rankings">';
-    rankingHTML += '<h3>🏆 BXH CUỐI GAME 🏆</h3>';
-    
-    rankings.forEach((player, index) => {
-        const rank = index + 1;
-        let rankIcon = '';
-        let rankClass = '';
-        
-        // Icon và class cho từng hạng
-        if (rank === 1) {
-            rankIcon = '🥇';
-            rankClass = 'gold';
-        } else if (rank === 2) {
-            rankIcon = '🥈';
-            rankClass = 'silver';
-        } else if (rank === 3) {
-            rankIcon = '🥉';
-            rankClass = 'bronze';
-        } else {
-            rankIcon = `#${rank}`;
-            rankClass = 'normal';
+
+
+
+    showRankings(rankings) {
+        console.log('📊 Displaying final rankings...', rankings);
+
+        if (!rankings || rankings.length === 0) {
+            this.showInfo('📊 Không có bảng xếp hạng');
+            return;
         }
-        
-        // Highlight current player
-        const isCurrentPlayer = player.playerId === this.playerId;
-        const playerClass = isCurrentPlayer ? 'current-player' : '';
-        
-        // Thông tin player
-        const playerName = isCurrentPlayer ? 'BẠN' : player.playerId.slice(-4);
-        const playerScore = player.score || 0;
-        const playerPhase = player.phase === 'finished' ? '🏁' : 
-                           player.phase === 'return' ? '🔄' : '➡️';
-        
-        // Tạo HTML cho từng item
-        rankingHTML += `
+
+        // ===== TẠO HTML CHO BẢNG XẾP HẠNG =====
+        let rankingHTML = '<div class="final-rankings">';
+        rankingHTML += '<h3>🏆 BXH CUỐI GAME 🏆</h3>';
+
+        rankings.forEach((player, index) => {
+            const rank = index + 1;
+            let rankIcon = '';
+            let rankClass = '';
+
+            // Icon và class cho từng hạng
+            if (rank === 1) {
+                rankIcon = '🥇';
+                rankClass = 'gold';
+            } else if (rank === 2) {
+                rankIcon = '🥈';
+                rankClass = 'silver';
+            } else if (rank === 3) {
+                rankIcon = '🥉';
+                rankClass = 'bronze';
+            } else {
+                rankIcon = `#${rank}`;
+                rankClass = 'normal';
+            }
+
+            // Highlight current player
+            const isCurrentPlayer = player.playerId === this.playerId;
+            const playerClass = isCurrentPlayer ? 'current-player' : '';
+
+            // Thông tin player
+            const playerName = isCurrentPlayer ? 'BẠN' : player.playerId.slice(-4);
+            const playerScore = player.score || 0;
+            const playerPhase = player.phase === 'finished' ? '🏁' :
+                player.phase === 'return' ? '🔄' : '➡️';
+
+            // Tạo HTML cho từng item
+            rankingHTML += `
             <div class="ranking-item ${rankClass} ${playerClass}">
                 <span class="rank">${rankIcon}</span>
                 <span class="player-name">${playerName}</span>
@@ -3880,13 +3880,13 @@ showVictoryMessage(message) {
                 <span class="phase">${playerPhase}</span>
             </div>
         `;
-    });
-    
-    rankingHTML += '</div>';
-    
-    // ===== HIỂN THỊ BẢNG XẾP HẠNG BẰNG MODAL/OVERLAY =====
-    this.showRankingsModal(rankingHTML);
-}
+        });
+
+        rankingHTML += '</div>';
+
+        // ===== HIỂN THỊ BẢNG XẾP HẠNG BẰNG MODAL/OVERLAY =====
+        this.showRankingsModal(rankingHTML);
+    }
 }
 
 // Global functions for HTML onclick events

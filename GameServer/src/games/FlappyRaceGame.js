@@ -211,64 +211,64 @@ class FlappyRaceGame extends BaseGame {
 
         console.log(`Generated ${this.pipes.length} pipes with wider paths (160px gaps, 225px spacing) for map: ${mapType}`);
     }
-calculateFinalRankings() {
-    console.log('📊 Calculating final rankings...');
-    
-    // Sắp xếp players theo priority:
-    // 1. Finished players (theo rank)
-    // 2. Return phase players (theo tiến độ gần về đích)
-    // 3. Outbound phase players (theo tiến độ xa nhất)
-    // 4. Dead players (theo tiến độ trước khi chết)
-    
-    const rankedPlayers = this.playerStates
-        .map(p => {
-            let progress = 0;
-            let priority = 4; // Default: lowest priority
-            
-            if (p.phase === 'finished') {
-                progress = 2 * this.config.raceDistance; // Full trip
-                priority = 1; // Highest priority
-            } else if (p.phase === 'return') {
-                progress = this.config.raceDistance + (this.config.raceDistance - p.x);
-                priority = 2;
-            } else if (p.phase === 'outbound') {
-                progress = p.x;
-                priority = p.alive ? 3 : 4;
-            }
-            
-            return {
-                ...p,
-                finalProgress: progress,
-                priority: priority
-            };
-        })
-        .sort((a, b) => {
-            // Sort by priority first
-            if (a.priority !== b.priority) {
-                return a.priority - b.priority;
-            }
-            
-            // Within same priority, sort by progress
-            if (a.priority === 1) {
-                // Finished players: by rank (lower is better)
-                return a.rank - b.rank;
-            } else {
-                // Others: by progress (higher is better)
-                return b.finalProgress - a.finalProgress;
-            }
-        });
-    
-    // Update leaderboard
-    this.leaderboard = rankedPlayers.map((p, index) => ({
-        playerId: p.playerId,
-        score: p.score,
-        rank: index + 1,
-        phase: p.phase,
-        progress: p.finalProgress
-    }));
-    
-    console.log('📊 Final rankings:', this.leaderboard);
-}
+    calculateFinalRankings() {
+        console.log('📊 Calculating final rankings...');
+
+        // Sắp xếp players theo priority:
+        // 1. Finished players (theo rank)
+        // 2. Return phase players (theo tiến độ gần về đích)
+        // 3. Outbound phase players (theo tiến độ xa nhất)
+        // 4. Dead players (theo tiến độ trước khi chết)
+
+        const rankedPlayers = this.playerStates
+            .map(p => {
+                let progress = 0;
+                let priority = 4; // Default: lowest priority
+
+                if (p.phase === 'finished') {
+                    progress = 2 * this.config.raceDistance; // Full trip
+                    priority = 1; // Highest priority
+                } else if (p.phase === 'return') {
+                    progress = this.config.raceDistance + (this.config.raceDistance - p.x);
+                    priority = 2;
+                } else if (p.phase === 'outbound') {
+                    progress = p.x;
+                    priority = p.alive ? 3 : 4;
+                }
+
+                return {
+                    ...p,
+                    finalProgress: progress,
+                    priority: priority
+                };
+            })
+            .sort((a, b) => {
+                // Sort by priority first
+                if (a.priority !== b.priority) {
+                    return a.priority - b.priority;
+                }
+
+                // Within same priority, sort by progress
+                if (a.priority === 1) {
+                    // Finished players: by rank (lower is better)
+                    return a.rank - b.rank;
+                } else {
+                    // Others: by progress (higher is better)
+                    return b.finalProgress - a.finalProgress;
+                }
+            });
+
+        // Update leaderboard
+        this.leaderboard = rankedPlayers.map((p, index) => ({
+            playerId: p.playerId,
+            score: p.score,
+            rank: index + 1,
+            phase: p.phase,
+            progress: p.finalProgress
+        }));
+
+        console.log('📊 Final rankings:', this.leaderboard);
+    }
     generateItems() {
         this.items = [];
         const itemTypes = ['speed', 'shield', 'bomb', 'trap'];
@@ -380,14 +380,13 @@ calculateFinalRankings() {
         const deltaTime = (now - this.lastUpdate) / 1000;
         this.lastUpdate = now;
 
-        // ===== DEBUG: LOG DEAD PLAYERS =====
+        // ===== DEBUG: LOG DEAD PLAYERS (không ảnh hưởng game logic) =====
         const deadPlayers = this.playerStates.filter(p => !p.alive && p.lives > 0);
         if (deadPlayers.length > 0) {
             console.log(`📊 Dead players waiting for respawn: ${deadPlayers.map(p => `${p.playerId.slice(-4)}(${p.lives}❤️)`).join(', ')}`);
         }
 
-        // ... rest of updateGame method stays the same
-
+        // ===== CẬP NHẬT COUNTDOWN =====
         if (this.gamePhase === 'countdown') {
             this.gameTimer -= deltaTime;
 
@@ -414,15 +413,32 @@ calculateFinalRankings() {
             }
         }
 
+        // ===== CẬP NHẬT GAME PLAYING - QUAN TRỌNG: LUÔN CHẠY! =====
         if (this.gamePhase === 'playing') {
-            this.updatePlayers(deltaTime);
-            this.updateProjectiles(deltaTime);
-            this.updateItems();
-            this.checkGameEnd();
-            this.checkRespawnCondition();
+            // Cập nhật tất cả các thành phần game
+            this.updatePlayers(deltaTime);      // Cập nhật người chơi (bao gồm cả sống và chết)
+            this.updateProjectiles(deltaTime);  // Cập nhật đạn bắn
+            this.updateItems();                 // Cập nhật vật phẩm
+
+            // Kiểm tra điều kiện kết thúc - KHÔNG làm đứng hình game
+            this.checkGameEnd();                // Chỉ kiểm tra, không dừng game loop
+
+            // Kiểm tra điều kiện respawn - riêng biệt
+            this.checkRespawnCondition();       // Quản lý respawn độc lập
+
+            // Cập nhật bảng xếp hạng và broadcast state
             this.updateLeaderboard();
             this.broadcastGameState();
         }
+    }
+    shouldContinueGame() {
+        const alivePlayers = this.playerStates.filter(p => p.alive);
+        const playersWithLives = this.playerStates.filter(p => p.lives > 0);
+
+        // Game tiếp tục nếu:
+        // 1. Còn người sống, HOẶC
+        // 2. Còn người có mạng (đang chờ respawn)
+        return alivePlayers.length > 0 || playersWithLives.length > 0;
     }
     respawnPlayer(playerId) {
         const player = this.playerStates.find(p => p.playerId === playerId);
@@ -509,62 +525,62 @@ calculateFinalRankings() {
             player.canCollideWithPlayers = false;
         });
     }
-   updatePlayers(deltaTime) {
-    this.playerStates.forEach(player => {
-        if (!player.alive) return;
-        
-        // CHỈ APPLY PHYSICS KHI GAME ĐANG PLAYING
-        if (this.gamePhase === 'playing') {
-            // ===== CẬP NHẬT THỜI GIAN BẤT TỬ =====
-            if (player.invulnerable && player.invulnerableTime > 0) {
-                player.invulnerableTime -= deltaTime;
-                if (player.invulnerableTime <= 0) {
-                    player.invulnerable = false;
-                    player.canCollideWithPlayers = true;
-                    console.log(`Player ${player.playerId} is no longer invulnerable`);
+    updatePlayers(deltaTime) {
+        this.playerStates.forEach(player => {
+            if (!player.alive) return;
+
+            // CHỈ APPLY PHYSICS KHI GAME ĐANG PLAYING
+            if (this.gamePhase === 'playing') {
+                // ===== CẬP NHẬT THỜI GIAN BẤT TỬ =====
+                if (player.invulnerable && player.invulnerableTime > 0) {
+                    player.invulnerableTime -= deltaTime;
+                    if (player.invulnerableTime <= 0) {
+                        player.invulnerable = false;
+                        player.canCollideWithPlayers = true;
+                        console.log(`Player ${player.playerId} is no longer invulnerable`);
+                    }
+                }
+
+                // ===== QUAN TRỌNG: PHYSICS - GRAVITY =====
+                player.velocityY += this.config.gravity;
+
+                // Apply velocity to Y position
+                player.y += player.velocityY;
+
+                // Apply effects
+                this.updatePlayerEffects(player, deltaTime);
+
+                // ===== QUAN TRỌNG: MOVEMENT BASED ON PHASE =====
+                let speed = 100; // base speed
+                if (player.effects.speed && player.effects.speed.timeLeft > 0) {
+                    speed *= 1.5;
+                }
+
+                if (player.phase === 'outbound') {
+                    // OUTBOUND: Bay về phía trước (tăng x)
+                    player.x += speed * deltaTime;
+                } else if (player.phase === 'return') {
+                    // RETURN: Bay về phía sau (giảm x)
+                    player.x -= speed * deltaTime;
+                }
+                // FINISHED: Không di chuyển nữa
+
+                // ===== CHECK BOUNDS =====
+                this.checkPlayerBounds(player);
+
+                // Check phase transition
+                this.checkPhaseTransition(player);
+
+                // ===== COLLISION DETECTION =====
+                this.checkCollisions(player);
+
+                // ===== KIỂM TRA VA CHẠM GIỮA CÁC CHIM =====
+                if (player.canCollideWithPlayers) {
+                    this.checkPlayerCollisions(player);
                 }
             }
-            
-            // Apply gravity
-            player.velocityY += this.config.gravity;
-            
-            // Apply velocity
-            player.y += player.velocityY;
-            
-            // Apply effects
-            this.updatePlayerEffects(player, deltaTime);
-            
-            // ===== MOVEMENT BASED ON PHASE =====
-            let speed = 100; // base speed
-            if (player.effects.speed && player.effects.speed.timeLeft > 0) {
-                speed *= 1.5;
-            }
-            
-            if (player.phase === 'outbound') {
-                // OUTBOUND: Bay về phía trước (tăng x)
-                player.x += speed * deltaTime;
-            } else if (player.phase === 'return') {
-                // RETURN: Bay về phía sau (giảm x)
-                player.x -= speed * deltaTime;
-            }
-            // FINISHED: Không di chuyển nữa
-            
-            // ===== CHECK BOUNDS =====
-            this.checkPlayerBounds(player);
-            
-            // Check phase transition
-            this.checkPhaseTransition(player);
-            
-            // ===== COLLISION DETECTION =====
-            this.checkCollisions(player);
-            
-            // ===== KIỂM TRA VA CHẠM GIỮA CÁC CHIM =====
-            if (player.canCollideWithPlayers) {
-                this.checkPlayerCollisions(player);
-            }
-        }
-    });
-}
+        });
+    }
     checkPlayerCollisions(currentPlayer) {
         if (!currentPlayer.alive || currentPlayer.invulnerable) return;
 
@@ -597,102 +613,76 @@ calculateFinalRankings() {
     }
 
     updatePlayerEffects(player, deltaTime) {
+        if (!player.effects) return;
+
+        // Update effect timers
         Object.keys(player.effects).forEach(effectType => {
             const effect = player.effects[effectType];
-            if (effect && effect.timeLeft > 0) {
+            if (effect.timeLeft > 0) {
                 effect.timeLeft -= deltaTime;
                 if (effect.timeLeft <= 0) {
                     delete player.effects[effectType];
+                    console.log(`Effect ${effectType} expired for player ${player.playerId}`);
                 }
             }
         });
     }
-checkPhaseTransition(player) {
-    const oldPhase = player.phase;
-    
-    if (player.phase === 'outbound' && player.x >= this.config.raceDistance) {
-        player.phase = 'return';
-        player.score += 1000; // Bonus for reaching end
-        
-        console.log(`🔄 ${player.playerId} reached end: outbound → return (x: ${player.x})`);
-        
-        // Broadcast message
-        this.broadcast({
-            type: 'gameMessage',
-            message: `🔄 ${player.playerId.slice(-4)} đã tới điểm cuối, đang quay về!`
-        });
-    }
-    
-    if (player.phase === 'return' && player.x <= 50) {
-        player.phase = 'finished';
-        player.score += 2000; // Bonus for finishing
-        
-        // ===== FIX: ASSIGN RANK PROPERLY =====
-        const finishedPlayersCount = this.playerStates.filter(p => p.phase === 'finished').length;
-        player.rank = finishedPlayersCount; // Người hoàn thành thứ mấy
-        
-        console.log(`🏁 ${player.playerId} FINISHED! Rank: ${player.rank} (x: ${player.x})`);
-        
-        // ===== BROADCAST MESSAGE THEO RANK =====
-        if (player.rank === 1) {
-            // Người đầu tiên về đích = Winner!
-            console.log(`🏆 WINNER: ${player.playerId} finished first!`);
-            
-            this.broadcast({
-                type: 'gameMessage',
-                message: `🏆 ${player.playerId.slice(-4)} đã chiến thắng! Về đích đầu tiên!`
-            });
-            
-            // ===== TRIGGER END GAME NGAY LẬP TỨC =====
-            setTimeout(() => {
-                console.log(`🎯 Triggering game end for winner: ${player.playerId}`);
-                this.triggerGameEnd(player.playerId);
-            }, 2000); // Delay 2s để mọi người thấy thông báo
-            
-        } else {
-            // Người về đích thứ 2, 3, ...
-            this.broadcast({
-                type: 'gameMessage',
-                message: `🏁 ${player.playerId.slice(-4)} về đích hạng ${player.rank}!`
-            });
-        }
-        
-        // ===== CẬP NHẬT LEADERBOARD =====
-        this.updateLeaderboard();
-        this.broadcastGameState();
-    }
-    
-    // Log phase changes
-    if (oldPhase !== player.phase) {
-        console.log(`📍 ${player.playerId} phase: ${oldPhase} → ${player.phase}`);
-    }
-}
 
-checkPlayerBounds(player) {
-    // Prevent going too far right in outbound phase
-    if (player.phase === 'outbound' && player.x > this.config.raceDistance + 100) {
-        player.x = this.config.raceDistance + 100;
-        player.phase = 'return';
-        console.log(`⚠️ ${player.playerId} forced into return phase due to bounds`);
+
+    checkPhaseTransition(player) {
+        // Outbound to return transition
+        if (player.phase === 'outbound' && player.x >= this.config.raceDistance) {
+            player.phase = 'return';
+            player.score += 500; // Bonus for reaching endpoint
+            console.log(`Player ${player.playerId} reached endpoint, returning`);
+        }
+
+        // Return to finished transition
+        if (player.phase === 'return' && player.x <= 50) {
+            player.phase = 'finished';
+            player.score += 1000; // Bonus for finishing
+
+            // Assign rank based on finish order
+            const finishedCount = this.playerStates.filter(p => p.phase === 'finished').length;
+            player.rank = finishedCount;
+
+            console.log(`🏆 Player ${player.playerId} finished! Rank: ${player.rank}`);
+
+            this.broadcast({
+                type: 'playerFinished',
+                playerId: player.playerId,
+                rank: player.rank
+            });
+
+            // Check if this is the winner (first to finish)
+            if (player.rank === 1) {
+                this.triggerGameEnd(player.playerId);
+            }
+        }
     }
-    
-    // Prevent going too far left in return phase
-    if (player.phase === 'return' && player.x < 0) {
-        player.x = 50;
-        player.phase = 'finished';
-        console.log(`⚠️ ${player.playerId} forced into finished phase due to bounds`);
+
+    checkPlayerBounds(player) {
+        // ===== VA CHẠM VỚI RANH GIỚI TRÊN/DƯỚI - LUÔN CHẾT =====
+        if (player.y <= 0 || player.y >= this.config.height - 30) {
+            console.log(`💥 Player ${player.playerId} hit boundary (y: ${player.y}) - killing player`);
+            this.killPlayer(player, 'boundary');
+            return; // Thoát ngay sau khi chết
+        }
+
+        // Prevent going too far right in outbound phase
+        if (player.phase === 'outbound' && player.x > this.config.raceDistance + 100) {
+            player.x = this.config.raceDistance + 100;
+            player.phase = 'return';
+            console.log(`⚠️ ${player.playerId} forced into return phase due to bounds`);
+        }
+
+        // Prevent going too far left in return phase
+        if (player.phase === 'return' && player.x < 0) {
+            player.x = 50;
+            player.phase = 'finished';
+            console.log(`⚠️ ${player.playerId} forced into finished phase due to bounds`);
+        }
     }
-    
-    // Keep Y within screen bounds
-    if (player.y < 0) {
-        player.y = 0;
-        player.velocityY = 0;
-    }
-    if (player.y > this.config.height) {
-        player.y = this.config.height;
-        player.velocityY = 0;
-    }
-}
 
     checkCollisions(player) {
         // ===== VA CHẠM VỚI ỐNG 3 PHẦN - LUÔN CHẾT =====
@@ -707,18 +697,12 @@ checkPlayerBounds(player) {
                 const hitBottomPipe = playerBottom > pipe.bottomY;
 
                 if (hitTopPipe || hitMiddlePipe || hitBottomPipe) {
-                    console.log(`Player ${player.playerId} hit pipe - invulnerable: ${player.invulnerable}`);
-                    this.killPlayer(player, 'pipe'); // Ống luôn giết, kể cả khi bất tử
+                    console.log(`💥 Player ${player.playerId} hit pipe - killing player`);
+                    this.killPlayer(player, 'pipe'); // SỬA: Gọi killPlayer thay vì chỉ log
                     return;
                 }
             }
         });
-
-        // Boundary collisions - cũng luôn chết
-        if (player.y <= 0 || player.y >= this.config.height) {
-            this.killPlayer(player, 'boundary');
-            return;
-        }
 
         // ===== VA CHẠM VỚI ITEMS - CHỈ KHI KHÔNG BẤT TỬ =====
         if (!player.invulnerable) {
@@ -746,6 +730,27 @@ checkPlayerBounds(player) {
             });
         }
     }
+    isColliding(player, pipe) {
+        const playerLeft = player.x - 15;
+        const playerRight = player.x + 15;
+        const playerTop = player.y - 15;
+        const playerBottom = player.y + 15;
+
+        const pipeLeft = pipe.x - pipe.width / 2;
+        const pipeRight = pipe.x + pipe.width / 2;
+
+        // Check if player is horizontally aligned with pipe
+        if (playerRight > pipeLeft && playerLeft < pipeRight) {
+            // Check collision with top or bottom pipe
+            if (playerTop < pipe.topHeight || playerBottom > pipe.bottomY) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+
 
     distance(obj1, obj2) {
         const dx = obj1.x - obj2.x;
@@ -966,75 +971,100 @@ checkPlayerBounds(player) {
         }));
     }
 
-   checkGameEnd() {
-    const alivePlayers = this.playerStates.filter(p => p.alive);
-    const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
-    const playersWithLives = this.playerStates.filter(p => p.lives > 0);
-    const deadPlayersWithLives = this.playerStates.filter(p => !p.alive && p.lives > 0);
-    
-    console.log(`🔍 Game End Check:`, {
-        total: this.playerStates.length,
-        alive: alivePlayers.length,
-        finished: finishedPlayers.length,
-        withLives: playersWithLives.length,
-        deadWithLives: deadPlayersWithLives.length,
-        currentPhase: this.gamePhase
-    });
-    
-    // ===== KHÔNG END NẾU CÒN NGƯỜI CHỜ RESPAWN =====
-    if (deadPlayersWithLives.length > 0) {
-        console.log(`⏳ Delaying game end - ${deadPlayersWithLives.length} players waiting to respawn`);
-        return;
-    }
-    
-    // ===== LOGIC MỚI: CHỈ END KHI TẤT CẢ HẾT MẠNG (vì winner đã được handle trong checkPhaseTransition) =====
-    if (playersWithLives.length === 0) {
-        console.log('💀 All players eliminated - ending game');
-        this.triggerGameEnd(null); // No winner, everyone died
-    }
-    
-    // Note: Khi có người finish → đã được handle trong checkPhaseTransition → triggerGameEnd
-    // Không cần check finishedPlayers ở đây nữa
-}
-triggerGameEnd(winnerId) {
-    console.log('🏆 Triggering game end with winner:', winnerId);
-    
-    // ===== ĐÁNH DẤU GAME ĐÃ KẾT THÚC =====
-    this.gamePhase = 'finished';
-    this.status = 'finished';
-    this.stopGameLoop();
-    
-    // Calculate final rankings
-    this.calculateFinalRankings();
-    
-    // Clear all respawn timers
-    this.playerStates.forEach(player => {
-        if (player.respawnTimer) {
-            clearTimeout(player.respawnTimer);
-            player.respawnTimer = null;
-            console.log(`🧹 Cleared respawn timer for ${player.playerId}`);
+
+    checkGameEnd() {
+        const alivePlayers = this.playerStates.filter(p => p.alive);
+        const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
+        const playersWithLives = this.playerStates.filter(p => p.lives > 0);
+        const deadPlayersWithLives = this.playerStates.filter(p => !p.alive && p.lives > 0);
+
+        console.log(`🔍 Game End Check:`, {
+            total: this.playerStates.length,
+            alive: alivePlayers.length,
+            finished: finishedPlayers.length,
+            withLives: playersWithLives.length,
+            deadWithLives: deadPlayersWithLives.length,
+            currentPhase: this.gamePhase
+        });
+
+        // ===== QUAN TRỌNG: CHỈ LOG, KHÔNG BAO GIỜ RETURN! =====
+        if (deadPlayersWithLives.length > 0) {
+            console.log(`⏳ ${deadPlayersWithLives.length} players waiting to respawn - GAME CONTINUES FOR ALIVE PLAYERS!`);
+            // ❌ XÓA DÒNG return; - GAME PHẢI TIẾP TỤC!
         }
-    });
-    
-    // ===== BROADCAST GAME ENDED VỚI THÔNG TIN CHI TIẾT =====
-    this.broadcast({
-        type: 'gameEnded',
-        winner: winnerId,
-        rankings: this.leaderboard,
-        message: winnerId ? 
-            `🏆 ${winnerId.slice(-4)} chiến thắng toàn game!` : 
-            '🏁 Game kết thúc - không có người chiến thắng!'
-    });
-    
-    // ===== BROADCAST GAME STATE MỚI =====
-    this.broadcastGameState();
-    
-    // ===== AUTO RESET GAME SAU 10 GIÂY =====
-    setTimeout(() => {
-        console.log('🔄 Auto resetting game after 10 seconds');
-        this.resetGame();
-    }, 10000);
-}
+
+        // ===== CHỈ END GAME KHI TẤT CẢ PLAYERS HẾT MẠNG =====
+        if (playersWithLives.length === 0) {
+            console.log('💀 All players eliminated - ending game');
+            this.triggerGameEnd(null);
+            return; // CHỈ return ở đây thôi!
+        }
+
+        // Note: Winner được handle trong checkPhaseTransition
+    }
+
+
+
+
+    checkRespawnCondition() {
+        // Chỉ kiểm tra điều kiện respawn, KHÔNG ảnh hưởng đến game loop chính
+        if (this.gamePhase === 'playing' || this.gamePhase === 'finished') {
+            const alivePlayers = this.playerStates.filter(p => p.alive);
+            const deadPlayers = this.playerStates.filter(p => !p.alive);
+
+            // Nếu có người chết, cho phép họ trigger respawn
+            if (deadPlayers.length > 0) {
+                // Kiểm tra nếu tất cả người chơi đã sẵn sàng restart
+                const allPlayersReady = this.players.every(player =>
+                    this.playersReady[player.playerId] === true
+                );
+
+                // Auto-start nếu không có người chơi hoặc tất cả đã sẵn sàng
+                if (this.players.length === 0 || allPlayersReady) {
+                    this.respawnGame();
+                }
+            }
+        }
+    }
+    triggerGameEnd(winnerId) {
+        console.log('🏆 Triggering game end with winner:', winnerId);
+
+        // ===== ĐÁNH DẤU GAME ĐÃ KẾT THÚC =====
+        this.gamePhase = 'finished';
+        this.status = 'finished';
+        this.stopGameLoop();
+
+        // Calculate final rankings
+        this.calculateFinalRankings();
+
+        // Clear all respawn timers
+        this.playerStates.forEach(player => {
+            if (player.respawnTimer) {
+                clearTimeout(player.respawnTimer);
+                player.respawnTimer = null;
+                console.log(`🧹 Cleared respawn timer for ${player.playerId}`);
+            }
+        });
+
+        // ===== BROADCAST GAME ENDED VỚI THÔNG TIN CHI TIẾT =====
+        this.broadcast({
+            type: 'gameEnded',
+            winner: winnerId,
+            rankings: this.leaderboard,
+            message: winnerId ?
+                `🏆 ${winnerId.slice(-4)} chiến thắng toàn game!` :
+                '🏁 Game kết thúc - không có người chiến thắng!'
+        });
+
+        // ===== BROADCAST GAME STATE MỚI =====
+        this.broadcastGameState();
+
+        // ===== AUTO RESET GAME SAU 10 GIÂY =====
+        setTimeout(() => {
+            console.log('🔄 Auto resetting game after 10 seconds');
+            this.resetGame();
+        }, 10000);
+    }
     endRound() {
         console.log('🏁 Round finished, preparing for next round...');
 
@@ -1068,61 +1098,61 @@ triggerGameEnd(winnerId) {
         this.broadcastGameState();
     }
 
-endGame() {
-    console.log('🏁 Ending game completely...');
-    
-    // ===== CLEAR TẤT CẢ RESPAWN TIMERS =====
-    this.playerStates.forEach(player => {
-        if (player.respawnTimer) {
-            clearTimeout(player.respawnTimer);
-            player.respawnTimer = null;
-            console.log(`🧹 Cleared respawn timer for ${player.playerId}`);
+    endGame() {
+        console.log('🏁 Ending game completely...');
+
+        // ===== CLEAR TẤT CẢ RESPAWN TIMERS =====
+        this.playerStates.forEach(player => {
+            if (player.respawnTimer) {
+                clearTimeout(player.respawnTimer);
+                player.respawnTimer = null;
+                console.log(`🧹 Cleared respawn timer for ${player.playerId}`);
+            }
+        });
+
+        this.gamePhase = 'finished';
+        this.status = 'finished';
+        this.stopGameLoop();
+
+        // Calculate final rankings
+        this.calculateFinalRankings();
+
+        // ===== TÌM WINNER DỰA TRÊN RANK =====
+        const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
+        let gameWinner = null;
+
+        if (finishedPlayers.length > 0) {
+            // Winner is the player with rank = 1
+            gameWinner = finishedPlayers.find(p => p.rank === 1);
+
+            if (!gameWinner) {
+                // Fallback: first to finish (lowest rank)
+                gameWinner = finishedPlayers.reduce((best, current) =>
+                    current.rank < best.rank ? current : best
+                );
+            }
         }
-    });
-    
-    this.gamePhase = 'finished';
-    this.status = 'finished';
-    this.stopGameLoop();
-    
-    // Calculate final rankings
-    this.calculateFinalRankings();
-    
-    // ===== TÌM WINNER DỰA TRÊN RANK =====
-    const finishedPlayers = this.playerStates.filter(p => p.phase === 'finished');
-    let gameWinner = null;
-    
-    if (finishedPlayers.length > 0) {
-        // Winner is the player with rank = 1
-        gameWinner = finishedPlayers.find(p => p.rank === 1);
-        
-        if (!gameWinner) {
-            // Fallback: first to finish (lowest rank)
-            gameWinner = finishedPlayers.reduce((best, current) => 
-                current.rank < best.rank ? current : best
-            );
-        }
+
+        console.log(`🎯 Final winner determined: ${gameWinner?.playerId || 'None'}`);
+
+        // ===== BROADCAST FINAL RESULTS =====
+        this.broadcast({
+            type: 'gameEnded',
+            winner: gameWinner ? gameWinner.playerId : null,
+            rankings: this.leaderboard,
+            message: gameWinner ?
+                `🏆 ${gameWinner.playerId.slice(-4)} chiến thắng toàn game!` :
+                '🏁 Game kết thúc - tất cả người chơi đã bị loại!'
+        });
+
+        this.broadcastGameState();
+
+        // Auto reset sau 8 giây
+        setTimeout(() => {
+            console.log('🔄 Auto resetting after game end');
+            this.resetGame();
+        }, 8000);
     }
-    
-    console.log(`🎯 Final winner determined: ${gameWinner?.playerId || 'None'}`);
-    
-    // ===== BROADCAST FINAL RESULTS =====
-    this.broadcast({
-        type: 'gameEnded',
-        winner: gameWinner ? gameWinner.playerId : null,
-        rankings: this.leaderboard,
-        message: gameWinner ? 
-            `🏆 ${gameWinner.playerId.slice(-4)} chiến thắng toàn game!` : 
-            '🏁 Game kết thúc - tất cả người chơi đã bị loại!'
-    });
-    
-    this.broadcastGameState();
-    
-    // Auto reset sau 8 giây
-    setTimeout(() => {
-        console.log('🔄 Auto resetting after game end');
-        this.resetGame();
-    }, 8000);
-}
     handleGameAction(playerId, action, data) {
         const player = this.playerStates.find(p => p.playerId === playerId);
         if (!player) return { error: 'Player not found' };
@@ -1130,18 +1160,15 @@ endGame() {
         switch (action) {
             case 'flap':
                 if (player.alive && this.gamePhase === 'playing') {
-                    player.velocityY = this.config.flapStrength;
+                    player.velocityY = this.config.flapStrength || -8;
+                    console.log(`🐦 Player ${playerId} flapped`);
                 }
                 break;
 
             case 'useItem':
-                this.usePlayerItem(player, data.itemType);
-                break;
-
-            // ===== THÊM CASE MỚI CHO FORCE RESPAWN =====
-            case 'forceRespawn':
-                console.log(`🔧 Force respawn requested by ${playerId}`);
-                this.forceRespawnPlayer(playerId);
+                if (player.alive && data.itemType && player.items.includes(data.itemType)) {
+                    this.useItem(player, data.itemType, data.targetX, data.targetY);
+                }
                 break;
 
             default:
@@ -1160,6 +1187,50 @@ endGame() {
         return { success: true };
     }
 
+    useItem(player, itemType, targetX, targetY) {
+        // Remove item from inventory
+        const itemIndex = player.items.indexOf(itemType);
+        if (itemIndex !== -1) {
+            player.items.splice(itemIndex, 1);
+        }
+
+        switch (itemType) {
+            case 'speed':
+                player.effects.speed = { timeLeft: 3.0 };
+                break;
+
+            case 'shield':
+                player.effects.shield = { timeLeft: 5.0 };
+                break;
+
+            case 'bomb':
+                // Create explosion projectile
+                this.projectiles.push({
+                    x: targetX || player.x + 50,
+                    y: targetY || player.y,
+                    vx: 200,
+                    vy: 0,
+                    type: 'bomb',
+                    playerId: player.playerId,
+                    timeLeft: 2.0,
+                    hit: false
+                });
+                break;
+
+            case 'trap':
+                // Create trap at target location
+                this.items.push({
+                    x: targetX || player.x + 100,
+                    y: targetY || player.y,
+                    type: 'trap_deployed',
+                    collected: false,
+                    playerId: player.playerId
+                });
+                break;
+        }
+
+        console.log(`🎮 Player ${player.playerId} used item: ${itemType}`);
+    }
     handleUseItem(player, itemType) {
         const itemIndex = player.items.indexOf(itemType);
         if (itemIndex === -1) return { error: 'Item not found' };
@@ -1225,51 +1296,51 @@ endGame() {
         return { success: true };
     }
 
-   resetGame() {
-    console.log('🔄 Resetting game...');
-    
-    // Reset ready status
-    this.playersReady = {};
-    this.status = 'setup';
-    this.gamePhase = 'waiting';
-    this.gameSettings = {};
-    
-    // Reset players position và stats
-    this.playerStates.forEach((player, index) => {
-        const totalPlayers = this.playerStates.length;
-        const startY = this.config.height / 2;
-        const spacing = 60;
-        
-        // Căn giữa tất cả các con chim
-        const totalHeight = (totalPlayers - 1) * spacing;
-        const firstBirdY = startY - (totalHeight / 2);
-        
-        player.x = 50;
-        player.y = firstBirdY + (index * spacing);
-        player.velocityY = 0;
-        player.score = 0;
-        player.lives = 3;
-        player.phase = 'outbound';
-        player.alive = true;
-        player.effects = {};
-        player.items = [];
-        player.rank = 0; // ===== RESET RANK =====
-        
-        // Clear respawn timer
-        if (player.respawnTimer) {
-            clearTimeout(player.respawnTimer);
-            player.respawnTimer = null;
-        }
-    });
-    
-    // Reset leaderboard
-    this.leaderboard = [];
-    
-    this.stopGameLoop();
-    this.broadcastGameState();
-    
-    console.log('✅ Game reset completed');
-}
+    resetGame() {
+        console.log('🔄 Resetting game...');
+
+        // Reset ready status
+        this.playersReady = {};
+        this.status = 'setup';
+        this.gamePhase = 'waiting';
+        this.gameSettings = {};
+
+        // Reset players position và stats
+        this.playerStates.forEach((player, index) => {
+            const totalPlayers = this.playerStates.length;
+            const startY = this.config.height / 2;
+            const spacing = 60;
+
+            // Căn giữa tất cả các con chim
+            const totalHeight = (totalPlayers - 1) * spacing;
+            const firstBirdY = startY - (totalHeight / 2);
+
+            player.x = 50;
+            player.y = firstBirdY + (index * spacing);
+            player.velocityY = 0;
+            player.score = 0;
+            player.lives = 3;
+            player.phase = 'outbound';
+            player.alive = true;
+            player.effects = {};
+            player.items = [];
+            player.rank = 0; // ===== RESET RANK =====
+
+            // Clear respawn timer
+            if (player.respawnTimer) {
+                clearTimeout(player.respawnTimer);
+                player.respawnTimer = null;
+            }
+        });
+
+        // Reset leaderboard
+        this.leaderboard = [];
+
+        this.stopGameLoop();
+        this.broadcastGameState();
+
+        console.log('✅ Game reset completed');
+    }
     startNewRound() {
         console.log('🔄 Starting new round...');
 
