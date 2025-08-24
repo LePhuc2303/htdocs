@@ -20,6 +20,31 @@ constructor() {
   this.setupCanvas();
   this.setupControls();
   this.startRenderLoop();
+  setTimeout(() => {
+    if (this.gameState.gamePhase === 'playing') {
+      console.log('🔥 CREATING FAKE ITEMS FOR TESTING...');
+      this.gameState.items = [
+        {
+          id: 'fake1',
+          type: 'trap',
+          x: this.cameraX + 200, // Relative to camera
+          y: 200,
+          collected: false,
+          width: 20,
+          height: 20
+        },
+        {
+          id: 'fake2', 
+          type: 'bomb',
+          x: this.cameraX + 400,
+          y: 300,
+          collected: false,
+          width: 20,
+          height: 20
+        }
+      ];
+    }
+  }, 3000);
 }
 
     init() {
@@ -824,8 +849,14 @@ render() {
 
 // Hiển thị menu items
 showItemMenu() {
-  if (!this.gameState.myPlayer || !this.gameState.myPlayer.alive) return;
-  if (this.gameState.gamePhase !== 'playing') return;
+  if (!this.gameState.myPlayer || !this.gameState.myPlayer.alive) {
+    console.log('❌ Player not alive, cannot show item menu');
+    return;
+  }
+  
+  // Xóa menu cũ nếu có
+  const oldMenu = document.querySelector('.item-menu');
+  if (oldMenu) oldMenu.remove();
   
   const playerItems = this.gameState.playerItems[this.gameState.myPlayer.playerId] || [];
   
@@ -833,10 +864,6 @@ showItemMenu() {
     this.showMessage('Không có item nào!');
     return;
   }
-  
-  // Xóa menu cũ nếu có
-  const oldMenu = document.querySelector('.item-menu');
-  if (oldMenu) oldMenu.remove();
   
   // Tạo menu
   const menu = document.createElement('div');
@@ -934,6 +961,7 @@ useItemQuick(itemType) {
 }
 
 // Sử dụng item
+
 useItem(itemType) {
   this.send({
     type: 'useItem',
@@ -942,61 +970,92 @@ useItem(itemType) {
   });
 }
 
+
+showMessage(message) {
+  console.log('📢', message);
+  
+  // Tạo toast message
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    z-index: 10000;
+    border: 1px solid #FFD700;
+  `;
+  toast.textContent = message;
+  
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    if (document.body.contains(toast)) {
+      document.body.removeChild(toast);
+    }
+  }, 3000);
+}
 // Vẽ items
+
 drawItems() {
   if (!this.gameState.items) {
     console.log('❌ No items in gameState');
     return;
   }
   
-  console.log(`🎨 Drawing ${this.gameState.items.length} items`);
+  console.log(`🎨 DRAWING ${this.gameState.items.length} ITEMS`);
   
   this.gameState.items.forEach((item, index) => {
-    if (item.collected) return;
-    
-    console.log(`Drawing item ${index}: ${item.type} at (${item.x}, ${item.y})`);
-    
-    this.ctx.save();
-    
-    // Hiệu ứng lấp lánh
-    const time = Date.now() * 0.005;
-    const glow = Math.sin(time) * 0.3 + 0.7;
-    
-    this.ctx.globalAlpha = glow;
-    
-    // Vẽ background cho item
-    this.ctx.fillStyle = 'rgba(255, 215, 0, 0.5)';
-    this.ctx.fillRect(item.x - 12, item.y - 12, 24, 24);
-    
-    // Border
-    this.ctx.strokeStyle = '#FFD700';
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(item.x - 12, item.y - 12, 24, 24);
-    
-    // Vẽ icon theo type
-    this.ctx.fillStyle = '#FFFFFF';
-    this.ctx.font = '20px Arial';
-    this.ctx.textAlign = 'center';
-    
-    switch (item.type) {
-      case 'trap':
-        this.ctx.fillText('🪤', item.x, item.y + 7);
-        break;
-      case 'bomb':
-        this.ctx.fillText('💣', item.x, item.y + 7);
-        break;
-      case 'lightning':
-        this.ctx.fillText('⚡', item.x, item.y + 7);
-        break;
-      case 'armor':
-        this.ctx.fillText('🛡️', item.x, item.y + 7);
-        break;
-      default:
-        this.ctx.fillText('❓', item.x, item.y + 7);
+    if (item.collected) {
+      console.log(`⚠️ Item ${index} already collected, skipping`);
+      return;
     }
     
+    console.log(`🎨 Drawing item ${index}: ${item.type} at world(${item.x}, ${item.y}) screen(${item.x - this.cameraX}, ${item.y})`);
+    
+    // 🔥 VISIBLE TEST - Large colored squares
+    this.ctx.save();
+    
+    // Big colored background based on item type
+    let color = '#FF0000'; // Default red
+    switch (item.type) {
+      case 'trap': color = '#FF0000'; break;    // Red
+      case 'bomb': color = '#FF6600'; break;    // Orange  
+      case 'lightning': color = '#FFFF00'; break; // Yellow
+      case 'armor': color = '#00FF00'; break;   // Green
+    }
+    
+    // Draw large square for visibility
+    this.ctx.fillStyle = color;
+    this.ctx.fillRect(item.x - 20, item.y - 20, 40, 40);
+    
+    // White border
+    this.ctx.strokeStyle = '#FFFFFF';
+    this.ctx.lineWidth = 3;
+    this.ctx.strokeRect(item.x - 20, item.y - 20, 40, 40);
+    
+    // Black text label
+    this.ctx.fillStyle = '#000000';
+    this.ctx.font = 'bold 12px Arial';
+    this.ctx.textAlign = 'center';
+    this.ctx.textBaseline = 'middle';
+    
+    let text = item.type.toUpperCase();
+    this.ctx.fillText(text, item.x, item.y);
+    
+    // White outline for text
+    this.ctx.strokeStyle = '#FFFFFF';
+    this.ctx.lineWidth = 1;
+    this.ctx.strokeText(text, item.x, item.y);
+    
     this.ctx.restore();
+    
+    console.log(`✅ Drew ${item.type} item ${index}`);
   });
+  
+  console.log(`🎨 FINISHED DRAWING ${this.gameState.items.length} ITEMS`);
 }
 
 // Vẽ active effects
@@ -1073,7 +1132,7 @@ drawPlayerInventory() {
   this.ctx.fillStyle = '#FFD700';
   this.ctx.font = 'bold 14px Arial';
   this.ctx.textAlign = 'left';
-  this.ctx.fillText('Items:', startX, startY + 15);
+  this.ctx.fillText('Items (Ctrl/Right-click):', startX, startY + 15);
   
   // Items count
   const itemCounts = {};
@@ -1099,7 +1158,35 @@ drawPlayerInventory() {
   this.ctx.restore();
 }
 
-
+startCountdown() {
+  if (this.gamePhase !== 'waiting') return;
+  
+  console.log(`⏰ Starting countdown for game ${this.gameId}`);
+  
+  this.gamePhase = 'countdown';
+  this.countdownTime = 3;
+  
+  // Reset player states
+  this.resetPlayerStates();
+  
+  // Generate obstacles
+  this.generateObstacles();
+  
+  // ADD: Generate items after obstacles
+  this.generateItems();
+  
+  this.broadcast({
+    type: 'gameMessage',
+    message: '🏁 Trận đấu sắp bắt đầu! Sẵn sàng!'
+  });
+  
+  this.broadcast({
+    type: 'countdownStarted',
+    countdown: Math.ceil(this.countdownTime)
+  });
+  
+  this.startGameLoop();
+}
 
 
 
@@ -1264,7 +1351,6 @@ draw() {
   this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   
   if (gamePhase === 'waiting') {
-    console.log('Drawing waiting screen');
     this.drawWaitingScreen();
     return;
   }
@@ -1275,22 +1361,20 @@ draw() {
     this.ctx.save();
     this.ctx.translate(-this.cameraX, 0);
     
-    // Draw a test rectangle to see camera effect
-    this.ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
-    this.ctx.fillRect(0, 0, 100, 100);
-    
+    // Draw in correct order
     this.drawBackground();
     this.drawObstacles();
     
-    // DEBUG: Draw items với logs
-    console.log(`🎁 Drawing ${this.gameState.items?.length || 0} items`);
+    // 🔥 ITEMS BEFORE PLAYERS (important!)
     if (this.gameState.items && this.gameState.items.length > 0) {
+      console.log(`🎯 CALLING drawItems() with ${this.gameState.items.length} items`);
       this.drawItems();
+    } else {
+      console.log(`🎯 NO ITEMS TO DRAW`);
     }
     
-    // DEBUG: Draw effects
+    // Effects
     if (this.gameState.activeEffects && this.gameState.activeEffects.length > 0) {
-      console.log(`⚡ Drawing ${this.gameState.activeEffects.length} effects`);
       this.drawActiveEffects();
     }
     
@@ -1300,23 +1384,17 @@ draw() {
     
     this.ctx.restore();
     
-    // Draw UI
+    // UI
     this.drawGameUI();
     this.drawCountdownOverlay();
     
-    // DEBUG: Draw inventory nếu có items
+    // Inventory
     if (this.gameState.playerItems && this.gameState.myPlayer) {
       const playerItems = this.gameState.playerItems[this.gameState.myPlayer.playerId];
       if (playerItems && playerItems.length > 0) {
-        console.log(`🎒 Player has ${playerItems.length} items`);
         this.drawPlayerInventory();
       }
     }
-    
-    console.log('Render complete');
-  } else {
-    console.log('Unknown or invalid game phase:', gamePhase);
-    this.drawWaitingScreen();
   }
 }
 

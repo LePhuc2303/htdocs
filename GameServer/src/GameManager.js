@@ -108,6 +108,17 @@ class GameManager {
     console.log(`📝 Handling message type: ${data.type} from player: ${playerId}`);
 
     switch (data.type) {
+       case 'gameState':
+      // 🔥 DEBUG ITEMS
+      console.log(`📥 GameState - Items: ${data.items?.length || 0}, Obstacles: ${data.obstacles?.length || 0}`);
+      if (data.items && data.items.length > 0) {
+        console.log(`📥 Items received:`, data.items.map(i => `${i.type}@(${i.x},${i.y})`));
+      } else {
+        console.log('📥 ❌ NO ITEMS in gameState');
+      }
+      
+      this.gameState = { ...this.gameState, ...data };
+      break;
       case 'createGame': {
   try {
     const gameType = data.gameType || 'caro';
@@ -131,6 +142,7 @@ class GameManager {
         playerId: playerId // THÊM player ID vào response
       }
     }));
+
   } catch (error) {
     console.error(`❌ Error creating game:`, error);
     ws.send(JSON.stringify({ type: 'error', message: error.message }));

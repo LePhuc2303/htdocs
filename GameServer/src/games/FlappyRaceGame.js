@@ -37,7 +37,61 @@ class FlappyRaceGame extends BaseGame {
     this.items = []; // Danh sách items trong game
   this.activeEffects = []; // Hiệu ứng đang hoạt động (bẫy, bom, sét)
   this.playerItems = {}; // Items mà player đang cầm
+
+   setTimeout(() => {
+    this.forceCreateTestItems();
+  }, 2000);
   }
+
+
+
+  forceCreateTestItems() {
+  console.log('🔥 FORCE CREATING TEST ITEMS...');
+  
+  this.items = [
+    {
+      id: 'test_item_1',
+      type: 'trap',
+      x: 300,
+      y: 200,
+      collected: false,
+      width: 20,
+      height: 20
+    },
+    {
+      id: 'test_item_2',
+      type: 'bomb',
+      x: 500,
+      y: 300,
+      collected: false,
+      width: 20,
+      height: 20
+    },
+    {
+      id: 'test_item_3',
+      type: 'lightning',
+      x: 700,
+      y: 150,
+      collected: false,
+      width: 20,
+      height: 20
+    },
+    {
+      id: 'test_item_4',
+      type: 'armor',
+      x: 900,
+      y: 400,
+      collected: false,
+      width: 20,
+      height: 20
+    }
+  ];
+  
+  console.log(`🔥 FORCE CREATED ${this.items.length} TEST ITEMS:`, this.items);
+  
+  // Broadcast ngay lập tức
+  this.broadcastGameState();
+}
 generateItems() {
   this.items = [];
   
@@ -83,6 +137,7 @@ groupObstaclesByX() {
   return groups;
 }
 findGaps(obstacles) {
+    
   if (obstacles.length === 0) return [];
   
   // Sắp xếp obstacles theo y
@@ -526,32 +581,48 @@ playerJump(playerId) {
 startCountdown() {
   if (this.gamePhase !== 'waiting') return;
   
+  console.log(`⏰ STARTING COUNTDOWN - DEBUG MODE`);
+  
   this.gamePhase = 'countdown';
-  this.countdownTime = 5;
+  this.countdownTime = 3;
   
-  // Generate obstacles
-  this.generateObstacles();
-  
-  // QUAN TRỌNG: Reset players về start position với direction = 1
+  // Reset players
   this.playerStates.forEach(player => {
-    player.x = this.config.startLine; // 50
-    player.y = this.config.height / 2; // 300
+    player.x = this.config.startLine;
+    player.y = this.config.height / 2;
     player.velocityY = 0;
     player.alive = true;
     player.distance = 0;
     player.finished = false;
     player.rank = 0;
     player.turnedAround = false;
-    player.direction = 1; // QUAN TRỌNG: Đảm bảo direction = 1
-    
-    console.log(`Reset player ${player.playerId.slice(-4)} to position: x=${player.x}, y=${player.y}, direction=${player.direction}`);
+    player.direction = 1;
   });
   
-  console.log(`⏱️ Starting countdown for game ${this.gameId}`);
+  // Generate obstacles
+  console.log('🧱 GENERATING OBSTACLES...');
+  this.generateObstacles();
+  console.log(`🧱 Generated ${this.obstacles.length} obstacles`);
+  
+  // 🔥 FORCE DEBUG ITEMS
+  console.log('🎁 CALLING generateItems()...');
+  this.generateItems();
+  console.log(`🎁 After generateItems(): ${this.items.length} items`);
+  
+  // If no items generated, create test items
+  if (this.items.length === 0) {
+    console.log('❌ No items generated, creating test items...');
+    this.forceCreateTestItems();
+  }
   
   this.broadcast({
     type: 'gameMessage',
-    message: '⏱️ Game bắt đầu sau 5 giây!'
+    message: '🏁 Trận đấu sắp bắt đầu!'
+  });
+  
+  this.broadcast({
+    type: 'countdownStarted',
+    countdown: Math.ceil(this.countdownTime)
   });
   
   this.startGameLoop();
@@ -654,11 +725,6 @@ updateCountdown(deltaTime) {
     player.x += this.config.speed * player.direction;
     player.distance = Math.abs(player.x - this.config.startLine);
     
-    // DEBUG LOG - chỉ log khi x thay đổi
-    if (Math.abs(player.x - oldX) > 0.1) {
-      console.log(`Player ${player.playerId.slice(-4)} moved: ${oldX.toFixed(0)} -> ${player.x.toFixed(0)} (direction: ${player.direction})`);
-    }
-    
     // Check bounds
     if (player.y < 0) {
       player.y = 0;
@@ -674,6 +740,12 @@ updateCountdown(deltaTime) {
     if (!player.invulnerable) {
       this.checkObstacleCollision(player);
     }
+    
+    // ADD: Check item collision
+    this.checkItemCollision(player);
+    
+    // Check trap collision
+    this.checkTrapCollision(player);
     
     // THAY ĐỔI: Check race progress thay vì finish line
     this.checkRaceProgress(player);
@@ -1052,40 +1124,98 @@ handlePlayerReady(playerId, settings = {}) {
 
   // ===== BROADCAST =====
   broadcastGameState() {
-  // Đảm bảo luôn có players data
-  const playersData = this.playerStates.map(p => ({
-    playerId: p.playerId,
-    x: p.x,
-    y: p.y,
-    velocityY: p.velocityY,
-    alive: p.alive,
-    lives: p.lives,
-    distance: p.distance,
-    finished: p.finished,
-    rank: p.rank,
-    invulnerable: p.invulnerable
-  }));
-
-  const gameState = {
+  if (this.players.size === 0) return;
+  
+  this.broadcast({
     type: 'gameState',
-    gameId: this.gameId,
-    gameType: this.gameType,
-    status: this.status,
     gamePhase: this.gamePhase,
-    countdownTime: Math.max(0, Math.ceil(this.countdownTime)),
-    playerCount: this.playerStates.length,
-    maxPlayers: this.maxPlayers,
-    config: this.config,
-    players: playersData, // Đảm bảo luôn gửi players
+    countdownTime: this.gamePhase === 'countdown' ? Math.ceil(this.countdownTime) : null,
+    players: this.playerStates,
     obstacles: this.obstacles,
-    powerups: this.powerups || [], // Đảm bảo luôn có array
-    playersReady: this.playersReady,
-    roomOwner: this.roomOwner
-  };
+    items: this.items,
+    activeEffects: this.activeEffects,
+    playerItems: this.playerItems,
+    config: this.config
+  });
+}
+// Complete setupControls method with all features
+setupControls() {
+  let spacePressed = false; // Tránh spam space
   
-  console.log(`Broadcasting game state - Phase: ${this.gamePhase}, Players: ${playersData.length}, Obstacles: ${this.obstacles.length}`); // Debug log
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      
+      // Chỉ xử lý khi space chưa được nhấn (tránh key repeat)
+      if (!spacePressed) {
+        spacePressed = true;
+        this.jump();
+      }
+    }
+    
+    // THÊM: Ctrl và chuột phải để sử dụng items
+    if (e.code === 'ControlLeft' || e.code === 'ControlRight') {
+      e.preventDefault();
+      this.showItemMenu();
+    }
+    
+    // Phím số để sử dụng item nhanh
+    if (e.code === 'Digit1') {
+      e.preventDefault();
+      this.useItemQuick('trap');
+    }
+    if (e.code === 'Digit2') {
+      e.preventDefault();
+      this.useItemQuick('bomb');
+    }
+    if (e.code === 'Digit3') {
+      e.preventDefault();
+      this.useItemQuick('lightning');
+    }
+    if (e.code === 'Digit4') {
+      e.preventDefault();
+      this.useItemQuick('armor');
+    }
+    
+    // ESC để đóng menu item
+    if (e.code === 'Escape') {
+      const menu = document.querySelector('.item-menu');
+      if (menu && document.body.contains(menu)) {
+        document.body.removeChild(menu);
+      }
+    }
+  });
   
-  this.broadcast(gameState);
+  document.addEventListener('keyup', (e) => {
+    if (e.code === 'Space') {
+      spacePressed = false;
+    }
+  });
+  
+  // Mouse/touch controls
+  this.canvas.addEventListener('click', (e) => {
+    e.preventDefault();
+    this.jump();
+  });
+  
+  // Chuột phải để mở item menu
+  this.canvas.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    this.showItemMenu();
+  });
+  
+  this.canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    this.jump();
+  });
+  
+  // THIẾU: Jump button - QUAN TRỌNG!
+  const jumpBtn = document.getElementById('jumpBtn');
+  if (jumpBtn) {
+    jumpBtn.addEventListener('click', () => {
+      this.jump();
+    });
+  }
 }
   // ===== CLEANUP =====
   destroy() {
