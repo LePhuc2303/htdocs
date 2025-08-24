@@ -95,36 +95,54 @@ class FlappyRaceGame extends BaseGame {
 generateItems() {
   this.items = [];
   
-  // Tạo item ở mỗi obstacle gap
+  console.log(`🎁 GENERATING ITEMS for ${this.obstacles.length} obstacles`);
+  
+  // Nhóm obstacles theo vị trí X
   const obstacleGroups = this.groupObstaclesByX();
+  
+  console.log(`📊 Found ${Object.keys(obstacleGroups).length} obstacle columns`);
   
   Object.keys(obstacleGroups).forEach(xPos => {
     const x = parseInt(xPos);
     const obstacles = obstacleGroups[x];
     
-    // Tìm gap giữa các obstacles
-    const gaps = this.findGaps(obstacles);
+    console.log(`\n📍 Processing X=${x} with ${obstacles.length} obstacles`);
     
-    gaps.forEach(gap => {
-      if (gap.size > 60) { // Chỉ tạo item ở gap đủ rộng
-        // Random 1 trong 4 loại item
-        const itemTypes = ['trap', 'bomb', 'lightning', 'armor'];
-        const randomType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
-        
-        this.items.push({
-          id: `item_${x}_${gap.center}`,
-          type: randomType,
-          x: x + 20, // Ở giữa obstacle
-          y: gap.center,
-          collected: false,
-          width: 20,
-          height: 20
-        });
-      }
+    // Tìm CHÍNH XÁC các gaps giữa obstacles
+    const gaps = this.findAllGaps(obstacles);
+    
+    console.log(`   Found ${gaps.length} gaps:`, gaps.map(g => `${g.start}-${g.end} (${g.size}px)`));
+    
+    // TẠO ITEM CHO MỖI GAP (bỏ random, bỏ điều kiện kích thước)
+    gaps.forEach((gap, gapIndex) => {
+      // Random 1 trong 4 loại item
+      const itemTypes = ['trap', 'bomb', 'lightning', 'armor'];
+      const randomType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+      
+      // Đặt item ở CHÍNH GIỮA gap
+      const itemX = x + 20; // Giữa obstacle (obstacle width = 40px)
+      const itemY = gap.center;
+      
+      this.items.push({
+        id: `item_${x}_${gapIndex}`,
+        type: randomType,
+        x: itemX,
+        y: itemY,
+        collected: false,
+        width: 30,
+        height: 30
+      });
+      
+      console.log(`   ✅ Created ${randomType} item at (${itemX}, ${itemY}) in gap ${gapIndex}`);
     });
   });
   
-  console.log(`🎁 Generated ${this.items.length} items`);
+  console.log(`\n🎁 TOTAL GENERATED: ${this.items.length} items`);
+  
+  // Debug: In ra tất cả items
+  this.items.forEach((item, index) => {
+    console.log(`Item ${index}: ${item.type} at (${item.x}, ${item.y})`);
+  });
 }
 groupObstaclesByX() {
   const groups = {};
@@ -136,34 +154,91 @@ groupObstaclesByX() {
   });
   return groups;
 }
-findGaps(obstacles) {
-    
-  if (obstacles.length === 0) return [];
+debugObstacleStructure() {
+  console.log('\n🔍 DEBUGGING OBSTACLE STRUCTURE:');
+  console.log(`Canvas height: ${this.config.height}`);
   
-  // Sắp xếp obstacles theo y
-  obstacles.sort((a, b) => a.y - b.y);
+  const groups = this.groupObstaclesByX();
+  Object.keys(groups).forEach(x => {
+    const obstacles = groups[x].sort((a, b) => a.y - b.y);
+    console.log(`\nX=${x}:`);
+    obstacles.forEach((obs, i) => {
+      console.log(`  Obstacle ${i}: Y=${obs.y} to ${obs.y + obs.height} (height=${obs.height})`);
+    });
+    
+    // Tính gaps
+    const gaps = this.findAllGaps(obstacles);
+    console.log(`  Gaps found: ${gaps.length}`);
+    gaps.forEach((gap, i) => {
+      console.log(`    Gap ${i}: Y=${gap.start} to ${gap.end} (size=${gap.size}, center=${gap.center})`);
+    });
+  });
+}
+findAllGaps(obstacles) {
+  if (obstacles.length === 0) {
+    // Nếu không có obstacle, toàn bộ là 1 gap lớn
+    return [{
+      start: 20,
+      end: this.config.height - 20,
+      center: this.config.height / 2,
+      size: this.config.height - 40
+    }];
+  }
+  
+  // Sắp xếp obstacles theo Y từ trên xuống dưới
+  const sortedObstacles = [...obstacles].sort((a, b) => a.y - b.y);
   
   const gaps = [];
-  for (let i = 0; i < obstacles.length - 1; i++) {
-    const currentObstacle = obstacles[i];
-    const nextObstacle = obstacles[i + 1];
+  
+  // Gap 1: Từ top của canvas đến obstacle đầu tiên
+  const firstObstacle = sortedObstacles[0];
+  if (firstObstacle.y > 20) {
+    gaps.push({
+      start: 20,
+      end: firstObstacle.y,
+      center: 20 + (firstObstacle.y - 20) / 2,
+      size: firstObstacle.y - 20
+    });
+  }
+  
+  // Gaps giữa các obstacles
+  for (let i = 0; i < sortedObstacles.length - 1; i++) {
+    const currentObstacle = sortedObstacles[i];
+    const nextObstacle = sortedObstacles[i + 1];
     
     const gapStart = currentObstacle.y + currentObstacle.height;
     const gapEnd = nextObstacle.y;
     const gapSize = gapEnd - gapStart;
     
-    if (gapSize > 0) {
+    if (gapSize > 0) { // Bất kỳ gap nào > 0 đều tạo item
       gaps.push({
         start: gapStart,
         end: gapEnd,
-        center: gapStart + (gapSize / 2),
+        center: gapStart + gapSize / 2,
         size: gapSize
       });
     }
   }
   
+  // Gap cuối: Từ obstacle cuối cùng đến bottom của canvas  
+  const lastObstacle = sortedObstacles[sortedObstacles.length - 1];
+  if (lastObstacle.y + lastObstacle.height < this.config.height - 20) {
+    const gapStart = lastObstacle.y + lastObstacle.height;
+    const gapEnd = this.config.height - 20;
+    
+    gaps.push({
+      start: gapStart,
+      end: gapEnd,
+      center: gapStart + (gapEnd - gapStart) / 2,
+      size: gapEnd - gapStart
+    });
+  }
+  
   return gaps;
 }
+
+
+
 checkItemCollision(player) {
   if (!player.alive) return;
   
@@ -188,19 +263,32 @@ isCollidingWithItem(player, item) {
     playerBounds.y + playerBounds.height > item.y
   );
 }
+
 collectItem(player, item) {
-  item.collected = true;
+  // KIỂM TRA NẾU ĐÃ CÓ ITEM - KHÔNG CHO NHẶT THÊM
+  const currentItems = this.playerItems[player.playerId] || [];
+  if (currentItems.length > 0) {
+    console.log(`❌ Player ${player.playerId} already has item, cannot collect more`);
+    // KHÔNG SET item.collected = true - để item vẫn còn đó
+    return;
+  }
   
-  // Thêm item vào inventory của player
+  // Đánh dấu item đã được collect
+  item.collected = true;
+  item.collectedBy = player.playerId;
+  item.collectedAt = Date.now();
+  
+  // Khởi tạo inventory nếu chưa có
   if (!this.playerItems[player.playerId]) {
     this.playerItems[player.playerId] = [];
   }
   
-  this.playerItems[player.playerId].push({
+  // CHỈ ĐƯỢC CÓ 1 ITEM
+  this.playerItems[player.playerId] = [{
     type: item.type,
     id: item.id,
     collectedAt: Date.now()
-  });
+  }];
   
   const itemNames = {
     'trap': '🪤 Bẫy',
@@ -214,23 +302,76 @@ collectItem(player, item) {
     message: `${player.playerId.slice(-4)} nhặt được ${itemNames[item.type]}!`
   });
   
-  console.log(`Player ${player.playerId} collected ${item.type}`);
+  console.log(`✅ Player ${player.playerId} collected ${item.type} - scheduling respawn in 5s`);
+  
+  // LỆNH RESPAWN ITEM SAU 5 GIÂY
+  setTimeout(() => {
+    this.respawnItem(item);
+  }, 5000);
 }
-handlePlayerUseItem(playerId, itemType) {
+
+respawnItem(item) {
+  if (!item) return;
+  
+  console.log(`🔄 Respawning item ${item.id} (${item.type}) at (${item.x}, ${item.y})`);
+  
+  // Reset item state
+  item.collected = false;
+  item.collectedBy = null;
+  item.collectedAt = null;
+  
+  // Broadcast item respawned
+  this.broadcastGameState();
+  
+  console.log(`✅ Item ${item.id} respawned successfully`);
+}
+
+
+
+handlePlayerUseItem(playerId) {
   const player = this.playerStates.find(p => p.playerId === playerId);
-  if (!player || !player.alive) return;
-  
-  const playerItems = this.playerItems[playerId] || [];
-  const itemIndex = playerItems.findIndex(item => item.type === itemType);
-  
-  if (itemIndex === -1) {
-    return { error: 'Không có item này' };
+  if (!player || !player.alive) {
+    console.log(`❌ Player ${playerId} cannot use item - not alive`);
+    return { error: 'Không thể sử dụng item!' };
   }
   
-  // Xóa item khỏi inventory
-  playerItems.splice(itemIndex, 1);
+  const playerItems = this.playerItems[playerId] || [];
+  if (playerItems.length === 0) {
+    console.log(`❌ Player ${playerId} has no items`);
+    this.broadcast({
+      type: 'gameMessage',
+      message: `${playerId.slice(-4)} không có item nào để sử dụng!`
+    });
+    return { error: 'Không có item nào!' };
+  }
   
-  // Sử dụng item
+  // LẤY ITEM DUY NHẤT
+  const item = playerItems[0];
+  const itemType = item.type;
+  
+  // XÓA ITEM KHỎI INVENTORY
+  this.playerItems[playerId] = [];
+  
+  console.log(`✅ Player ${playerId} used ${itemType}`);
+  
+  // THỰC HIỆN HIỆU ỨNG ITEM
+  this.executeItemEffect(player, itemType);
+  
+  const itemNames = {
+    'trap': '🪤 Bẫy',
+    'bomb': '💣 Bom', 
+    'lightning': '⚡ Sét',
+    'armor': '🛡️ Áo giáp'
+  };
+  
+  this.broadcast({
+    type: 'gameMessage',
+    message: `${playerId.slice(-4)} đã sử dụng ${itemNames[itemType]}!`
+  });
+  
+  return { success: true, usedItem: itemType };
+}
+executeItemEffect(player, itemType) {
   switch (itemType) {
     case 'trap':
       this.useTrap(player);
@@ -244,147 +385,114 @@ handlePlayerUseItem(playerId, itemType) {
     case 'armor':
       this.useArmor(player);
       break;
+    default:
+      console.log(`❌ Unknown item type: ${itemType}`);
   }
-  
-  return { success: true };
 }
+
+
+
 useTrap(player) {
+  // Tạo bẫy tại vị trí hiện tại của player
   const trap = {
     id: `trap_${Date.now()}`,
     type: 'trap',
-    x: player.x + (player.direction * 100), // Đặt phía trước player
+    x: player.x + 100, // Đặt phía trước player 100px
     y: player.y,
-    width: 40,
-    height: 40,
+    fromPlayerId: player.playerId,
     createdAt: Date.now(),
-    duration: 30000, // 30 giây
-    ownerId: player.playerId
+    duration: 10000 // 10 giây
   };
   
   this.activeEffects.push(trap);
-  
-  this.broadcast({
-    type: 'gameMessage',
-    message: `${player.playerId.slice(-4)} đặt bẫy!`
-  });
-  
-  // Tự động xóa bẫy sau 30 giây
-  setTimeout(() => {
-    this.removeEffect(trap.id);
-  }, trap.duration);
+  console.log(`🪤 Trap created at (${trap.x}, ${trap.y}) by ${player.playerId}`);
 }
+
 useBomb(player) {
-  const bombRadius = 500;
-  let killedCount = 0;
-  
-  this.playerStates.forEach(targetPlayer => {
-    if (targetPlayer.playerId === player.playerId || !targetPlayer.alive) return;
-    
-    const distance = Math.sqrt(
-      Math.pow(targetPlayer.x - player.x, 2) + 
-      Math.pow(targetPlayer.y - player.y, 2)
-    );
-    
-    if (distance <= bombRadius && !targetPlayer.invulnerable) {
-      this.killPlayer(targetPlayer);
-      killedCount++;
-    }
-  });
-  
-  // Hiệu ứng bom
+  // Tạo vụ nổ tại vị trí hiện tại
   const bomb = {
     id: `bomb_${Date.now()}`,
     type: 'bomb',
     x: player.x,
     y: player.y,
-    radius: bombRadius,
+    fromPlayerId: player.playerId,
     createdAt: Date.now(),
-    duration: 1000 // 1 giây hiệu ứng
+    duration: 500, // Nổ ngay lập tức
+    radius: 100
   };
   
   this.activeEffects.push(bomb);
   
-  this.broadcast({
-    type: 'gameMessage',
-    message: `💥 ${player.playerId.slice(-4)} nổ bom! ${killedCount} người chết!`
-  });
-  
-  // Xóa hiệu ứng bom
-  setTimeout(() => {
-    this.removeEffect(bomb.id);
-  }, bomb.duration);
-}
-useLightning(player) {
-  // Tìm chim bay phía trước gần nhất
-  let targetPlayer = null;
-  let minDistance = Infinity;
-  
+  // Gây damage cho tất cả players khác trong bán kính
   this.playerStates.forEach(otherPlayer => {
-    if (otherPlayer.playerId === player.playerId || !otherPlayer.alive) return;
-    
-    // Chỉ tính những chim ở phía trước theo hướng di chuyển
-    const isInFront = (player.direction === 1 && otherPlayer.x > player.x) ||
-                     (player.direction === -1 && otherPlayer.x < player.x);
-    
-    if (isInFront) {
-      const distance = Math.abs(otherPlayer.x - player.x);
-      if (distance < minDistance) {
-        minDistance = distance;
-        targetPlayer = otherPlayer;
+    if (otherPlayer.playerId !== player.playerId && otherPlayer.alive) {
+      const distance = Math.sqrt(
+        Math.pow(otherPlayer.x - bomb.x, 2) + 
+        Math.pow(otherPlayer.y - bomb.y, 2)
+      );
+      
+      if (distance <= bomb.radius) {
+        this.damagePlayer(otherPlayer, `💣 Bomb từ ${player.playerId.slice(-4)}`);
       }
     }
   });
   
-  if (targetPlayer && !targetPlayer.invulnerable) {
-    // Hiệu ứng sét
+  console.log(`💣 Bomb exploded at (${bomb.x}, ${bomb.y}) by ${player.playerId}`);
+}
+useLightning(player) {
+  // Tấn công player gần nhất
+  let closestPlayer = null;
+  let closestDistance = Infinity;
+  
+  this.playerStates.forEach(otherPlayer => {
+    if (otherPlayer.playerId !== player.playerId && otherPlayer.alive) {
+      const distance = Math.sqrt(
+        Math.pow(otherPlayer.x - player.x, 2) + 
+        Math.pow(otherPlayer.y - player.y, 2)
+      );
+      
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestPlayer = otherPlayer;
+      }
+    }
+  });
+  
+  if (closestPlayer && closestDistance <= 300) { // Tầm tấn công 300px
+    // Tạo hiệu ứng sét
     const lightning = {
       id: `lightning_${Date.now()}`,
       type: 'lightning',
       fromX: player.x,
       fromY: player.y,
-      toX: targetPlayer.x,
-      toY: targetPlayer.y,
+      toX: closestPlayer.x,
+      toY: closestPlayer.y,
+      fromPlayerId: player.playerId,
       createdAt: Date.now(),
-      duration: 500
+      duration: 1000
     };
     
     this.activeEffects.push(lightning);
-    this.killPlayer(targetPlayer);
+    this.damagePlayer(closestPlayer, `⚡ Sét từ ${player.playerId.slice(-4)}`);
     
-    this.broadcast({
-      type: 'gameMessage',
-      message: `⚡ ${player.playerId.slice(-4)} giáng sét cho ${targetPlayer.playerId.slice(-4)}!`
-    });
-    
-    // Xóa hiệu ứng sét
-    setTimeout(() => {
-      this.removeEffect(lightning.id);
-    }, lightning.duration);
+    console.log(`⚡ Lightning from ${player.playerId} hit ${closestPlayer.playerId}`);
   } else {
-    this.broadcast({
-      type: 'gameMessage',
-      message: `⚡ ${player.playerId.slice(-4)} giáng sét nhưng không trúng ai!`
-    });
+    console.log(`⚡ Lightning from ${player.playerId} - no target in range`);
   }
 }
 
 // THÊM: Sử dụng áo giáp
 useArmor(player) {
+  // Cho player bất tử trong 5 giây
   player.invulnerable = true;
-  player.invulnerableTime = 3000; // 3 giây
+  player.invulnerableTime = 5000;
+  
+  console.log(`🛡️ Armor activated for ${player.playerId} - invulnerable for 5s`);
   
   this.broadcast({
     type: 'gameMessage',
-    message: `🛡️ ${player.playerId.slice(-4)} bất tử trong 3 giây!`
+    message: `${player.playerId.slice(-4)} đã kích hoạt áo giáp - bất tử 5 giây!`
   });
-  
-  // Tự động tắt áo giáp
-  setTimeout(() => {
-    if (player.invulnerable && player.invulnerableTime === 3000) {
-      player.invulnerable = false;
-      player.invulnerableTime = 0;
-    }
-  }, 3000);
 }
 removeEffect(effectId) {
   const index = this.activeEffects.findIndex(effect => effect.id === effectId);
@@ -581,7 +689,7 @@ playerJump(playerId) {
 startCountdown() {
   if (this.gamePhase !== 'waiting') return;
   
-  console.log(`⏰ STARTING COUNTDOWN - DEBUG MODE`);
+  console.log(`⏰ STARTING COUNTDOWN`);
   
   this.gamePhase = 'countdown';
   this.countdownTime = 3;
@@ -604,16 +712,13 @@ startCountdown() {
   this.generateObstacles();
   console.log(`🧱 Generated ${this.obstacles.length} obstacles`);
   
-  // 🔥 FORCE DEBUG ITEMS
-  console.log('🎁 CALLING generateItems()...');
-  this.generateItems();
-  console.log(`🎁 After generateItems(): ${this.items.length} items`);
+  // DEBUG OBSTACLE STRUCTURE
+  this.debugObstacleStructure();
   
-  // If no items generated, create test items
-  if (this.items.length === 0) {
-    console.log('❌ No items generated, creating test items...');
-    this.forceCreateTestItems();
-  }
+  // Generate items với thuật toán mới
+  console.log('\n🎁 GENERATING ITEMS...');
+  this.generateItems();
+  console.log(`🎁 Generated ${this.items.length} items`);
   
   this.broadcast({
     type: 'gameMessage',

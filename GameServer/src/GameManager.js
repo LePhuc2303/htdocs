@@ -149,6 +149,39 @@ class GameManager {
   }
   break;
 }
+case 'useItem': {
+  const gameId = data.gameId;
+  console.log(`🎯 Player ${playerId} using item in game: ${gameId}`);
+  
+  const game = this.getGame(gameId);
+  if (!game) {
+    return ws.send(JSON.stringify({ type: 'error', message: 'Game không tồn tại' }));
+  }
+  
+  if (game.gameType !== 'flappy-race') {
+    return ws.send(JSON.stringify({ type: 'error', message: 'Item chỉ dành cho Flappy Race' }));
+  }
+  
+  const result = game.handlePlayerUseItem(playerId);
+  if (result.error) {
+    ws.send(JSON.stringify({
+      type: 'useItemResult',
+      success: false,
+      error: result.error
+    }));
+  } else {
+    ws.send(JSON.stringify({
+      type: 'useItemResult', 
+      success: true,
+      usedItem: result.usedItem
+    }));
+  }
+  break;
+}
+
+
+
+
 
       case 'joinGame': {
   const gameId = data.gameId;
