@@ -77,11 +77,30 @@ include $_SERVER['DOCUMENT_ROOT'].'./include/header.php';
                     </div>
                 </div>
             </div>
-
+<!-- Player Management Section -->
+<div id="playerManagement" class="player-management">
+    <div class="player-list-section">
+        <h4>🎮 Danh sách người chơi</h4>
+        <div id="playersList" class="players-list">
+            <!-- Players will be added here dynamically -->
+        </div>
+    </div>
+    
+    <div class="ready-section">
+<button id="readyBtn" class="game-btn btn-success" onclick="console.log('Button clicked'); window.toggleReady();">
+    ✅ Sẵn sàng
+</button>
+        <div id="readyStatus" class="ready-status">
+            Chưa sẵn sàng
+        </div>
+    </div>
+</div>
             <!-- Game Controls -->
             <div class="game-controls">
                 <div class="control-group">
                     <button id="jumpBtn" class="game-btn btn-primary">🚁 JUMP</button>
+                    <!-- Thêm vào flappy-race.php, sau nút JUMP -->
+
                     <button id="resetBtn" class="game-btn btn-warning" onclick="resetGame()" style="display: none;">🔄 Chơi lại</button>
                     <button class="game-btn btn-danger" onclick="leaveGame()">🚪 Rời phòng</button>
                 </div>
@@ -89,7 +108,7 @@ include $_SERVER['DOCUMENT_ROOT'].'./include/header.php';
 
             <!-- Game Canvas -->
             <div class="canvas-container">
-                <canvas id="gameCanvas" width="1200" height="600"></canvas>
+                <canvas id="gameCanvas" width="1400" height="700"></canvas>
             </div>
 
             <!-- Messages -->
@@ -104,9 +123,13 @@ include $_SERVER['DOCUMENT_ROOT'].'./include/header.php';
     </div>
 
 <script src="../assets/js/flappy-race.js"></script>
+<button onclick="debugRender()" style="margin: 5px;">🔧 Debug Render</button>
+
+<script>
 
 <?php
 include $_SERVER['DOCUMENT_ROOT'].'../include/footer.php';
 ?>
+
 </body>
 </html>
