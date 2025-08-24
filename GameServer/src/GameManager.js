@@ -189,7 +189,24 @@ case 'ready': {
   }
   break;
 }
-
+case 'useItem':
+  if (game && game.gameType === 'flappy-race') {
+    const result = game.handlePlayerUseItem(ws.playerId, data.itemType);
+    if (result.error) {
+      ws.send(JSON.stringify({
+        type: 'useItem',
+        success: false,
+        error: result.error
+      }));
+    } else {
+      ws.send(JSON.stringify({
+        type: 'useItem',
+        success: true,
+        itemType: data.itemType
+      }));
+    }
+  }
+  break;
       case 'broadcastSettings': {
         const gameId = data.gameId;
         console.log(`⚙️ Broadcasting settings for game: ${gameId}`);

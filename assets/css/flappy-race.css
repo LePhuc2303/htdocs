@@ -1024,3 +1024,120 @@ body {
   50% { opacity: 0.8; transform: scale(1.05); }
   100% { opacity: 1; transform: scale(1); }
 }
+.item-menu {
+  animation: itemMenuFadeIn 0.2s ease-out;
+}
+
+@keyframes itemMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.item-menu button {
+  transition: all 0.2s ease;
+}
+
+.item-menu button:hover {
+  background: #FFA500 !important;
+  transform: scale(1.05);
+}
+
+/* Effect Animations */
+.trap-effect {
+  animation: trapPulse 1s infinite;
+}
+
+@keyframes trapPulse {
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+  }
+  50% { 
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.8);
+  }
+}
+
+.bomb-explosion {
+  animation: bombExplosion 1s ease-out;
+}
+
+@keyframes bombExplosion {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.lightning-effect {
+  animation: lightningFlicker 0.1s linear 5;
+}
+
+@keyframes lightningFlicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.armor-effect {
+  animation: armorShield 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes armorShield {
+  from {
+    filter: drop-shadow(0 0 5px rgba(192, 192, 192, 0.8));
+  }
+  to {
+    filter: drop-shadow(0 0 15px rgba(192, 192, 192, 1));
+  }
+}
+
+.player-collision {
+  animation: collisionShake 0.3s ease-in-out;
+}
+
+@keyframes collisionShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
+  75% { transform: translateX(-2px); }
+}
+
+.item-collected {
+  animation: itemCollect 0.5s ease-out;
+}
+
+@keyframes itemCollect {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(0);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .item-menu {
+    width: 90%;
+    max-width: 300px;
+  }
+  
+  .item-menu button {
+    font-size: 18px;
+    padding: 15px;
+    margin: 8px 0;
+  }
+}

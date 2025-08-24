@@ -3,7 +3,7 @@ const BaseGame = require('../BaseGame');
 
 class FlappyRaceGame extends BaseGame {
   constructor(gameId) {
-    super(gameId, 'flappy-race', 6); // Tối đa 6 người chơi
+    super(gameId, 'flappy-race', 10); // Tối đa 6 người chơi
     
     // Game configuration
   this.config = {
@@ -12,7 +12,7 @@ class FlappyRaceGame extends BaseGame {
     gravity: 0.3,
     jumpPower: -6,
     speed: 2,
-    turnAroundDistance: 5000, // TĂNG từ 1000 lên 5000px
+    turnAroundDistance: 8000, // TĂNG từ 1000 lên 5000px
     startLine: 50
   };
 
@@ -32,7 +32,385 @@ class FlappyRaceGame extends BaseGame {
     this.lastUpdateTime = Date.now();
     
     console.log(`🎮 FlappyRace game ${gameId} created`);
+
+
+    this.items = []; // Danh sách items trong game
+  this.activeEffects = []; // Hiệu ứng đang hoạt động (bẫy, bom, sét)
+  this.playerItems = {}; // Items mà player đang cầm
   }
+generateItems() {
+  this.items = [];
+  
+  // Tạo item ở mỗi obstacle gap
+  const obstacleGroups = this.groupObstaclesByX();
+  
+  Object.keys(obstacleGroups).forEach(xPos => {
+    const x = parseInt(xPos);
+    const obstacles = obstacleGroups[x];
+    
+    // Tìm gap giữa các obstacles
+    const gaps = this.findGaps(obstacles);
+    
+    gaps.forEach(gap => {
+      if (gap.size > 60) { // Chỉ tạo item ở gap đủ rộng
+        // Random 1 trong 4 loại item
+        const itemTypes = ['trap', 'bomb', 'lightning', 'armor'];
+        const randomType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+        
+        this.items.push({
+          id: `item_${x}_${gap.center}`,
+          type: randomType,
+          x: x + 20, // Ở giữa obstacle
+          y: gap.center,
+          collected: false,
+          width: 20,
+          height: 20
+        });
+      }
+    });
+  });
+  
+  console.log(`🎁 Generated ${this.items.length} items`);
+}
+groupObstaclesByX() {
+  const groups = {};
+  this.obstacles.forEach(obstacle => {
+    if (!groups[obstacle.x]) {
+      groups[obstacle.x] = [];
+    }
+    groups[obstacle.x].push(obstacle);
+  });
+  return groups;
+}
+findGaps(obstacles) {
+  if (obstacles.length === 0) return [];
+  
+  // Sắp xếp obstacles theo y
+  obstacles.sort((a, b) => a.y - b.y);
+  
+  const gaps = [];
+  for (let i = 0; i < obstacles.length - 1; i++) {
+    const currentObstacle = obstacles[i];
+    const nextObstacle = obstacles[i + 1];
+    
+    const gapStart = currentObstacle.y + currentObstacle.height;
+    const gapEnd = nextObstacle.y;
+    const gapSize = gapEnd - gapStart;
+    
+    if (gapSize > 0) {
+      gaps.push({
+        start: gapStart,
+        end: gapEnd,
+        center: gapStart + (gapSize / 2),
+        size: gapSize
+      });
+    }
+  }
+  
+  return gaps;
+}
+checkItemCollision(player) {
+  if (!player.alive) return;
+  
+  this.items.forEach(item => {
+    if (!item.collected && this.isCollidingWithItem(player, item)) {
+      this.collectItem(player, item);
+    }
+  });
+}
+isCollidingWithItem(player, item) {
+  const playerBounds = {
+    x: player.x - 15,
+    y: player.y - 15,
+    width: 30,
+    height: 30
+  };
+  
+  return (
+    playerBounds.x < item.x + item.width &&
+    playerBounds.x + playerBounds.width > item.x &&
+    playerBounds.y < item.y + item.height &&
+    playerBounds.y + playerBounds.height > item.y
+  );
+}
+collectItem(player, item) {
+  item.collected = true;
+  
+  // Thêm item vào inventory của player
+  if (!this.playerItems[player.playerId]) {
+    this.playerItems[player.playerId] = [];
+  }
+  
+  this.playerItems[player.playerId].push({
+    type: item.type,
+    id: item.id,
+    collectedAt: Date.now()
+  });
+  
+  const itemNames = {
+    'trap': '🪤 Bẫy',
+    'bomb': '💣 Bom',
+    'lightning': '⚡ Sét',
+    'armor': '🛡️ Áo giáp'
+  };
+  
+  this.broadcast({
+    type: 'gameMessage',
+    message: `${player.playerId.slice(-4)} nhặt được ${itemNames[item.type]}!`
+  });
+  
+  console.log(`Player ${player.playerId} collected ${item.type}`);
+}
+handlePlayerUseItem(playerId, itemType) {
+  const player = this.playerStates.find(p => p.playerId === playerId);
+  if (!player || !player.alive) return;
+  
+  const playerItems = this.playerItems[playerId] || [];
+  const itemIndex = playerItems.findIndex(item => item.type === itemType);
+  
+  if (itemIndex === -1) {
+    return { error: 'Không có item này' };
+  }
+  
+  // Xóa item khỏi inventory
+  playerItems.splice(itemIndex, 1);
+  
+  // Sử dụng item
+  switch (itemType) {
+    case 'trap':
+      this.useTrap(player);
+      break;
+    case 'bomb':
+      this.useBomb(player);
+      break;
+    case 'lightning':
+      this.useLightning(player);
+      break;
+    case 'armor':
+      this.useArmor(player);
+      break;
+  }
+  
+  return { success: true };
+}
+useTrap(player) {
+  const trap = {
+    id: `trap_${Date.now()}`,
+    type: 'trap',
+    x: player.x + (player.direction * 100), // Đặt phía trước player
+    y: player.y,
+    width: 40,
+    height: 40,
+    createdAt: Date.now(),
+    duration: 30000, // 30 giây
+    ownerId: player.playerId
+  };
+  
+  this.activeEffects.push(trap);
+  
+  this.broadcast({
+    type: 'gameMessage',
+    message: `${player.playerId.slice(-4)} đặt bẫy!`
+  });
+  
+  // Tự động xóa bẫy sau 30 giây
+  setTimeout(() => {
+    this.removeEffect(trap.id);
+  }, trap.duration);
+}
+useBomb(player) {
+  const bombRadius = 500;
+  let killedCount = 0;
+  
+  this.playerStates.forEach(targetPlayer => {
+    if (targetPlayer.playerId === player.playerId || !targetPlayer.alive) return;
+    
+    const distance = Math.sqrt(
+      Math.pow(targetPlayer.x - player.x, 2) + 
+      Math.pow(targetPlayer.y - player.y, 2)
+    );
+    
+    if (distance <= bombRadius && !targetPlayer.invulnerable) {
+      this.killPlayer(targetPlayer);
+      killedCount++;
+    }
+  });
+  
+  // Hiệu ứng bom
+  const bomb = {
+    id: `bomb_${Date.now()}`,
+    type: 'bomb',
+    x: player.x,
+    y: player.y,
+    radius: bombRadius,
+    createdAt: Date.now(),
+    duration: 1000 // 1 giây hiệu ứng
+  };
+  
+  this.activeEffects.push(bomb);
+  
+  this.broadcast({
+    type: 'gameMessage',
+    message: `💥 ${player.playerId.slice(-4)} nổ bom! ${killedCount} người chết!`
+  });
+  
+  // Xóa hiệu ứng bom
+  setTimeout(() => {
+    this.removeEffect(bomb.id);
+  }, bomb.duration);
+}
+useLightning(player) {
+  // Tìm chim bay phía trước gần nhất
+  let targetPlayer = null;
+  let minDistance = Infinity;
+  
+  this.playerStates.forEach(otherPlayer => {
+    if (otherPlayer.playerId === player.playerId || !otherPlayer.alive) return;
+    
+    // Chỉ tính những chim ở phía trước theo hướng di chuyển
+    const isInFront = (player.direction === 1 && otherPlayer.x > player.x) ||
+                     (player.direction === -1 && otherPlayer.x < player.x);
+    
+    if (isInFront) {
+      const distance = Math.abs(otherPlayer.x - player.x);
+      if (distance < minDistance) {
+        minDistance = distance;
+        targetPlayer = otherPlayer;
+      }
+    }
+  });
+  
+  if (targetPlayer && !targetPlayer.invulnerable) {
+    // Hiệu ứng sét
+    const lightning = {
+      id: `lightning_${Date.now()}`,
+      type: 'lightning',
+      fromX: player.x,
+      fromY: player.y,
+      toX: targetPlayer.x,
+      toY: targetPlayer.y,
+      createdAt: Date.now(),
+      duration: 500
+    };
+    
+    this.activeEffects.push(lightning);
+    this.killPlayer(targetPlayer);
+    
+    this.broadcast({
+      type: 'gameMessage',
+      message: `⚡ ${player.playerId.slice(-4)} giáng sét cho ${targetPlayer.playerId.slice(-4)}!`
+    });
+    
+    // Xóa hiệu ứng sét
+    setTimeout(() => {
+      this.removeEffect(lightning.id);
+    }, lightning.duration);
+  } else {
+    this.broadcast({
+      type: 'gameMessage',
+      message: `⚡ ${player.playerId.slice(-4)} giáng sét nhưng không trúng ai!`
+    });
+  }
+}
+
+// THÊM: Sử dụng áo giáp
+useArmor(player) {
+  player.invulnerable = true;
+  player.invulnerableTime = 3000; // 3 giây
+  
+  this.broadcast({
+    type: 'gameMessage',
+    message: `🛡️ ${player.playerId.slice(-4)} bất tử trong 3 giây!`
+  });
+  
+  // Tự động tắt áo giáp
+  setTimeout(() => {
+    if (player.invulnerable && player.invulnerableTime === 3000) {
+      player.invulnerable = false;
+      player.invulnerableTime = 0;
+    }
+  }, 3000);
+}
+removeEffect(effectId) {
+  const index = this.activeEffects.findIndex(effect => effect.id === effectId);
+  if (index !== -1) {
+    this.activeEffects.splice(index, 1);
+  }
+}
+
+
+// THÊM: Check collision với bẫy
+checkTrapCollision(player) {
+  this.activeEffects.forEach(effect => {
+    if (effect.type === 'trap' && effect.ownerId !== player.playerId) {
+      if (this.isCollidingWithTrap(player, effect)) {
+        if (!player.invulnerable) {
+          this.killPlayer(player);
+          this.broadcast({
+            type: 'gameMessage',
+            message: `🪤 ${player.playerId.slice(-4)} bị bẫy!`
+          });
+        }
+        // Xóa bẫy sau khi kích hoạt
+        this.removeEffect(effect.id);
+      }
+    }
+  });
+}
+// THÊM: Check collision với bẫy
+isCollidingWithTrap(player, trap) {
+  const playerBounds = {
+    x: player.x - 15,
+    y: player.y - 15,
+    width: 30,
+    height: 30
+  };
+  
+  return (
+    playerBounds.x < trap.x + trap.width &&
+    playerBounds.x + playerBounds.width > trap.x &&
+    playerBounds.y < trap.y + trap.height &&
+    playerBounds.y + playerBounds.height > trap.y
+  );
+}
+// THÊM: Check collision giữa players
+checkPlayerCollision() {
+  for (let i = 0; i < this.playerStates.length; i++) {
+    for (let j = i + 1; j < this.playerStates.length; j++) {
+      const player1 = this.playerStates[i];
+      const player2 = this.playerStates[j];
+      
+      if (!player1.alive || !player2.alive) continue;
+      if (player1.invulnerable || player2.invulnerable) continue;
+      
+      const distance = Math.sqrt(
+        Math.pow(player1.x - player2.x, 2) + 
+        Math.pow(player1.y - player2.y, 2)
+      );
+      
+      // Nếu 2 chim va chạm (khoảng cách < 25px)
+      if (distance < 25) {
+        this.killPlayer(player1);
+        this.killPlayer(player2);
+        
+        this.broadcast({
+          type: 'gameMessage',
+          message: `💥 ${player1.playerId.slice(-4)} và ${player2.playerId.slice(-4)} đâm nhau!`
+        });
+      }
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
 
   // ===== PLAYER MANAGEMENT =====
   onPlayerJoined(playerInfo) {
@@ -358,28 +736,24 @@ killPlayer(player) {
   }
 }
 
+// SỬA: Respawn về vị trí bắt đầu
 respawnPlayer(player) {
   if (player.alive || player.lives <= 0) return;
   
-  // Respawn tại vị trí phù hợp với phase hiện tại
+  // LUÔN respawn về điểm bắt đầu
   player.alive = true;
-  if (player.turnedAround) {
-    // Nếu đã quay đầu, respawn ở 1 vị trí giữa turn point và start
-    const turnPoint = this.config.turnAroundDistance + this.config.startLine;
-    const startPoint = this.config.startLine;
-    player.x = (turnPoint + startPoint) / 2; // Giữa 2 điểm
-  } else {
-    // Chưa quay đầu, respawn ở start
-    player.x = this.config.startLine;
-  }
-  
+  player.x = this.config.startLine; // Luôn về start
   player.y = this.config.height / 2;
   player.velocityY = 0;
   player.invulnerable = true;
   player.invulnerableTime = 2000;
   player.respawnTimer = null;
   
-  console.log(`🔄 Player ${player.playerId} respawned at ${player.x}`);
+  // Reset trạng thái quay đầu khi chết
+  player.turnedAround = false;
+  player.direction = 1;
+  
+  console.log(`🔄 Player ${player.playerId} respawned at start`);
 }
   handleRespawning() {
     // This is handled by setTimeout, nothing to do here
@@ -545,7 +919,7 @@ handlePlayerReady(playerId, settings = {}) {
   for (let x = startX; x < endX; x += obstacleSpacing) {
     // MỖI OBSTACLE CÓ 2 KHE: 1 RỘNG + 1 VỪA (không có hẹp)
     const bigGapSize = 200;   // Khe rộng (dễ đi)
-    const smallGapSize = 140; // Khe vừa (không quá hẹp)
+    const smallGapSize = 120; // Khe vừa (không quá hẹp)
     
     // Random xem khe nào ở trên, khe nào ở dưới
     const bigGapOnTop = Math.random() > 0.5;
