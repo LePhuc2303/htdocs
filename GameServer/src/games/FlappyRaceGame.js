@@ -12,7 +12,7 @@ class FlappyRaceGame extends BaseGame {
     gravity: 0.3,
     jumpPower: -6,
     speed: 2,
-    turnAroundDistance: 8000, // TĂNG từ 1000 lên 5000px
+    turnAroundDistance: 10000, // TĂNG từ 1000 lên 5000px
     startLine: 50
   };
 
@@ -446,6 +446,11 @@ useTrap(player) {
   
   this.activeEffects.push(trap);
   console.log(`🪤 Trap created at (${trap.x}, ${trap.y}) by ${player.playerId}`);
+// Trong useTrap, useBomb, useLightning:
+console.log('🎯 Effect created:', effect);
+console.log('🎯 ActiveEffects array:', this.activeEffects.length);
+
+
 }
 
 useBomb(player) {
@@ -457,7 +462,7 @@ useBomb(player) {
     y: player.y,
     fromPlayerId: player.playerId,
     createdAt: Date.now(),
-    duration: 500, // Nổ ngay lập tức
+    duration: 2000, // Nổ ngay lập tức
     radius: 100
   };
   
@@ -478,6 +483,9 @@ useBomb(player) {
   });
   
   console.log(`💣 Bomb exploded at (${bomb.x}, ${bomb.y}) by ${player.playerId}`);
+  // Trong useTrap, useBomb, useLightning:
+console.log('🎯 Effect created:', effect);
+console.log('🎯 ActiveEffects array:', this.activeEffects.length);
 }
 useLightning(player) {
   // Tấn công player gần nhất
@@ -519,6 +527,9 @@ useLightning(player) {
   } else {
     console.log(`⚡ Lightning from ${player.playerId} - no target in range`);
   }
+  // Trong useTrap, useBomb, useLightning:
+console.log('🎯 Effect created:', effect);
+console.log('🎯 ActiveEffects array:', this.activeEffects.length);
 }
 
 // THÊM: Sử dụng áo giáp
@@ -533,6 +544,9 @@ useArmor(player) {
     type: 'gameMessage',
     message: `${player.playerId.slice(-4)} đã kích hoạt áo giáp - bất tử 5 giây!`
   });
+  // Trong useTrap, useBomb, useLightning:
+console.log('🎯 Effect created:', effect);
+console.log('🎯 ActiveEffects array:', this.activeEffects.length);
 }
 removeEffect(effectId) {
   const index = this.activeEffects.findIndex(effect => effect.id === effectId);

@@ -267,6 +267,7 @@ useCurrentItem() {
         if (this.gameState.myPlayer) {
           console.log('MyPlayer position:', this.gameState.myPlayer.x, this.gameState.myPlayer.y);
         }
+        console.log('🎮 ActiveEffects received:', data.activeEffects);
       }
       
       this.updateGameUI();
@@ -1424,7 +1425,7 @@ drawRaceMarkers() {
   if (!this.gameState.config) return;
   
   const startLine = this.gameState.config.startLine || 50;
-  const turnAroundX = (this.gameState.config.turnAroundDistance || 5000) + startLine;
+  const turnAroundX = (this.gameState.config.turnAroundDistance || 10000) + startLine;
   
   // Draw start line (finish line)
   this.ctx.strokeStyle = '#00FF00';
