@@ -99,32 +99,75 @@ generateItems() {
   
   // Nhóm obstacles theo vị trí X
   const obstacleGroups = this.groupObstaclesByX();
+  const expectedColumns = Object.keys(obstacleGroups).length;
   
-  console.log(`📊 Found ${Object.keys(obstacleGroups).length} obstacle columns`);
+  console.log(`📊 Expected ${expectedColumns} items (1 per obstacle column)`);
   
+  // Generate items normally
   Object.keys(obstacleGroups).forEach(xPos => {
     const x = parseInt(xPos);
     const obstacles = obstacleGroups[x];
     
-    console.log(`\n📍 Processing X=${x} with ${obstacles.length} obstacles`);
-    
-    // Tìm CHÍNH XÁC các gaps giữa obstacles
     const gaps = this.findAllGaps(obstacles);
     
-    console.log(`   Found ${gaps.length} gaps:`, gaps.map(g => `${g.start}-${g.end} (${g.size}px)`));
-    
-    // TẠO ITEM CHO MỖI GAP (bỏ random, bỏ điều kiện kích thước)
-    gaps.forEach((gap, gapIndex) => {
-      // Random 1 trong 4 loại item
+    if (gaps.length > 0) {
+      const largestGap = gaps.reduce((largest, current) => 
+        current.size > largest.size ? current : largest
+      );
+      
       const itemTypes = ['trap', 'bomb', 'lightning', 'armor'];
       const randomType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
       
-      // Đặt item ở CHÍNH GIỮA gap
-      const itemX = x + 20; // Giữa obstacle (obstacle width = 40px)
-      const itemY = gap.center;
+      const itemX = x + 20;
+      const itemY = largestGap.center;
       
       this.items.push({
-        id: `item_${x}_${gapIndex}`,
+        id: `item_col_${x}`,
+        type: randomType,
+        x: itemX,
+        y: itemY,
+        collected: false,
+        width: 30,
+        height: 30
+      });
+    }
+  });
+  
+  console.log(`🎁 Generated ${this.items.length} items out of ${expectedColumns} expected`);
+  
+  // ✅ Nếu items ít hơn expected, force generate all
+  if (this.items.length < expectedColumns * 0.8) { // Nếu < 80% expected
+    console.log(`⚠️ Too few items generated (${this.items.length}/${expectedColumns}). Using force generation...`);
+    this.forceGenerateItemsForAllColumns();
+  }
+}
+
+debugMissingItems() {
+  console.log('\n🔍 DEBUGGING MISSING ITEMS:');
+  
+  const obstacleGroups = this.groupObstaclesByX();
+  const obstacleXPositions = Object.keys(obstacleGroups).map(x => parseInt(x)).sort((a, b) => a - b);
+  const itemXPositions = this.items.map(item => Math.floor(item.x - 20)); // item.x - 20 để get obstacle X
+  
+  console.log(`Obstacle columns: ${obstacleXPositions.length}`, obstacleXPositions);
+  console.log(`Item positions: ${itemXPositions.length}`, itemXPositions);
+  
+  // Tìm obstacles thiếu items
+  const missingItems = obstacleXPositions.filter(x => !itemXPositions.includes(x));
+  
+  if (missingItems.length > 0) {
+    console.log(`❌ Missing items at X positions:`, missingItems);
+    
+    // Tạo items cho obstacles thiếu
+    missingItems.forEach(x => {
+      const itemTypes = ['trap', 'bomb', 'lightning', 'armor'];
+      const randomType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+      
+      const itemX = x + 20;
+      const itemY = this.config.height / 2; // Center
+      
+      this.items.push({
+        id: `item_missing_${x}`,
         type: randomType,
         x: itemX,
         y: itemY,
@@ -133,17 +176,15 @@ generateItems() {
         height: 30
       });
       
-      console.log(`   ✅ Created ${randomType} item at (${itemX}, ${itemY}) in gap ${gapIndex}`);
+      console.log(`   ✅ Added missing ${randomType} item at (${itemX}, ${itemY})`);
     });
-  });
-  
-  console.log(`\n🎁 TOTAL GENERATED: ${this.items.length} items`);
-  
-  // Debug: In ra tất cả items
-  this.items.forEach((item, index) => {
-    console.log(`Item ${index}: ${item.type} at (${item.x}, ${item.y})`);
-  });
+    
+    console.log(`🔧 Fixed: Added ${missingItems.length} missing items. Total items now: ${this.items.length}`);
+  } else {
+    console.log(`✅ All obstacle columns have items!`);
+  }
 }
+
 groupObstaclesByX() {
   const groups = {};
   this.obstacles.forEach(obstacle => {
@@ -269,7 +310,6 @@ collectItem(player, item) {
   const currentItems = this.playerItems[player.playerId] || [];
   if (currentItems.length > 0) {
     console.log(`❌ Player ${player.playerId} already has item, cannot collect more`);
-    // KHÔNG SET item.collected = true - để item vẫn còn đó
     return;
   }
   
@@ -715,10 +755,14 @@ startCountdown() {
   // DEBUG OBSTACLE STRUCTURE
   this.debugObstacleStructure();
   
-  // Generate items với thuật toán mới
+  // Generate items với debug
   console.log('\n🎁 GENERATING ITEMS...');
   this.generateItems();
-  console.log(`🎁 Generated ${this.items.length} items`);
+  
+  // ✅ THÊM: Check missing items
+  this.debugMissingItems();
+  
+  console.log(`🎁 Final: Generated ${this.items.length} items total`);
   
   this.broadcast({
     type: 'gameMessage',
@@ -732,12 +776,49 @@ startCountdown() {
   
   this.startGameLoop();
 }
-
-  startGame() {
-  this.gamePhase = 'playing';
+forceGenerateItemsForAllColumns() {
+  console.log('\n🔥 FORCE GENERATING ITEMS FOR ALL COLUMNS...');
   
-  // Không cần reset players nữa vì đã làm trong countdown
-  // Không cần generate obstacles nữa vì đã làm trong countdown
+  // Clear existing items
+  this.items = [];
+  
+  // Tính toán tất cả vị trí X có thể có obstacles
+  const startX = this.config.startLine + 200;
+  const endX = this.config.turnAroundDistance + this.config.startLine - 200;
+  const obstacleSpacing = 300;
+  
+  console.log(`📏 Generating items from X=${startX} to X=${endX} with spacing=${obstacleSpacing}`);
+  
+  for (let x = startX; x < endX; x += obstacleSpacing) {
+    const itemTypes = ['trap', 'bomb', 'lightning', 'armor'];
+    const randomType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+    
+    const itemX = x + 20; // Giữa obstacle
+    const itemY = this.config.height / 2 + (Math.random() - 0.5) * 200; // Random Y ± 100px
+    
+    // Clamp Y trong bounds
+    const clampedY = Math.max(50, Math.min(this.config.height - 50, itemY));
+    
+    this.items.push({
+      id: `forced_item_${x}`,
+      type: randomType,
+      x: itemX,
+      y: clampedY,
+      collected: false,
+      width: 30,
+      height: 30
+    });
+    
+    console.log(`   ✅ Forced ${randomType} item at (${itemX}, ${clampedY})`);
+  }
+  
+  console.log(`🔥 FORCE GENERATED ${this.items.length} items for entire race track`);
+  
+  // Broadcast ngay
+  this.broadcastGameState();
+}
+startGame() {
+  this.gamePhase = 'playing';
   
   // Clear ready states
   this.playersReady = {};
@@ -751,7 +832,7 @@ startCountdown() {
     type: 'gameStarted'
   });
   
-  console.log(`🎮 FlappyRace game ${this.gameId} started`);
+  console.log(`🎮 FlappyRace game ${this.gameId} started - items only in obstacle columns`);
 }
   // ===== GAME LOOP =====
 startGameLoop() {
@@ -812,8 +893,6 @@ updateCountdown(deltaTime) {
   this.playerStates.forEach(player => {
     if (!player.alive) return;
     
-    const oldX = player.x; // Save old position
-    
     // Update invulnerability
     if (player.invulnerable) {
       player.invulnerableTime -= deltaTime * 1000;
@@ -826,7 +905,7 @@ updateCountdown(deltaTime) {
     player.velocityY += this.config.gravity;
     player.y += player.velocityY;
     
-    // QUAN TRỌNG: Move theo direction
+    // Move theo direction
     player.x += this.config.speed * player.direction;
     player.distance = Math.abs(player.x - this.config.startLine);
     
@@ -846,16 +925,17 @@ updateCountdown(deltaTime) {
       this.checkObstacleCollision(player);
     }
     
-    // ADD: Check item collision
+    // ✅ CHỈ CHECK ITEM COLLISION - không tạo thêm items
     this.checkItemCollision(player);
     
     // Check trap collision
     this.checkTrapCollision(player);
     
-    // THAY ĐỔI: Check race progress thay vì finish line
+    // Check race progress
     this.checkRaceProgress(player);
   });
 }
+
 
   // ===== COLLISION & DEATH =====
   checkObstacleCollision(player) {
@@ -1185,47 +1265,48 @@ handlePlayerReady(playerId, settings = {}) {
 
   // ===== RESET GAME =====
   resetGame() {
-    console.log(`🔄 Resetting FlappyRace game ${this.gameId}`);
-    
-    this.stopGameLoop();
-    
-    // Reset game state
-    this.gamePhase = 'waiting';
-    this.countdownTime = 3;
-    
-    // Clear all timers
-    this.playerStates.forEach(player => {
-      if (player.respawnTimer) {
-        clearTimeout(player.respawnTimer);
-        player.respawnTimer = null;
-      }
-    });
-    
-    // Reset player states
-    this.playerStates.forEach(player => {
-      player.x = 50;
-      player.y = this.config.height / 2;
-      player.velocityY = 0;
-      player.alive = true;
-      player.lives = 3;
-      player.distance = 0;
-      player.finished = false;
-      player.rank = 0;
-      player.invulnerable = false;
-      player.invulnerableTime = 0;
-    });
-    
-    // Clear obstacles
-    this.obstacles = [];
-    this.powerups = [];
-    
-    this.broadcast({
-      type: 'gameMessage',
-      message: '🔄 Game đã được reset!'
-    });
-    
-    this.broadcastGameState();
-  }
+  console.log(`🔄 Resetting FlappyRace game ${this.gameId}`);
+  
+  this.stopGameLoop();
+  
+  // Reset game state
+  this.gamePhase = 'waiting';
+  this.countdownTime = 3;
+  
+  // Clear all timers
+  this.playerStates.forEach(player => {
+    if (player.respawnTimer) {
+      clearTimeout(player.respawnTimer);
+      player.respawnTimer = null;
+    }
+  });
+  
+  // Reset player states
+  this.playerStates.forEach(player => {
+    player.x = 50;
+    player.y = this.config.height / 2;
+    player.velocityY = 0;
+    player.alive = true;
+    player.lives = 3;
+    player.distance = 0;
+    player.finished = false;
+    player.rank = 0;
+    player.invulnerable = false;
+    player.invulnerableTime = 0;
+  });
+  
+  // Clear tất cả
+  this.obstacles = [];
+  this.items = [];
+  this.powerups = [];
+  
+  this.broadcast({
+    type: 'gameMessage',
+    message: '🔄 Game đã được reset!'
+  });
+  
+  this.broadcastGameState();
+}
 
   // ===== BROADCAST =====
   broadcastGameState() {
