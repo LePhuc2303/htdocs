@@ -282,6 +282,15 @@ useCurrentItem() {
       }
       break;
   
+
+
+
+
+
+
+      case 'visualEffect':
+  this.handleVisualEffect(data);
+  break;
     case 'useItemResult':
       if (data.success) {
         this.showMessage(`✅ Đã sử dụng ${data.usedItem}!`);
@@ -386,7 +395,7 @@ updateCamera() {
   }
   
   // Clamp camera bounds
-  const maxX = 5200;
+  const maxX = 10200;
   this.cameraX = Math.max(0, Math.min(maxX, this.cameraX));
 }
     onGameJoined(data) {
@@ -473,6 +482,225 @@ updateCamera() {
             countdownMessageEl.style.display = 'none';
         }
     }
+handleVisualEffect(data) {
+  const effect = data.effect;
+  console.log('🎨 Handling visual effect:', effect);
+  
+  switch (effect.type) {
+    case 'trapPlaced':
+      this.showTrapPlacedEffect(effect);
+      break;
+    case 'trapActivated':
+      this.showTrapActivatedEffect(effect);
+      break;
+    case 'trapTriggered':
+      this.showTrapTriggeredEffect(effect);
+      break;
+    case 'explosion':
+      this.showExplosionEffect(effect);
+      break;
+    case 'lightning':
+      this.showLightningEffect(effect);
+      break;
+    case 'lightningMiss':
+      this.showLightningMissEffect(effect);
+      break;
+    case 'armor':
+      this.showArmorEffect(effect);
+      break;
+  }
+}
+
+showTrapTriggeredEffect(effect) {
+  // Hiệu ứng khi có người trúng bẫy
+  const duration = effect.duration || 1000;
+  const startTime = Date.now();
+  
+  const animateEffect = () => {
+    const elapsed = Date.now() - startTime;
+    const progress = elapsed / duration;
+    
+    if (progress < 1) {
+      this.ctx.save();
+      this.ctx.translate(-this.cameraX, 0);
+      
+      // Hiệu ứng nổ nhỏ
+      const radius = 30 + (50 * progress);
+      const alpha = Math.max(0, 1 - progress);
+      
+      this.ctx.fillStyle = `rgba(255, 0, 0, ${alpha * 0.8})`;
+      this.ctx.beginPath();
+      this.ctx.arc(effect.x, effect.y, radius, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      // Sparks
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const sparkX = effect.x + Math.cos(angle) * radius;
+        const sparkY = effect.y + Math.sin(angle) * radius;
+        
+        this.ctx.fillStyle = `rgba(255, 255, 0, ${alpha})`;
+        this.ctx.beginPath();
+        this.ctx.arc(sparkX, sparkY, 3, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
+      
+      this.ctx.restore();
+      requestAnimationFrame(animateEffect);
+    }
+  };
+  
+  animateEffect();
+}
+showTrapPlacedEffect(effect) {
+  // Hiệu ứng đặt bẫy - màu vàng (chưa hoạt động)
+  const duration = effect.duration || 2000; // 2 giây
+  const startTime = Date.now();
+  
+  const animateEffect = () => {
+    const elapsed = Date.now() - startTime;
+    const progress = elapsed / duration;
+    
+    if (progress < 1) {
+      this.ctx.save();
+      this.ctx.translate(-this.cameraX, 0);
+      
+      // Vòng tròn nhấp nháy màu vàng (cảnh báo)
+      const radius = 25 + Math.sin(elapsed * 0.01) * 5;
+      const alpha = 0.6 + Math.sin(elapsed * 0.008) * 0.4;
+      
+      this.ctx.strokeStyle = `rgba(255, 255, 0, ${alpha})`; // Màu vàng
+      this.ctx.lineWidth = 4;
+      this.ctx.setLineDash([5, 5]);
+      this.ctx.beginPath();
+      this.ctx.arc(effect.x, effect.y, radius, 0, Math.PI * 2);
+      this.ctx.stroke();
+      this.ctx.setLineDash([]);
+      
+      // Text cảnh báo
+      this.ctx.fillStyle = `rgba(255, 255, 0, ${alpha})`;
+      this.ctx.font = 'bold 12px Arial';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('⏰ Đang chuẩn bị...', effect.x, effect.y - 35);
+      
+      this.ctx.restore();
+      requestAnimationFrame(animateEffect);
+    }
+  };
+  
+  animateEffect();
+}
+
+showTrapActivatedEffect(effect) {
+  // Hiệu ứng khi bẫy được kích hoạt - màu đỏ
+  const duration = effect.duration || 1000;
+  const startTime = Date.now();
+  
+  const animateEffect = () => {
+    const elapsed = Date.now() - startTime;
+    const progress = elapsed / duration;
+    
+    if (progress < 1) {
+      this.ctx.save();
+      this.ctx.translate(-this.cameraX, 0);
+      
+      // Vòng tròn đỏ mở rộng
+      const radius = 40 * progress;
+      const alpha = 1 - progress;
+      
+      this.ctx.strokeStyle = `rgba(255, 0, 0, ${alpha})`;
+      this.ctx.lineWidth = 5;
+      this.ctx.beginPath();
+      this.ctx.arc(effect.x, effect.y, radius, 0, Math.PI * 2);
+      this.ctx.stroke();
+      
+      // Text
+      this.ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+      this.ctx.font = 'bold 14px Arial';
+      this.ctx.textAlign = 'center';
+      this.ctx.fillText('🔥 KÍCH HOẠT!', effect.x, effect.y - 40);
+      
+      this.ctx.restore();
+      requestAnimationFrame(animateEffect);
+    }
+  };
+  
+  animateEffect();
+}
+
+showExplosionEffect(effect) {
+  // Tạo hiệu ứng nổ
+  const duration = effect.duration || 1500;
+  const startTime = Date.now();
+  
+  const animateExplosion = () => {
+    const elapsed = Date.now() - startTime;
+    const progress = elapsed / duration;
+    
+    if (progress < 1) {
+      this.ctx.save();
+      this.ctx.translate(-this.cameraX, 0);
+      
+      // Vòng tròn nổ mở rộng
+      const radius = effect.radius * progress;
+      const alpha = Math.max(0, 1 - progress);
+      
+      // Vòng ngoài (đỏ)
+      this.ctx.fillStyle = `rgba(255, 100, 0, ${alpha * 0.6})`;
+      this.ctx.beginPath();
+      this.ctx.arc(effect.x, effect.y, radius, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      // Vòng trong (vàng)
+      this.ctx.fillStyle = `rgba(255, 255, 0, ${alpha})`;
+      this.ctx.beginPath();
+      this.ctx.arc(effect.x, effect.y, radius * 0.6, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      this.ctx.restore();
+      requestAnimationFrame(animateExplosion);
+    }
+  };
+  
+  animateExplosion();
+}
+
+
+showLightningEffect(effect) {
+  // Hiệu ứng tia sét
+  const duration = effect.duration || 800;
+  const startTime = Date.now();
+  
+  const animateLightning = () => {
+    const elapsed = Date.now() - startTime;
+    const progress = elapsed / duration;
+    
+    if (progress < 1) {
+      this.ctx.save();
+      this.ctx.translate(-this.cameraX, 0);
+      
+      const alpha = Math.max(0, 1 - progress);
+      
+      // Tia chính
+      this.ctx.strokeStyle = `rgba(255, 255, 0, ${alpha})`;
+      this.ctx.lineWidth = 6;
+      this.ctx.beginPath();
+      this.ctx.moveTo(effect.fromX, effect.fromY);
+      this.ctx.lineTo(effect.toX, effect.toY);
+      this.ctx.stroke();
+      
+      // Tia phụ (nhỏ hơn)
+      this.ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+      
+      this.ctx.restore();
+      requestAnimationFrame(animateLightning);
+    }
+  };
+  
+  animateLightning();
+}
 
     // Optional: Add sound effects
     playCountdownSound(timeLeft) {
@@ -1405,6 +1633,7 @@ draw() {
     
     // UI
     this.drawGameUI();
+    this.drawProgressBar();
     this.drawCountdownOverlay();
     
     // Inventory
@@ -1581,7 +1810,7 @@ drawCountdownOverlay() {
   });
 }
 
-  drawGameUI() {
+drawGameUI() {
   if (!this.gameState.myPlayer) {
     // Vẽ thông tin cơ bản khi chưa có player
     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -1595,30 +1824,91 @@ drawCountdownOverlay() {
     return;
   }
   
-  // Player stats
+  // Player stats - UI chính góc trái trên
   this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-  this.ctx.fillRect(10, 10, 250, 120);
+  this.ctx.fillRect(10, 10, 250, 120); // Tăng chiều cao
   
   this.ctx.fillStyle = '#FFFFFF';
-  this.ctx.font = '14px Arial';
+  this.ctx.font = 'bold 14px Arial';
   this.ctx.textAlign = 'left';
   
   const player = this.gameState.myPlayer;
-  this.ctx.fillText(`Lives: ${player.lives || 0}`, 20, 30);
-  this.ctx.fillText(`Distance: ${Math.floor(player.distance || 0)}`, 20, 50);
-  this.ctx.fillText(`Player X: ${Math.floor(player.x || 0)}`, 20, 70);
-  this.ctx.fillText(`Camera X: ${Math.floor(this.cameraX || 0)}`, 20, 90);
+  this.ctx.fillText(`Lives: ${player.lives}`, 20, 30);
+  this.ctx.fillText(`Distance: ${Math.floor(Math.abs(player.x - this.gameState.config.startLine))}`, 20, 50);
+  this.ctx.fillText(`Player X: ${Math.floor(player.x)}`, 20, 70);
   
-  if (player.finished) {
-    this.ctx.fillText(`Rank: #${player.rank}`, 20, 110);
+  // ✅ HIỂN THỊ KHOẢNG CÁCH ĐẾN ĐIỂM QUAY ĐẦU BẰNG MÉT
+  if (!player.turnedAround) {
+    const turnAroundPoint = this.gameState.config.turnAroundDistance + this.gameState.config.startLine;
+    const distanceInPixels = Math.max(0, turnAroundPoint - player.x);
+    const distanceInMeters = Math.floor(distanceInPixels / 10); // 10px = 1m
+    
+    this.ctx.fillStyle = '#FF6B6B'; // Màu đỏ nổi bật
+    this.ctx.font = 'bold 16px Arial';
+    this.ctx.fillText(`🎯 Còn: ${distanceInMeters}m`, 20, 95);
+  } else {
+    // Khi đã quay đầu - hiển thị khoảng cách về đích
+    const finishDistance = Math.max(0, player.x - this.gameState.config.startLine);
+    const finishMeters = Math.floor(finishDistance / 10);
+    
+    this.ctx.fillStyle = '#4ECDC4'; // Màu xanh
+    this.ctx.font = 'bold 16px Arial';
+    this.ctx.fillText(`🏁 Về đích: ${finishMeters}m`, 20, 95);
   }
   
-  if (!player.alive) {
+  // Game time
+  this.ctx.fillStyle = '#FFFFFF';
+  this.ctx.font = '12px Arial';
+  this.ctx.fillText(`Time: ${this.gameState.gameTime || 0}s`, 20, 115);
+}
+drawProgressBar() {
+  if (!this.gameState.myPlayer) return;
+  
+  const player = this.gameState.myPlayer;
+  const totalDistance = this.gameState.config.turnAroundDistance;
+  const startLine = this.gameState.config.startLine;
+  
+  // Vị trí thanh tiến trình - ở đầu màn hình, không bị che
+  const barY = 50;
+  const barWidth = this.canvas.width - 40;
+  const barHeight = 20;
+  const barX = 20;
+  
+  // Background thanh tiến trình
+  this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+  this.ctx.fillRect(barX, barY, barWidth, barHeight);
+  
+  // Border
+  this.ctx.strokeStyle = '#FFFFFF';
+  this.ctx.lineWidth = 2;
+  this.ctx.strokeRect(barX, barY, barWidth, barHeight);
+  
+  if (!player.turnedAround) {
+    // Phase 1: Đi đến điểm quay đầu
+    const progress = Math.min(1, Math.abs(player.x - startLine) / totalDistance);
+    
+    // Thanh tiến trình màu đỏ
     this.ctx.fillStyle = '#FF6B6B';
-    this.ctx.fillText('💀 DEAD - Respawning...', 20, 110);
-  } else if (player.invulnerable) {
-    this.ctx.fillStyle = '#FF69B4';
-    this.ctx.fillText('🛡️ INVULNERABLE', 20, 110);
+    this.ctx.fillRect(barX + 2, barY + 2, (barWidth - 4) * progress, barHeight - 4);
+    
+    // Nhãn
+    this.ctx.fillStyle = '#FFFFFF';
+    this.ctx.font = 'bold 12px Arial';
+    this.ctx.textAlign = 'center';
+    this.ctx.fillText('🎯 ĐẾN ĐIỂM QUAY ĐẦU', barX + barWidth/2, barY + 14);
+  } else {
+    // Phase 2: Quay về đích
+    const returnProgress = Math.min(1, (totalDistance - Math.abs(player.x - startLine)) / totalDistance);
+    
+    // Thanh tiến trình màu xanh
+    this.ctx.fillStyle = '#4ECDC4';
+    this.ctx.fillRect(barX + 2, barY + 2, (barWidth - 4) * returnProgress, barHeight - 4);
+    
+    // Nhãn
+    this.ctx.fillStyle = '#FFFFFF';
+    this.ctx.font = 'bold 12px Arial';
+    this.ctx.textAlign = 'center';
+    this.ctx.fillText('🏁 VỀ ĐÍCH', barX + barWidth/2, barY + 14);
   }
 }
     // ===== PLAYER MANAGEMENT =====

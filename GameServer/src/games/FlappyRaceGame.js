@@ -103,7 +103,7 @@ generateItems() {
   
   console.log(`📊 Expected ${expectedColumns} items (1 per obstacle column)`);
   
-  // Generate items normally
+  // Generate items - ƯU TIÊN KHE HẸP
   Object.keys(obstacleGroups).forEach(xPos => {
     const x = parseInt(xPos);
     const obstacles = obstacleGroups[x];
@@ -111,37 +111,88 @@ generateItems() {
     const gaps = this.findAllGaps(obstacles);
     
     if (gaps.length > 0) {
-      const largestGap = gaps.reduce((largest, current) => 
-        current.size > largest.size ? current : largest
+      // ✅ THAY ĐỔI: Tìm khe HẸP NHẤT thay vì khe lớn nhất
+      const narrowestGap = gaps.reduce((narrowest, current) => 
+        current.size < narrowest.size ? current : narrowest // < thay vì >
       );
       
-      const itemTypes = ['trap', 'bomb', 'lightning', 'armor'];
-      const randomType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+      // Chỉ tạo item nếu khe đủ hẹp để tạo thử thách (nhưng không quá hẹp để không thể lấy)
+      const minGapSize = 80;  // Khe tối thiểu để có thể lấy item
+      const maxGapSize = 160; // Khe tối đa để được coi là "hẹp"
       
-      const itemX = x + 20;
-      const itemY = largestGap.center;
-      
-      this.items.push({
-        id: `item_col_${x}`,
-        type: randomType,
-        x: itemX,
-        y: itemY,
-        collected: false,
-        width: 30,
-        height: 30
-      });
+      if (narrowestGap.size >= minGapSize && narrowestGap.size <= maxGapSize) {
+        const itemTypes = ['trap', 'bomb', 'lightning', 'armor'];
+        const randomType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+        
+        const itemX = x + 20;
+        const itemY = narrowestGap.center; // Đặt ở giữa khe hẹp
+        
+        this.items.push({
+          id: `item_col_${x}`,
+          type: randomType,
+          x: itemX,
+          y: itemY,
+          collected: false,
+          width: 30,
+          height: 30
+        });
+        
+        console.log(`🎯 Created ${randomType} in NARROW gap at (${itemX}, ${itemY}) - gap size: ${narrowestGap.size}px`);
+      } else {
+        console.log(`❌ Gap too ${narrowestGap.size < minGapSize ? 'narrow' : 'wide'} for item: ${narrowestGap.size}px`);
+      }
     }
   });
   
-  console.log(`🎁 Generated ${this.items.length} items out of ${expectedColumns} expected`);
+  console.log(`🎁 Generated ${this.items.length} items out of ${expectedColumns} expected (in narrow gaps only)`);
   
-  // ✅ Nếu items ít hơn expected, force generate all
-  if (this.items.length < expectedColumns * 0.8) { // Nếu < 80% expected
-    console.log(`⚠️ Too few items generated (${this.items.length}/${expectedColumns}). Using force generation...`);
-    this.forceGenerateItemsForAllColumns();
+  // Nếu quá ít items, tạo thêm ở những khe vừa phải
+  if (this.items.length < expectedColumns * 0.5) { // Nếu < 50% expected
+    console.log(`⚠️ Too few items generated (${this.items.length}/${expectedColumns}). Adding items to medium gaps...`);
+    this.addItemsToMediumGaps();
   }
 }
-
+addItemsToMediumGaps() {
+  const obstacleGroups = this.groupObstaclesByX();
+  const existingItemXPositions = this.items.map(item => Math.floor(item.x - 20));
+  
+  Object.keys(obstacleGroups).forEach(xPos => {
+    const x = parseInt(xPos);
+    
+    // Bỏ qua nếu đã có item tại vị trí này
+    if (existingItemXPositions.includes(x)) return;
+    
+    const obstacles = obstacleGroups[x];
+    const gaps = this.findAllGaps(obstacles);
+    
+    if (gaps.length > 0) {
+      // Tìm khe vừa phải (không quá hẹp, không quá rộng)
+      const mediumGaps = gaps.filter(gap => gap.size >= 120 && gap.size <= 180);
+      
+      if (mediumGaps.length > 0) {
+        const selectedGap = mediumGaps[0]; // Chọn khe vừa đầu tiên
+        
+        const itemTypes = ['trap', 'bomb', 'lightning', 'armor'];
+        const randomType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+        
+        const itemX = x + 20;
+        const itemY = selectedGap.center;
+        
+        this.items.push({
+          id: `item_medium_${x}`,
+          type: randomType,
+          x: itemX,
+          y: itemY,
+          collected: false,
+          width: 30,
+          height: 30
+        });
+        
+        console.log(`🔶 Added ${randomType} to MEDIUM gap at (${itemX}, ${itemY}) - gap size: ${selectedGap.size}px`);
+      }
+    }
+  });
+}
 debugMissingItems() {
   console.log('\n🔍 DEBUGGING MISSING ITEMS:');
   
@@ -216,8 +267,7 @@ debugObstacleStructure() {
   });
 }
 findAllGaps(obstacles) {
-  if (obstacles.length === 0) {
-    // Nếu không có obstacle, toàn bộ là 1 gap lớn
+  if (!obstacles || obstacles.length === 0) {
     return [{
       start: 20,
       end: this.config.height - 20,
@@ -226,18 +276,16 @@ findAllGaps(obstacles) {
     }];
   }
   
-  // Sắp xếp obstacles theo Y từ trên xuống dưới
-  const sortedObstacles = [...obstacles].sort((a, b) => a.y - b.y);
-  
   const gaps = [];
+  const sortedObstacles = obstacles.sort((a, b) => a.y - b.y);
   
-  // Gap 1: Từ top của canvas đến obstacle đầu tiên
+  // Gap đầu: Từ top của canvas đến obstacle đầu tiên
   const firstObstacle = sortedObstacles[0];
   if (firstObstacle.y > 20) {
     gaps.push({
       start: 20,
       end: firstObstacle.y,
-      center: 20 + (firstObstacle.y - 20) / 2,
+      center: (20 + firstObstacle.y) / 2,
       size: firstObstacle.y - 20
     });
   }
@@ -251,7 +299,7 @@ findAllGaps(obstacles) {
     const gapEnd = nextObstacle.y;
     const gapSize = gapEnd - gapStart;
     
-    if (gapSize > 0) { // Bất kỳ gap nào > 0 đều tạo item
+    if (gapSize > 0) {
       gaps.push({
         start: gapStart,
         end: gapEnd,
@@ -431,7 +479,6 @@ executeItemEffect(player, itemType) {
 }
 
 
-
 useTrap(player) {
   // Tạo bẫy tại vị trí hiện tại của player
   const trap = {
@@ -441,16 +488,61 @@ useTrap(player) {
     y: player.y,
     fromPlayerId: player.playerId,
     createdAt: Date.now(),
-    duration: 10000 // 10 giây
+    duration: 10000, // 10 giây
+    width: 40,
+    height: 40,
+    active: false, // ✅ BẪY CHƯA HOẠT ĐỘNG
+    activateAt: Date.now() + 2000 // ✅ KÍCH HOẠT SAU 2 GIÂY
   };
   
   this.activeEffects.push(trap);
-  console.log(`🪤 Trap created at (${trap.x}, ${trap.y}) by ${player.playerId}`);
-// Trong useTrap, useBomb, useLightning:
-console.log('🎯 Effect created:', effect);
-console.log('🎯 ActiveEffects array:', this.activeEffects.length);
-
-
+  console.log(`🪤 Trap created at (${trap.x}, ${trap.y}) by ${player.playerId} - will activate in 2s`);
+  console.log('🎯 Effect created:', trap);
+  console.log('🎯 ActiveEffects array:', this.activeEffects.length);
+  
+  // ✅ KÍCH HOẠT BẪY SAU 2 GIÂY
+  setTimeout(() => {
+    const trapIndex = this.activeEffects.findIndex(e => e.id === trap.id);
+    if (trapIndex !== -1) {
+      this.activeEffects[trapIndex].active = true;
+      console.log(`🔥 Trap ${trap.id} is now ACTIVE!`);
+      
+      // Hiệu ứng khi bẫy được kích hoạt
+      this.broadcast({
+        type: 'visualEffect',
+        effect: {
+          type: 'trapActivated',
+          x: trap.x,
+          y: trap.y,
+          playerId: player.playerId,
+          duration: 1000
+        }
+      });
+      
+      this.broadcast({
+        type: 'gameMessage',
+        message: `⚠️ Bẫy của ${player.playerId.slice(-4)} đã sẵn sàng!`
+      });
+    }
+  }, 2000);
+  
+  // ✅ THÊM: Tự động xóa trap sau 10 giây (tính từ lúc tạo)
+  setTimeout(() => {
+    this.removeEffect(trap.id);
+    console.log(`🗑️ Trap ${trap.id} expired and removed`);
+  }, trap.duration);
+  
+  // ✅ THÊM: Hiệu ứng visual khi đặt bẫy (màu vàng - chưa hoạt động)
+  this.broadcast({
+    type: 'visualEffect',
+    effect: {
+      type: 'trapPlaced',
+      x: trap.x,
+      y: trap.y,
+      playerId: player.playerId,
+      duration: 2000 // Hiệu ứng kéo dài 2 giây (đến khi kích hoạt)
+    }
+  });
 }
 
 useBomb(player) {
@@ -462,13 +554,27 @@ useBomb(player) {
     y: player.y,
     fromPlayerId: player.playerId,
     createdAt: Date.now(),
-    duration: 2000, // Nổ ngay lập tức
+    duration: 2000, // Hiệu ứng kéo dài 2 giây
     radius: 100
   };
   
   this.activeEffects.push(bomb);
   
+  // ✅ THÊM: Hiệu ứng nổ ngay lập tức
+  this.broadcast({
+    type: 'visualEffect',
+    effect: {
+      type: 'explosion',
+      x: bomb.x,
+      y: bomb.y,
+      radius: bomb.radius,
+      playerId: player.playerId,
+      duration: 1500
+    }
+  });
+  
   // Gây damage cho tất cả players khác trong bán kính
+  let hitPlayers = [];
   this.playerStates.forEach(otherPlayer => {
     if (otherPlayer.playerId !== player.playerId && otherPlayer.alive) {
       const distance = Math.sqrt(
@@ -477,16 +583,32 @@ useBomb(player) {
       );
       
       if (distance <= bomb.radius) {
-        this.damagePlayer(otherPlayer, `💣 Bomb từ ${player.playerId.slice(-4)}`);
+        if (!otherPlayer.invulnerable) {
+          this.damagePlayer(otherPlayer, `💣 Bomb từ ${player.playerId.slice(-4)}`);
+          hitPlayers.push(otherPlayer.playerId.slice(-4));
+        }
       }
     }
   });
   
   console.log(`💣 Bomb exploded at (${bomb.x}, ${bomb.y}) by ${player.playerId}`);
-  // Trong useTrap, useBomb, useLightning:
-console.log('🎯 Effect created:', effect);
-console.log('🎯 ActiveEffects array:', this.activeEffects.length);
+  console.log('🎯 Effect created:', bomb);
+  console.log('🎯 ActiveEffects array:', this.activeEffects.length);
+  
+  // ✅ Broadcast thông tin về những ai bị ảnh hưởng
+  if (hitPlayers.length > 0) {
+    this.broadcast({
+      type: 'gameMessage',
+      message: `💥 Bomb của ${player.playerId.slice(-4)} làm nổ: ${hitPlayers.join(', ')}`
+    });
+  }
+  
+  // ✅ Tự động xóa effect sau 2 giây
+  setTimeout(() => {
+    this.removeEffect(bomb.id);
+  }, bomb.duration);
 }
+
 useLightning(player) {
   // Tấn công player gần nhất
   let closestPlayer = null;
@@ -506,7 +628,7 @@ useLightning(player) {
     }
   });
   
-  if (closestPlayer && closestDistance <= 300) { // Tầm tấn công 300px
+  if (closestPlayer && closestDistance <= 500) { // Tăng tầm tấn công lên 500px
     // Tạo hiệu ứng sét
     const lightning = {
       id: `lightning_${Date.now()}`,
@@ -515,21 +637,62 @@ useLightning(player) {
       fromY: player.y,
       toX: closestPlayer.x,
       toY: closestPlayer.y,
+      targetPlayerId: closestPlayer.playerId,
       fromPlayerId: player.playerId,
       createdAt: Date.now(),
       duration: 1000
     };
     
     this.activeEffects.push(lightning);
-    this.damagePlayer(closestPlayer, `⚡ Sét từ ${player.playerId.slice(-4)}`);
+    
+    // ✅ THÊM: Hiệu ứng visual ngay lập tức
+    this.broadcast({
+      type: 'visualEffect',
+      effect: {
+        type: 'lightning',
+        fromX: lightning.fromX,
+        fromY: lightning.fromY,
+        toX: lightning.toX,
+        toY: lightning.toY,
+        playerId: player.playerId,
+        targetId: closestPlayer.playerId,
+        duration: 800
+      }
+    });
+    
+    // Gây damage
+    if (!closestPlayer.invulnerable) {
+      this.damagePlayer(closestPlayer, `⚡ Sét từ ${player.playerId.slice(-4)}`);
+    }
     
     console.log(`⚡ Lightning from ${player.playerId} hit ${closestPlayer.playerId}`);
+    console.log('🎯 Effect created:', lightning);
+    console.log('🎯 ActiveEffects array:', this.activeEffects.length);
+    
+    // ✅ Tự động xóa effect sau 1 giây
+    setTimeout(() => {
+      this.removeEffect(lightning.id);
+    }, lightning.duration);
   } else {
-    console.log(`⚡ Lightning from ${player.playerId} - no target in range`);
+    console.log(`⚡ Lightning from ${player.playerId} - no target in range (closest: ${closestDistance}px)`);
+    
+    // ✅ THÊM: Hiệu ứng thất bại
+    this.broadcast({
+      type: 'visualEffect',
+      effect: {
+        type: 'lightningMiss',
+        x: player.x,
+        y: player.y,
+        playerId: player.playerId,
+        duration: 500
+      }
+    });
+    
+    this.broadcast({
+      type: 'gameMessage',
+      message: `⚡ Sét của ${player.playerId.slice(-4)} không tìm thấy mục tiêu!`
+    });
   }
-  // Trong useTrap, useBomb, useLightning:
-console.log('🎯 Effect created:', effect);
-console.log('🎯 ActiveEffects array:', this.activeEffects.length);
 }
 
 // THÊM: Sử dụng áo giáp
@@ -540,13 +703,34 @@ useArmor(player) {
   
   console.log(`🛡️ Armor activated for ${player.playerId} - invulnerable for 5s`);
   
+  // ✅ THÊM: Hiệu ứng visual cho áo giáp
+  this.broadcast({
+    type: 'visualEffect',
+    effect: {
+      type: 'armor',
+      playerId: player.playerId,
+      duration: 5000
+    }
+  });
+  
   this.broadcast({
     type: 'gameMessage',
-    message: `${player.playerId.slice(-4)} đã kích hoạt áo giáp - bất tử 5 giây!`
+    message: `🛡️ ${player.playerId.slice(-4)} đã kích hoạt áo giáp - bất tử 5 giây!`
   });
-  // Trong useTrap, useBomb, useLightning:
-console.log('🎯 Effect created:', effect);
-console.log('🎯 ActiveEffects array:', this.activeEffects.length);
+  
+  // ✅ Tự động tắt áo giáp sau 5 giây
+  setTimeout(() => {
+    if (player.invulnerable) {
+      player.invulnerable = false;
+      player.invulnerableTime = 0;
+      console.log(`🛡️ Armor expired for ${player.playerId}`);
+      
+      this.broadcast({
+        type: 'gameMessage',
+        message: `🛡️ Áo giáp của ${player.playerId.slice(-4)} đã hết hiệu lực!`
+      });
+    }
+  }, 5000);
 }
 removeEffect(effectId) {
   const index = this.activeEffects.findIndex(effect => effect.id === effectId);
@@ -559,13 +743,30 @@ removeEffect(effectId) {
 // THÊM: Check collision với bẫy
 checkTrapCollision(player) {
   this.activeEffects.forEach(effect => {
-    if (effect.type === 'trap' && effect.ownerId !== player.playerId) {
+    if (effect.type === 'trap' && 
+        effect.fromPlayerId !== player.playerId && 
+        effect.active === true) { // ✅ CHỈ KÍCH HOẠT KHI BẪY ĐÃ ACTIVE
+      
       if (this.isCollidingWithTrap(player, effect)) {
         if (!player.invulnerable) {
-          this.killPlayer(player);
+          this.damagePlayer(player, `🪤 Bẫy từ ${effect.fromPlayerId.slice(-4)}`);
+          
           this.broadcast({
             type: 'gameMessage',
-            message: `🪤 ${player.playerId.slice(-4)} bị bẫy!`
+            message: `🪤 ${player.playerId.slice(-4)} bị bẫy của ${effect.fromPlayerId.slice(-4)}!`
+          });
+          
+          // Hiệu ứng khi bẫy kích hoạt
+          this.broadcast({
+            type: 'visualEffect',
+            effect: {
+              type: 'trapTriggered',
+              x: effect.x,
+              y: effect.y,
+              playerId: effect.fromPlayerId,
+              victimId: player.playerId,
+              duration: 1000
+            }
           });
         }
         // Xóa bẫy sau khi kích hoạt
